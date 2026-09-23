@@ -1,0 +1,83 @@
+{
+  "expo": {
+    "name": "Trimly Partner",
+    "slug": "trimly-partner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo.png",
+    "scheme": "trimly-partner",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.trimly.partner",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Trimly needs camera access to let you capture and upload profile logos and portfolio photos.",
+        "NSPhotoLibraryUsageDescription": "Trimly needs access to your photo library to select pictures for your profile and portfolio."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyD5fhA50lBTXtvXbwlwJGVNUxNgPtdJbOA"
+      }
+    },
+    "android": {
+      "package": "com.trimly.partner",
+      "adaptiveIcon": {
+        "backgroundColor": "#1C1E1B",
+        "foregroundImage": "./assets/images/logo.png"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyD5fhA50lBTXtvXbwlwJGVNUxNgPtdJbOA"
+        }
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#1C1E1B",
+          "dark": {
+            "backgroundColor": "#1C1E1B"
+          }
+        }
+      ],
+      "expo-secure-store",
+      "expo-font",
+      "expo-image",
+      "expo-status-bar",
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Trimly to use your location."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Trimly needs access to your photo library to select pictures for your profile and portfolio.",
+          "cameraPermission": "Trimly needs camera access to let you capture and upload profile logos and portfolio photos."
+        }
+      ],
+      "expo-document-picker"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": false
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b2510eee-7bcd-4a5a-a045-539c6ea2e9d5"
+      }
+    }
+  }
+}
