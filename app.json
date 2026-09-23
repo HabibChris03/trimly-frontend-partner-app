@@ -29,7 +29,12 @@
           "apiKey": "AIzaSyD5fhA50lBTXtvXbwlwJGVNUxNgPtdJbOA"
         }
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -76,8 +81,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b2510eee-7bcd-4a5a-a045-539c6ea2e9d5"
+        "projectId": "b89a4d76-2f14-4582-98b3-46f311c1c1a6"
       }
-    }
+    },
+    "owner": "habib_chris"
   }
 }
