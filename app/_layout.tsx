@@ -1,5 +1,7 @@
+import "react-native-gesture-handler";
 import React, { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   DarkTheme,
   DefaultTheme,
@@ -93,7 +95,7 @@ function RootNavigator() {
 import { TabBarVisibilityProvider } from "@/context/TabBarVisibilityContext";
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
@@ -115,7 +117,7 @@ export default function RootLayout() {
     }
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return (
       <View
         style={{
@@ -131,20 +133,22 @@ export default function RootLayout() {
   }
 
   return (
-    <AppThemeProvider>
-      <LanguageProvider>
-        <LocationProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <NotificationProvider>
-                <TabBarVisibilityProvider>
-                  <RootNavigator />
-                </TabBarVisibilityProvider>
-              </NotificationProvider>
-            </ToastProvider>
-          </AuthProvider>
-        </LocationProvider>
-      </LanguageProvider>
-    </AppThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppThemeProvider>
+        <LanguageProvider>
+          <LocationProvider>
+            <AuthProvider>
+              <ToastProvider>
+                <NotificationProvider>
+                  <TabBarVisibilityProvider>
+                    <RootNavigator />
+                  </TabBarVisibilityProvider>
+                </NotificationProvider>
+              </ToastProvider>
+            </AuthProvider>
+          </LocationProvider>
+        </LanguageProvider>
+      </AppThemeProvider>
+    </GestureHandlerRootView>
   );
 }

@@ -72,7 +72,14 @@
           "cameraPermission": "Trimly needs camera access to let you capture and upload profile logos and portfolio photos."
         }
       ],
-      "expo-document-picker"
+      "expo-document-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#A3B39C"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

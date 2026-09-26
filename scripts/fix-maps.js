@@ -1,9 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-const babel = require('@babel/core');
+
+let babel;
+try {
+  babel = require('@babel/core');
+} catch (e) {
+  // @babel/core not available yet
+}
 
 const libDir = path.join(__dirname, '..', 'node_modules', 'react-native-maps', 'lib');
-if (fs.existsSync(libDir)) {
+if (babel && fs.existsSync(libDir)) {
   const files = fs.readdirSync(libDir).filter(f => f.endsWith('.js'));
   files.forEach(file => {
     const filePath = path.join(libDir, file);
