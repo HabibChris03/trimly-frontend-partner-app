@@ -2,6 +2,7 @@ import "react-native-gesture-handler";
 import React, { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   DarkTheme,
   DefaultTheme,
@@ -133,22 +134,24 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <AppThemeProvider>
-        <LanguageProvider>
-          <LocationProvider>
-            <AuthProvider>
-              <ToastProvider>
-                <NotificationProvider>
-                  <TabBarVisibilityProvider>
-                    <RootNavigator />
-                  </TabBarVisibilityProvider>
-                </NotificationProvider>
-              </ToastProvider>
-            </AuthProvider>
-          </LocationProvider>
-        </LanguageProvider>
-      </AppThemeProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AppThemeProvider>
+          <LanguageProvider>
+            <LocationProvider>
+              <AuthProvider>
+                <ToastProvider>
+                  <NotificationProvider>
+                    <TabBarVisibilityProvider>
+                      <RootNavigator />
+                    </TabBarVisibilityProvider>
+                  </NotificationProvider>
+                </ToastProvider>
+              </AuthProvider>
+            </LocationProvider>
+          </LanguageProvider>
+        </AppThemeProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
