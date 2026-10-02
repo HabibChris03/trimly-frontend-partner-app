@@ -7,6 +7,7 @@ import React, { useCallback, useState } from "react";
 import {
   Image,
   Linking,
+  Modal,
   RefreshControl,
   ScrollView,
   StatusBar,
@@ -17,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { marketingService } from "@/services/marketingService";
 import {
   openWhatsApp,
   SUPPORT_WHATSAPP_NUMBER,
@@ -99,6 +101,35 @@ export default function HelpSupportScreen() {
   const [expandedId, setExpandedId] = useState<string | null>("1");
   const [refreshing, setRefreshing] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketMessage, setTicketMessage] = useState("");
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+
+  const handleSubmitTicket = async () => {
+    if (!ticketSubject.trim() || !ticketMessage.trim()) {
+      showToast("Please provide both a subject and details for your ticket.", "error");
+      return;
+    }
+    setIsSubmittingTicket(true);
+    try {
+      const res = await marketingService.submitSupportTicket({
+        name: user?.name || "Barber / Partner",
+        email: user?.email || "partner@trimly237.com",
+        phone: user?.phone || "+237 600000000",
+        subject: ticketSubject.trim(),
+        message: ticketMessage.trim(),
+      });
+      showToast(res?.message || "Partner support ticket submitted! Our team will review it shortly.", "success");
+      setTicketSubject("");
+      setTicketMessage("");
+      setShowTicketModal(false);
+    } catch (err: any) {
+      showToast(err?.message || "Failed to submit support ticket.", "error");
+    } finally {
+      setIsSubmittingTicket(false);
+    }
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -264,7 +295,7 @@ export default function HelpSupportScreen() {
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() => handleAction("email")}
+            onPress={() => setShowTicketModal(true)}
             style={[
               styles.actionCard,
               {
@@ -274,13 +305,13 @@ export default function HelpSupportScreen() {
             ]}
           >
             <View style={styles.actionIconCircle}>
-              <Ionicons name="mail-outline" size={22} color="#A3B39C" />
+              <Ionicons name="help-buoy-outline" size={22} color={colors.primary} />
             </View>
             <Text style={[styles.actionTitle, { color: colors.primarytext }]}>
-              {isSendingEmail ? "Sending..." : "Test Email"}
+              Open Ticket
             </Text>
             <Text style={[styles.actionSub, { color: colors.secondarytext }]}>
-              {user?.email ? user.email.split("@")[0] : "Send Verification"}
+              Admin Desk
             </Text>
           </TouchableOpacity>
         </View>
@@ -459,6 +490,77 @@ export default function HelpSupportScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Support Ticket Modal */}
+      <Modal
+        visible={showTicketModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTicketModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={[styles.modalIconWrap, { backgroundColor: `${colors.primary}20` }]}>
+                  <Ionicons name="help-buoy" size={20} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={[styles.modalTitle, { color: colors.primarytext }]}>
+                    Partner Support Desk
+                  </Text>
+                  <Text style={[styles.modalSubtitle, { color: colors.secondarytext }]}>
+                    Direct to Trimly Operations & Admin
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setShowTicketModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={22} color={colors.primarytext} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={[styles.inputLabel, { color: colors.primarytext }]}>Subject</Text>
+              <TextInput
+                style={[styles.modalInput, { backgroundColor: colors.surfacevariant, color: colors.primarytext, borderColor: colors.surfacevariant }]}
+                placeholder="e.g. Payout Inquiry, Shop Listing, or Technical Issue"
+                placeholderTextColor={colors.inputPlaceholder}
+                value={ticketSubject}
+                onChangeText={setTicketSubject}
+              />
+
+              <Text style={[styles.inputLabel, { color: colors.primarytext, marginTop: 12 }]}>Details & Description</Text>
+              <TextInput
+                style={[styles.modalTextarea, { backgroundColor: colors.surfacevariant, color: colors.primarytext, borderColor: colors.surfacevariant }]}
+                placeholder="Describe your inquiry, booking issue, or payout question..."
+                placeholderTextColor={colors.inputPlaceholder}
+                value={ticketMessage}
+                onChangeText={setTicketMessage}
+                multiline
+                numberOfLines={4}
+              />
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={isSubmittingTicket}
+                onPress={handleSubmitTicket}
+                style={[styles.modalSubmitBtn, { backgroundColor: colors.primary }]}
+              >
+                {isSubmittingTicket ? (
+                  <ActivityIndicator color={colors.background} />
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Ionicons name="send" size={16} color={colors.background} style={{ marginRight: 6 }} />
+                    <Text style={[styles.modalSubmitText, { color: colors.background }]}>
+                      Submit Ticket
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -597,6 +699,77 @@ const styles = StyleSheet.create({
   ticketBtnText: {
     color: "#1C1E1B",
     fontSize: 12.5,
+    fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    width: "100%",
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  modalIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  modalSubtitle: {
+    fontSize: 12,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalBody: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  modalInput: {
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 14,
+  },
+  modalTextarea: {
+    height: 100,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    textAlignVertical: "top",
+  },
+  modalSubmitBtn: {
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 14,
+  },
+  modalSubmitText: {
+    fontSize: 14,
     fontWeight: "700",
   },
 });
