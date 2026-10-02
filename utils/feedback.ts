@@ -1,6 +1,7 @@
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 
+let AudioModule: any = null;
 
 class FeedbackService {
   private soundObject: any = null;

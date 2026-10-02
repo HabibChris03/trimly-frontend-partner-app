@@ -5,7 +5,7 @@ import RoleSelector, { UserRole } from "@/components/auth/RoleSelector";
 import SocialButton from "@/components/auth/SocialButton";
 import useColors from "@/hooks/usecolor";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,11 +17,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useLanguage } from "@/context/LanguageContext";
 import SpecialtiesDropdown from "@/components/auth/SpecialtiesDropdown";
+import BarberLocationPickerModal from "@/components/map/BarberLocationPickerModal";
 import { barberService } from "@/services/barberService";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
@@ -45,8 +48,54 @@ export default function SignupScreen() {
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState("Douala, Akwa");
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number }>({
+    latitude: 4.0511,
+    longitude: 9.7679,
+  });
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [specialty, setSpecialty] = useState("");
+
+  // Attempt to auto-detect current location if permission is already granted
+  useEffect(() => {
+    let isMounted = true;
+    async function detectInitialLocation() {
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status === "granted") {
+          setIsDetectingLocation(true);
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          if (!isMounted) return;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          setCoords({ latitude: lat, longitude: lng });
+
+          try {
+            const [geo] = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (geo && isMounted) {
+              const parts = [geo.street, geo.district, geo.city || geo.subregion, geo.region].filter(Boolean);
+              setLocation(parts.join(", ") || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            }
+          } catch {
+            if (isMounted) {
+              setLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            }
+          }
+        }
+      } catch {
+        // Fallback default retained
+      } finally {
+        if (isMounted) setIsDetectingLocation(false);
+      }
+    }
+    detectInitialLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
@@ -93,8 +142,8 @@ export default function SignupScreen() {
       newErrors.businessName = role === "salon" ? "Please enter your salon or shop name" : "Please enter your brand or business name";
     }
 
-    if (!location.trim()) {
-      newErrors.location = "Please enter your location or address";
+    if (!location.trim() && (!coords || !coords.latitude)) {
+      newErrors.location = "Please pinpoint your location on the map";
     }
 
     if (!email.trim()) {
@@ -131,15 +180,17 @@ export default function SignupScreen() {
           role: role,
           name: businessName ? `${fullName} (${businessName})` : fullName,
           phone: phone.trim(),
-          latitude: 4.0511,
-          longitude: 9.7679,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
         });
 
-        // Persist entered specialty and location to profile
-        if (specialty || location) {
+        // Persist entered specialty and pinpoint location to profile
+        if (specialty || location || coords.latitude) {
           await barberService.updateProfileDetails({
             about_us: specialty ? `Specialties: ${specialty}` : undefined,
             city: location || undefined,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
           }).catch(() => null);
         }
 
@@ -245,20 +296,63 @@ export default function SignupScreen() {
             error={errors.phone}
           />
 
-          {/* Location & Specialties */}
-          <InputField
-            label="Location / Address"
-            iconName="location-outline"
-            placeholder="Rond-Point Damas, Entree Frazati"
-            value={location}
-            onChangeText={(val) => {
-              setLocation(val);
-              if (errors.location)
-                setErrors((prev) => ({ ...prev, location: "" }));
-            }}
-            autoCapitalize="words"
-            error={errors.location}
-          />
+          {/* Pinpoint Location Selector */}
+          <View style={styles.locationContainer}>
+            <View style={styles.locationHeaderRow}>
+              <Text style={[styles.locationLabel, { color: colors.primarytext }]}>
+                {role === "salon" ? "Salon / Shop Location" : "Barber Location"}
+              </Text>
+              <View style={[styles.locationBadgeWrap, { backgroundColor: `${colors.primary}18` }]}>
+                <Ionicons name="location" size={11} color={colors.primary} style={{ marginRight: 3 }} />
+                <Text style={[styles.locationBadge, { color: colors.primary }]}>
+                  Pin on Map
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowMapModal(true)}
+              style={[
+                styles.locationCard,
+                {
+                  backgroundColor: colors.surfacevariant || colors.surface,
+                  borderColor: errors.location ? colors.error : colors.border,
+                },
+              ]}
+            >
+              <View style={[styles.locationIconWrap, { backgroundColor: `${colors.primary}15` }]}>
+                <Ionicons name="pin" size={20} color={colors.primary} />
+              </View>
+
+              <View style={styles.locationInfo}>
+                <Text
+                  style={[styles.locationText, { color: colors.primarytext }]}
+                  numberOfLines={1}
+                >
+                  {isDetectingLocation ? "Detecting current location..." : (location || "Tap to pinpoint on map")}
+                </Text>
+                <Text style={[styles.locationCoords, { color: colors.secondarytext }]} numberOfLines={1}>
+                  {coords.latitude ? `${coords.latitude.toFixed(4)}° N, ${coords.longitude.toFixed(4)}° E • Tap to change` : "Tap to select on map"}
+                </Text>
+              </View>
+
+              <View style={[styles.changePinBtn, { backgroundColor: colors.primary }]}>
+                <Ionicons name="map-outline" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                <Text style={styles.changePinText}>Change</Text>
+              </View>
+            </TouchableOpacity>
+
+            {errors.location ? (
+              <Text style={[styles.errorText, { color: colors.error }]}>
+                {errors.location}
+              </Text>
+            ) : (
+              <Text style={[styles.locationHelper, { color: colors.secondarytext }]}>
+                Tap to pinpoint your exact shop or barber chair location on the map.
+              </Text>
+            )}
+          </View>
 
           <InputField
             label={role === "salon" ? "Services & Specialties Offered" : "Specialties / Cuts Offered"}
@@ -375,6 +469,29 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Barber Location Picker Modal */}
+      <BarberLocationPickerModal
+        visible={showMapModal}
+        onClose={() => setShowMapModal(false)}
+        initialLatitude={coords.latitude}
+        initialLongitude={coords.longitude}
+        initialCity={location || "Douala, Akwa"}
+        onConfirmLocation={(picked) => {
+          setCoords({
+            latitude: picked.latitude,
+            longitude: picked.longitude,
+          });
+          if (picked.city) {
+            setLocation(picked.city);
+          } else {
+            setLocation(`${picked.latitude.toFixed(4)}, ${picked.longitude.toFixed(4)}`);
+          }
+          if (errors.location) {
+            setErrors((prev) => ({ ...prev, location: "" }));
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -392,6 +509,86 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 32,
     alignItems: "center",
+  },
+  locationContainer: {
+    width: "100%",
+    marginBottom: 16,
+  },
+  locationHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  locationLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  locationBadgeWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  locationBadge: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  locationCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    minHeight: 58,
+  },
+  locationIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  locationInfo: {
+    flex: 1,
+    marginRight: 8,
+  },
+  locationText: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  locationCoords: {
+    fontSize: 11,
+    fontWeight: "400",
+  },
+  changePinBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  changePinText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  locationHelper: {
+    fontSize: 11,
+    marginTop: 6,
+    paddingHorizontal: 4,
+  },
+  errorText: {
+    fontSize: 12,
+    marginTop: 4,
+    paddingHorizontal: 4,
   },
   termsText: {
     fontSize: 12,
