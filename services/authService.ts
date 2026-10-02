@@ -108,12 +108,22 @@ export const authService = {
   },
 
   /**
+   * Verify whether an entered 6-digit reset code is valid.
+   */
+  async verifyResetCode(email: string, code: string): Promise<{ status: string; valid: boolean; message: string }> {
+    return apiRequest<{ status: string; valid: boolean; message: string }>("/api/v1/auth/verify-code", {
+      method: "POST",
+      body: JSON.stringify({ email, code, reset_code: code }),
+    });
+  },
+
+  /**
    * Reset user password with 6-digit reset code and set new password.
    */
   async resetPassword(email: string, resetCode: string, newPassword: string): Promise<{ status: string; message: string }> {
     return apiRequest<{ status: string; message: string }>("/api/v1/auth/reset-password", {
       method: "POST",
-      body: JSON.stringify({ email, reset_code: resetCode, new_password: newPassword }),
+      body: JSON.stringify({ email, code: resetCode, reset_code: resetCode, new_password: newPassword }),
     });
   },
 

@@ -111,6 +111,37 @@ export class ApiError extends Error {
   }
 }
 
+export function sanitizeProductionError(status: number, rawMessage?: string | null): string {
+  if (status >= 500) {
+    return "Our servers are temporarily experiencing high demand. Please try again in a few moments.";
+  }
+  if (!rawMessage || typeof rawMessage !== "string") {
+    return "An unexpected error occurred. Please try again.";
+  }
+  const clean = rawMessage.trim();
+  const lower = clean.toLowerCase();
+
+  // Guard against leaking internal tracebacks, exception names, or raw 500 errors
+  if (
+    lower.includes("internal server error") ||
+    lower.includes("traceback") ||
+    lower.includes("attributeerror") ||
+    lower.includes("typeerror") ||
+    lower.includes("syntaxerror") ||
+    lower.includes("operationalerror") ||
+    lower.includes("sqlalchemy") ||
+    lower.includes("psycopg") ||
+    lower.includes("database error") ||
+    lower.includes("connection refused") ||
+    lower.includes("status 500") ||
+    lower.includes("error 500")
+  ) {
+    return "Something went wrong while processing your request. Please try again.";
+  }
+
+  return clean;
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestOptions = {}
@@ -166,7 +197,7 @@ export async function apiRequest<T = any>(
     const responseData = await response.json().catch(() => null);
 
     if (!response.ok) {
-      const errorMessage =
+      const rawError =
         responseData?.detail?.message ||
         responseData?.detail ||
         (Array.isArray(responseData?.detail)
@@ -175,7 +206,8 @@ export async function apiRequest<T = any>(
         responseData?.message ||
         `Request failed with status ${response.status}`;
 
-      throw new ApiError(errorMessage, response.status, responseData);
+      const userMessage = sanitizeProductionError(response.status, rawError);
+      throw new ApiError(userMessage, response.status, responseData);
     }
 
     return responseData as T;
@@ -183,6 +215,15 @@ export async function apiRequest<T = any>(
     if (error instanceof ApiError) {
       throw error;
     }
-    throw new ApiError(error.message || "Network error occurred", 0, error);
+    const isNetwork =
+      error?.message?.includes("Network request failed") ||
+      error?.message?.includes("Failed to fetch") ||
+      error?.message?.includes("NetworkError");
+
+    const userFriendly = isNetwork
+      ? "Unable to connect to Trimly servers. Please check your internet connection."
+      : sanitizeProductionError(0, error.message);
+
+    throw new ApiError(userFriendly, 0, error);
   }
 }

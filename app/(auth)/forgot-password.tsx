@@ -86,7 +86,10 @@ export default function ForgotPasswordScreen() {
       setStep("verify");
       setResendCooldown(60);
     } catch (err: any) {
-      const msg = err?.message || "Could not request password reset.";
+      const raw = err?.message || "";
+      const msg = raw && !raw.includes("status") && !raw.includes("500")
+        ? raw
+        : "Could not send verification code. Please try again shortly.";
       showToast(msg, "error");
       setErrors({ email: msg });
     } finally {
@@ -110,7 +113,11 @@ export default function ForgotPasswordScreen() {
       showToast(res?.message || "A new verification code has been sent to your email.", "success");
       setResendCooldown(60);
     } catch (err: any) {
-      showToast(err?.message || "Failed to resend code. Please try again.", "error");
+      const raw = err?.message || "";
+      const msg = raw && !raw.includes("status") && !raw.includes("500")
+        ? raw
+        : "Failed to resend verification code. Please try again.";
+      showToast(msg, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -173,13 +180,23 @@ export default function ForgotPasswordScreen() {
           await setActiveMode("barber");
           router.replace("/(barbers)");
         }
-      } catch (loginErr: any) {
-        // In the unlikely case auto-login fails, redirect gracefully to login
+      } catch {
+        // In case auto-login fails, redirect gracefully to login
         showToast("Password reset! Please sign in with your new password.", "success");
         router.replace("/(auth)/login");
       }
     } catch (err: any) {
-      const msg = err?.message || "Invalid code or reset failed. Please check and try again.";
+      const raw = err?.message || "";
+      let msg = "Invalid verification code or reset failed. Please check and try again.";
+      if (raw.toLowerCase().includes("expired")) {
+        msg = "Verification code has expired. Please request a new code.";
+      } else if (raw.toLowerCase().includes("invalid") || raw.toLowerCase().includes("code")) {
+        msg = "Invalid verification code. Please check your email and try again.";
+      } else if (raw.toLowerCase().includes("password")) {
+        msg = raw;
+      } else if (raw && !raw.includes("status") && !raw.includes("500") && !raw.includes("error")) {
+        msg = raw;
+      }
       showToast(msg, "error");
       setErrors((prev) => ({ ...prev, code: msg }));
     } finally {
