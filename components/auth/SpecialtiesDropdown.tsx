@@ -10,20 +10,35 @@ import {
 } from "react-native";
 
 export const DEFAULT_BARBER_SPECIALTIES = [
+  // Barber specialties
   "Skin Fades",
   "Taper Fade & Lineup",
   "Beard Sculpting & Shape",
   "Classic Scissor Cut",
   "Buzz Cut & Edge-Up",
   "Luxury Hot Towel Shave",
+  "Straight Razor Shave",
+  "Hair Design & Razor Etching",
+  "Waves & 360 Enhancements",
+  // Shared
   "Dreadlocks & Retwist",
   "Braids & Cornrows",
   "Hair Coloring & Tint",
   "Kids Haircut & Gentle Styling",
-  "Waves & 360 Enhancements",
   "Scalp Treatment & Deep Wash",
-  "Straight Razor Shave",
-  "Hair Design & Razor Etching",
+  // Hairdresser specialties
+  "Box Braids",
+  "Knotless Braids",
+  "Locs & Loc Maintenance",
+  "Weave Installation",
+  "Wig Making & Application",
+  "Natural Hair Styling",
+  "Silk Press & Blowout",
+  "Twist & Twistout",
+  "Crochet Styles",
+  "Hair Treatments & Conditioning",
+  "Balayage & Highlights",
+  "Perms & Relaxers",
 ];
 
 interface SpecialtiesDropdownProps {
