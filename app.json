@@ -3,6 +3,14 @@
     "name": "Trimly Partner",
     "slug": "trimly-partner",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b89a4d76-2f14-4582-98b3-46f311c1c1a6",
+      "enabled": true,
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "trimly-partner",

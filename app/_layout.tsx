@@ -28,6 +28,7 @@ import { ThemeProvider as AppThemeProvider, useTheme } from "@/context/ThemeCont
 import { LanguageProvider } from "@/context/LanguageContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { useOTAUpdates } from "@/hooks/useOTAUpdates";
 
 export const unstable_settings = {
   anchor: "index",
@@ -37,6 +38,9 @@ function RootNavigator() {
   const { isDark } = useTheme();
   const { user } = useAuth();
   
+  // Check and apply over-the-air updates via EAS Update
+  useOTAUpdates();
+
   // Register push notifications on mobile devices and listen for incoming notifications
   usePushNotifications(user?.id);
 
