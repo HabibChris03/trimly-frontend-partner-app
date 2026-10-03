@@ -21,9 +21,6 @@
       "channel": "production"
     }
   },
-  "update": {
-    "channel": "production"
-  },
   "submit": {
     "production": {}
   }
