@@ -14,6 +14,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -26,10 +27,13 @@ interface Appointment {
   client: string;
   service: string;
   time: string;
+  rawStartTime?: string;
   duration: string;
   price: number;
   accent: string;
-  status: "Confirmed" | "In Progress" | "Completed" | "Cancelled" | "Pending";
+  status: "Confirmed" | "In Progress" | "Completed" | "Cancelled" | "Pending" | "No-Show" | "disputed";
+  payment_status?: string;
+  dispute_reason?: string;
 }
 
 export default function BarberBookingsScreen() {
@@ -46,6 +50,21 @@ export default function BarberBookingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
+  // Worst-Case Scenario Modals
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [arrivalPinInput, setArrivalPinInput] = useState("");
+  const [isBypassingPin, setIsBypassingPin] = useState(false);
+  const [bypassReason, setBypassReason] = useState("");
+  const [isSubmittingPin, setIsSubmittingPin] = useState(false);
+
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "momo" | "unpaid">("cash");
+  const [unpaidDisputeNote, setUnpaidDisputeNote] = useState("");
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
+  const [noShowModalVisible, setNoShowModalVisible] = useState(false);
+  const [isSubmittingNoShow, setIsSubmittingNoShow] = useState(false);
+
   const fetchSchedule = useCallback(async () => {
     try {
       const schedule = await bookingService.getMySchedule(barberId).catch(() => null);
@@ -56,25 +75,31 @@ export default function BarberBookingsScreen() {
 
         if (list.length > 0) {
           const mapped: Appointment[] = list.map((b: any, idx: number) => {
-            const d = b.start_time ? new Date(b.start_time) : new Date();
+            const rawStart = b.start_time;
+            const d = rawStart ? new Date(rawStart) : new Date();
             const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
             const timeStr = d.toLocaleTimeString("en-US", {
               hour: "2-digit",
               minute: "2-digit",
             });
-            const isCancelled = b.status === "Cancelled";
-            const isPending = b.status === "Pending";
-            const isPast = !isCancelled && !isPending && d.getTime() < Date.now() && b.status !== "Confirmed" && b.status !== "In Progress";
 
-            const finalStatus: "Confirmed" | "In Progress" | "Completed" | "Cancelled" | "Pending" =
-              isCancelled ? "Cancelled" : isPending ? "Pending" : isPast ? "Completed" : (b.status as any || "Confirmed");
+            const rawStat = (b.status || "").toLowerCase();
+            let finalStatus: Appointment["status"] = "Confirmed";
+            if (rawStat === "cancelled") finalStatus = "Cancelled";
+            else if (rawStat === "pending") finalStatus = "Pending";
+            else if (rawStat === "in progress" || rawStat === "in_progress") finalStatus = "In Progress";
+            else if (rawStat === "no-show" || rawStat === "noshow") finalStatus = "No-Show";
+            else if (rawStat === "disputed" || rawStat === "unpaid") finalStatus = "disputed";
+            else if (rawStat === "completed") finalStatus = "Completed";
+            else finalStatus = "Confirmed";
 
             return {
               id: `b-sched-${b.booking_id || b.id || idx}`,
               booking_id: b.booking_id || b.id,
-              client: b.client_name || b.name || "Jordan Daniels",
-              service: b.custom_hairstyle_name || "Signature Skin Fade & Beard",
+              client: b.client_name || b.name || "Valued Client",
+              service: b.custom_hairstyle_name || "Haircut & Styling",
               time: `${dateStr} • ${timeStr}`,
+              rawStartTime: rawStart,
               duration: "45 mins",
               price: b.total_price || 25000,
               accent:
@@ -86,6 +111,8 @@ export default function BarberBookingsScreen() {
                   ? "#C2A374"
                   : "#9AA685",
               status: finalStatus,
+              payment_status: b.payment_status || "unpaid",
+              dispute_reason: b.dispute_reason,
             };
           });
           setAppointments(mapped);
@@ -122,9 +149,104 @@ export default function BarberBookingsScreen() {
 
   const filteredAppointments = appointments.filter((app) => {
     if (selectedFilter === "Upcoming") return app.status === "Confirmed" || app.status === "In Progress" || app.status === "Pending";
-    if (selectedFilter === "Completed") return app.status === "Completed" || app.status === "Cancelled";
+    if (selectedFilter === "Completed") return app.status === "Completed" || app.status === "Cancelled" || app.status === "No-Show" || app.status === "disputed";
     return true;
   });
+
+  // Calculate 15-minute grace period status for No-Show
+  const getGracePeriod = (rawStartTime?: string) => {
+    if (!rawStartTime) return { isPastStart: false, canMarkNoShow: false, minutesRemaining: 15 };
+    const startMs = new Date(rawStartTime).getTime();
+    const nowMs = Date.now();
+    const graceEndMs = startMs + 15 * 60 * 1000;
+    const isPastStart = nowMs >= startMs;
+    const canMarkNoShow = nowMs >= graceEndMs;
+    const minutesRemaining = Math.max(1, Math.ceil((graceEndMs - nowMs) / 60000));
+    return { isPastStart, canMarkNoShow, minutesRemaining };
+  };
+
+  // Handler: Start Service with Arrival PIN
+  const handleConfirmStartService = async () => {
+    if (!selectedAppointment) return;
+    if (!isBypassingPin && arrivalPinInput.trim().length !== 4) {
+      showToast("Please enter the 4-digit client arrival PIN", "error");
+      return;
+    }
+
+    setIsSubmittingPin(true);
+    try {
+      const targetId = selectedAppointment.booking_id || selectedAppointment.id;
+      await bookingService.updateBookingStatus(targetId, "In Progress", {
+        arrival_pin: isBypassingPin ? undefined : arrivalPinInput.trim(),
+        bypass_pin: isBypassingPin,
+        bypass_reason: isBypassingPin ? (bypassReason.trim() || "Client verified in person") : undefined,
+      });
+
+      showToast(`Started service for ${selectedAppointment.client}`, "success");
+      setPinModalVisible(false);
+      setSelectedAppointment(null);
+      setArrivalPinInput("");
+      setIsBypassingPin(false);
+      setBypassReason("");
+      await fetchSchedule();
+    } catch (err: any) {
+      showToast(err?.message || "Invalid Arrival PIN. Ask the client for their code.", "error");
+    } finally {
+      setIsSubmittingPin(false);
+    }
+  };
+
+  // Handler: Complete Service with Payment Verification
+  const handleConfirmPaymentComplete = async () => {
+    if (!selectedAppointment) return;
+    if (selectedPaymentMethod === "unpaid" && !unpaidDisputeNote.trim()) {
+      showToast("Please add an incident note explaining the non-payment", "error");
+      return;
+    }
+
+    setIsSubmittingPayment(true);
+    try {
+      const targetId = selectedAppointment.booking_id || selectedAppointment.id;
+      await bookingService.updateBookingStatus(targetId, "Completed", {
+        payment_method: selectedPaymentMethod,
+        note: selectedPaymentMethod === "unpaid" ? unpaidDisputeNote.trim() : undefined,
+      });
+
+      if (selectedPaymentMethod === "unpaid") {
+        showToast("Service marked as disputed. Admin team alerted.", "info");
+      } else {
+        showToast(`Service completed! Payment confirmed via ${selectedPaymentMethod.toUpperCase()}.`, "success");
+      }
+
+      setPaymentModalVisible(false);
+      setSelectedAppointment(null);
+      setSelectedPaymentMethod("cash");
+      setUnpaidDisputeNote("");
+      await fetchSchedule();
+    } catch (err: any) {
+      showToast(err?.message || "Could not complete service.", "error");
+    } finally {
+      setIsSubmittingPayment(false);
+    }
+  };
+
+  // Handler: Mark No-Show after 15-min grace
+  const handleConfirmNoShow = async () => {
+    if (!selectedAppointment) return;
+    setIsSubmittingNoShow(true);
+    try {
+      const targetId = selectedAppointment.booking_id || selectedAppointment.id;
+      await bookingService.updateBookingStatus(targetId, "No-Show");
+      showToast(`Marked ${selectedAppointment.client} as No-Show. Slot released.`, "info");
+      setNoShowModalVisible(false);
+      setSelectedAppointment(null);
+      await fetchSchedule();
+    } catch (err: any) {
+      showToast(err?.message || "Cannot mark as No-Show yet. 15-min grace period applies.", "error");
+    } finally {
+      setIsSubmittingNoShow(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -241,100 +363,363 @@ export default function BarberBookingsScreen() {
                 },
               ]}
             >
-            <View
-              style={[styles.accentBar, { backgroundColor: item.accent }]}
-            />
-            <View style={styles.cardBody}>
-              <View style={styles.topRow}>
-                <Text style={[styles.timeText, { color: colors.primarytext }]}>
-                  {item.time}
+              <View
+                style={[styles.accentBar, { backgroundColor: item.accent }]}
+              />
+              <View style={styles.cardBody}>
+                <View style={styles.topRow}>
+                  <Text style={[styles.timeText, { color: colors.primarytext }]}>
+                    {item.time}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        color:
+                          item.status === "Cancelled"
+                            ? "#EF4444"
+                            : item.status === "Completed"
+                            ? "#10B981"
+                            : item.status === "In Progress"
+                            ? "#F59E0B"
+                            : item.status === "Pending"
+                            ? "#F59E0B"
+                            : item.status === "No-Show"
+                            ? "#9CA3AF"
+                            : item.status === "disputed"
+                            ? "#EF4444"
+                            : colors.primary,
+                      },
+                    ]}
+                  >
+                    {item.status === "disputed" ? "Disputed" : item.status}
+                  </Text>
+                </View>
+                <Text
+                  style={[styles.clientName, { color: colors.primarytext }]}
+                >
+                  {item.client}
                 </Text>
                 <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      color:
-                        item.status === "Cancelled"
-                          ? "#EF4444"
-                          : item.status === "Completed"
-                          ? "#10B981"
-                          : item.status === "In Progress"
-                          ? "#F59E0B"
-                          : item.status === "Pending"
-                          ? "#F59E0B"
-                          : colors.primary,
-                    },
-                  ]}
+                  style={[styles.serviceSubtext, { color: colors.secondarytext }]}
                 >
-                  {item.status}
+                  {item.service} • {item.price.toLocaleString()} CFA
                 </Text>
+                {item.status === "disputed" && item.dispute_reason ? (
+                  <Text style={{ fontSize: 11, color: "#EF4444", marginTop: 3 }}>
+                    ⚠️ {item.dispute_reason}
+                  </Text>
+                ) : null}
               </View>
-              <Text
-                style={[styles.clientName, { color: colors.primarytext }]}
-              >
-                {item.client}
-              </Text>
-              <Text
-                style={[styles.serviceSubtext, { color: colors.secondarytext }]}
-              >
-                {item.service} • {item.price.toLocaleString()} CFA
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={18}
-              color={colors.secondarytext}
-            />
-          </TouchableOpacity>
-        )))}
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.secondarytext}
+              />
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
-      {/* Appointment Detail Custom Modal */}
-      <CustomModal
-        visible={!!selectedAppointment}
-        onClose={() => setSelectedAppointment(null)}
-        title={selectedAppointment ? selectedAppointment.client : "Appointment"}
-        description={
-          selectedAppointment
-            ? `${selectedAppointment.service}\nScheduled: ${selectedAppointment.time} (${selectedAppointment.duration})\nPrice: ${selectedAppointment.price.toLocaleString()} CFA\nStatus: ${selectedAppointment.status}`
-            : ""
-        }
-        icon="person-outline"
-        primaryText={
-          selectedAppointment?.status === "Pending"
-            ? "Accept Appointment"
-            : selectedAppointment?.status === "In Progress"
-            ? "Mark Completed"
-            : "Start Service"
-        }
-        onPrimary={async () => {
-          if (selectedAppointment) {
-            const targetId = selectedAppointment.booking_id || selectedAppointment.id;
+      {/* 1. Main Appointment Detail Modal */}
+      {selectedAppointment && !pinModalVisible && !paymentModalVisible && !noShowModalVisible && (
+        <CustomModal
+          visible={!!selectedAppointment}
+          onClose={() => setSelectedAppointment(null)}
+          title={selectedAppointment.client}
+          description={`${selectedAppointment.service}\nScheduled: ${selectedAppointment.time} (${selectedAppointment.duration})\nPrice: ${selectedAppointment.price.toLocaleString()} CFA\nStatus: ${selectedAppointment.status === "disputed" ? "Disputed (Under Review)" : selectedAppointment.status}`}
+          icon="person-outline"
+          primaryText={
+            selectedAppointment.status === "Pending"
+              ? "Accept Appointment"
+              : selectedAppointment.status === "Confirmed"
+              ? "Start Service (Verify PIN)"
+              : selectedAppointment.status === "In Progress"
+              ? "Complete & Collect Payment"
+              : null
+          }
+          onPrimary={async () => {
             if (selectedAppointment.status === "Pending") {
+              const targetId = selectedAppointment.booking_id || selectedAppointment.id;
               await bookingService.acceptBooking(targetId);
               showToast(`Accepted appointment for ${selectedAppointment.client}`, "success");
+              setSelectedAppointment(null);
               await fetchSchedule();
-            } else {
-              const nextStatus = selectedAppointment.status === "In Progress" ? "Completed" : "In Progress";
-              await bookingService.updateBookingStatus(targetId, nextStatus);
-              setAppointments((prev) =>
-                prev.map((a) => (a.id === selectedAppointment.id ? { ...a, status: nextStatus as any } : a))
-              );
-              showToast(`${nextStatus === "Completed" ? "Completed" : "Started"} service for ${selectedAppointment.client}`, "success");
+            } else if (selectedAppointment.status === "Confirmed") {
+              setPinModalVisible(true);
+            } else if (selectedAppointment.status === "In Progress") {
+              setPaymentModalVisible(true);
             }
+          }}
+          secondaryText={
+            selectedAppointment.status === "Pending"
+              ? "Decline"
+              : selectedAppointment.status === "Confirmed" && getGracePeriod(selectedAppointment.rawStartTime).isPastStart
+              ? (getGracePeriod(selectedAppointment.rawStartTime).canMarkNoShow ? "Mark No-Show" : "Grace Active")
+              : "Close"
           }
-          setSelectedAppointment(null);
-        }}
-        secondaryText={selectedAppointment?.status === "Pending" ? "Decline" : "Close"}
-        onSecondary={async () => {
-          if (selectedAppointment && selectedAppointment.status === "Pending") {
-            const targetId = selectedAppointment.booking_id || selectedAppointment.id;
-            await bookingService.declineBooking(targetId);
-            showToast(`Declined appointment for ${selectedAppointment.client}`, "info");
-            await fetchSchedule();
-          }
-          setSelectedAppointment(null);
-        }}
+          onSecondary={async () => {
+            if (selectedAppointment.status === "Pending") {
+              const targetId = selectedAppointment.booking_id || selectedAppointment.id;
+              await bookingService.declineBooking(targetId);
+              showToast(`Declined appointment for ${selectedAppointment.client}`, "info");
+              setSelectedAppointment(null);
+              await fetchSchedule();
+            } else if (
+              selectedAppointment.status === "Confirmed" &&
+              getGracePeriod(selectedAppointment.rawStartTime).canMarkNoShow
+            ) {
+              setNoShowModalVisible(true);
+            } else {
+              setSelectedAppointment(null);
+            }
+          }}
+        >
+          {selectedAppointment.status === "Confirmed" && (
+            <View style={{ width: "100%", marginTop: 8 }}>
+              {getGracePeriod(selectedAppointment.rawStartTime).isPastStart && (
+                <View
+                  style={{
+                    backgroundColor: getGracePeriod(selectedAppointment.rawStartTime).canMarkNoShow
+                      ? "rgba(239, 68, 68, 0.1)"
+                      : "rgba(245, 158, 11, 0.1)",
+                    padding: 10,
+                    borderRadius: 12,
+                    marginBottom: 10,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: getGracePeriod(selectedAppointment.rawStartTime).canMarkNoShow
+                        ? "#EF4444"
+                        : "#F59E0B",
+                      textAlign: "center",
+                    }}
+                  >
+                    {getGracePeriod(selectedAppointment.rawStartTime).canMarkNoShow
+                      ? "Client is over 15 minutes late. You may mark this appointment as No-Show."
+                      : `15-min arrival grace period: ${getGracePeriod(selectedAppointment.rawStartTime).minutesRemaining}m remaining before No-Show is permitted.`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {selectedAppointment.status === "disputed" && (
+            <View
+              style={{
+                width: "100%",
+                backgroundColor: "rgba(239, 68, 68, 0.1)",
+                padding: 12,
+                borderRadius: 14,
+                marginTop: 8,
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: "700", color: "#EF4444", marginBottom: 2 }}>
+                ⚠️ Payment Incident Escalated
+              </Text>
+              <Text style={{ fontSize: 11.5, color: colors.secondarytext }}>
+                {selectedAppointment.dispute_reason || "Payment was reported as unpaid. Trimly support has an open ticket for this case."}
+              </Text>
+            </View>
+          )}
+        </CustomModal>
+      )}
+
+      {/* 2. Arrival PIN Handshake Modal */}
+      <CustomModal
+        visible={pinModalVisible}
+        onClose={() => setPinModalVisible(false)}
+        title="Verify Client Arrival"
+        description="To prevent accidental starts when the client is absent, enter the 4-digit Arrival PIN shown on their Trimly app receipt."
+        icon="key-outline"
+        primaryText={isSubmittingPin ? "Verifying..." : "Confirm & Start Service"}
+        onPrimary={handleConfirmStartService}
+        secondaryText="Cancel"
+        onSecondary={() => setPinModalVisible(false)}
+      >
+        <View style={{ width: "100%", marginVertical: 12 }}>
+          {!isBypassingPin ? (
+            <View>
+              <TextInput
+                value={arrivalPinInput}
+                onChangeText={(val) => setArrivalPinInput(val.replace(/\D/g, "").slice(0, 4))}
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="• • • •"
+                placeholderTextColor={colors.secondarytext}
+                style={{
+                  height: 56,
+                  backgroundColor: colors.background,
+                  borderColor: colors.surfacevariant,
+                  borderWidth: 1.5,
+                  borderRadius: 16,
+                  textAlign: "center",
+                  fontSize: 28,
+                  fontWeight: "800",
+                  letterSpacing: 10,
+                  color: colors.primarytext,
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => setIsBypassingPin(true)}
+                style={{ marginTop: 12, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 12, color: colors.secondarytext, textDecorationLine: "underline" }}>
+                  Client phone battery dead / offline? Bypass PIN
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              <Text style={{ fontSize: 12, color: "#F59E0B", fontWeight: "600", marginBottom: 6 }}>
+                Bypass Mode (Requires Verification Note)
+              </Text>
+              <TextInput
+                value={bypassReason}
+                onChangeText={setBypassReason}
+                placeholder="e.g. Verified client identity in chair, phone dead"
+                placeholderTextColor={colors.secondarytext}
+                style={{
+                  minHeight: 46,
+                  backgroundColor: colors.background,
+                  borderColor: colors.surfacevariant,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  fontSize: 13,
+                  color: colors.primarytext,
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => setIsBypassingPin(false)}
+                style={{ marginTop: 10, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 12, color: colors.secondarytext, textDecorationLine: "underline" }}>
+                  Back to PIN entry
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </CustomModal>
+
+      {/* 3. Payment Verification Modal on Complete */}
+      <CustomModal
+        visible={paymentModalVisible}
+        onClose={() => setPaymentModalVisible(false)}
+        title="Collect & Finalize Payment"
+        description={`Confirm how the client settled the ${selectedAppointment?.price.toLocaleString()} CFA service charge:`}
+        icon="cash-outline"
+        primaryText={isSubmittingPayment ? "Processing..." : "Complete Booking"}
+        onPrimary={handleConfirmPaymentComplete}
+        secondaryText="Cancel"
+        onSecondary={() => setPaymentModalVisible(false)}
+      >
+        <View style={{ width: "100%", gap: 8, marginVertical: 10 }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setSelectedPaymentMethod("cash")}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 12,
+              borderRadius: 14,
+              borderWidth: 1.5,
+              borderColor: selectedPaymentMethod === "cash" ? "#8BA888" : colors.surfacevariant,
+              backgroundColor: selectedPaymentMethod === "cash" ? "rgba(139, 168, 136, 0.15)" : colors.surface,
+            }}
+          >
+            <Text style={{ fontSize: 18, marginRight: 10 }}>💵</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primarytext }}>Cash Settled</Text>
+              <Text style={{ fontSize: 11, color: colors.secondarytext }}>Client paid directly in physical cash</Text>
+            </View>
+            {selectedPaymentMethod === "cash" && <Ionicons name="checkmark-circle" size={18} color="#8BA888" />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setSelectedPaymentMethod("momo")}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 12,
+              borderRadius: 14,
+              borderWidth: 1.5,
+              borderColor: selectedPaymentMethod === "momo" ? "#8BA888" : colors.surfacevariant,
+              backgroundColor: selectedPaymentMethod === "momo" ? "rgba(139, 168, 136, 0.15)" : colors.surface,
+            }}
+          >
+            <Text style={{ fontSize: 18, marginRight: 10 }}>📱</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primarytext }}>Mobile Money Settled</Text>
+              <Text style={{ fontSize: 11, color: colors.secondarytext }}>MTN MoMo or Orange Money transfer verified</Text>
+            </View>
+            {selectedPaymentMethod === "momo" && <Ionicons name="checkmark-circle" size={18} color="#8BA888" />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setSelectedPaymentMethod("unpaid")}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              padding: 12,
+              borderRadius: 14,
+              borderWidth: 1.5,
+              borderColor: selectedPaymentMethod === "unpaid" ? "#EF4444" : colors.surfacevariant,
+              backgroundColor: selectedPaymentMethod === "unpaid" ? "rgba(239, 68, 68, 0.12)" : colors.surface,
+            }}
+          >
+            <Text style={{ fontSize: 18, marginRight: 10 }}>⚠️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: "#EF4444" }}>Client Refused / Did Not Pay</Text>
+              <Text style={{ fontSize: 11, color: colors.secondarytext }}>Escalates directly to Trimly Super Admin</Text>
+            </View>
+            {selectedPaymentMethod === "unpaid" && <Ionicons name="checkmark-circle" size={18} color="#EF4444" />}
+          </TouchableOpacity>
+
+          {selectedPaymentMethod === "unpaid" && (
+            <TextInput
+              value={unpaidDisputeNote}
+              onChangeText={setUnpaidDisputeNote}
+              placeholder="Explain incident (e.g. Client walked out without paying)"
+              placeholderTextColor={colors.secondarytext}
+              multiline
+              numberOfLines={2}
+              style={{
+                minHeight: 52,
+                backgroundColor: colors.background,
+                borderColor: "#EF4444",
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                fontSize: 12,
+                color: colors.primarytext,
+                marginTop: 4,
+              }}
+            />
+          )}
+        </View>
+      </CustomModal>
+
+      {/* 4. No-Show Confirmation Modal */}
+      <CustomModal
+        visible={noShowModalVisible}
+        onClose={() => setNoShowModalVisible(false)}
+        title="Mark Client as No-Show?"
+        description="The 15-minute arrival grace period has passed. Marking this booking as No-Show will notify the client and unlock your calendar slot for new bookings or walk-ins."
+        icon="alert-circle-outline"
+        primaryDanger={true}
+        primaryText={isSubmittingNoShow ? "Submitting..." : "Confirm No-Show"}
+        onPrimary={handleConfirmNoShow}
+        secondaryText="Keep Waiting"
+        onSecondary={() => setNoShowModalVisible(false)}
       />
     </SafeAreaView>
   );

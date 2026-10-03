@@ -12,6 +12,14 @@ export interface BookingCreateInput {
   barber_name?: string;
 }
 
+export interface StatusUpdateOptions {
+  arrival_pin?: string;
+  bypass_pin?: boolean;
+  bypass_reason?: string;
+  payment_method?: "cash" | "momo" | "unpaid";
+  note?: string;
+}
+
 export interface BookingReceipt {
   id?: number | string;
   booking_id?: number | string;
@@ -25,6 +33,10 @@ export interface BookingReceipt {
   end_time?: string;
   total_price?: number;
   status?: string;
+  payment_status?: string;
+  service_started_at?: string;
+  service_completed_at?: string;
+  dispute_reason?: string;
   services?: any[];
   reference_number?: string;
   created_at?: string;
@@ -225,9 +237,13 @@ export const bookingService = {
   },
 
   /**
-   * Update booking status (e.g. "In Progress", "Completed", "Cancelled").
+   * Update booking status (e.g. "In Progress", "Completed", "No-Show", "Disputed").
    */
-  async updateBookingStatus(bookingId: number | string, status: string): Promise<any> {
+  async updateBookingStatus(
+    bookingId: number | string,
+    status: string,
+    options?: StatusUpdateOptions
+  ): Promise<any> {
     const rawStr = String(bookingId);
     const numId = typeof bookingId === "number" ? bookingId : parseInt(rawStr.replace(/\D/g, ""), 10);
 
@@ -242,12 +258,20 @@ export const bookingService = {
 
     if (!isNaN(numId) && numId < 1000000000) {
       try {
-        await apiRequest(`/api/v1/bookings/${numId}/status`, {
+        const payload: any = { status };
+        if (options?.arrival_pin) payload.arrival_pin = options.arrival_pin;
+        if (options?.bypass_pin !== undefined) payload.bypass_pin = options.bypass_pin;
+        if (options?.bypass_reason) payload.bypass_reason = options.bypass_reason;
+        if (options?.payment_method) payload.payment_method = options.payment_method;
+        if (options?.note) payload.note = options.note;
+
+        const res = await apiRequest(`/api/v1/bookings/${numId}/status`, {
           method: "PATCH",
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(payload),
         });
-      } catch {
-        // Handled
+        return res;
+      } catch (err: any) {
+        throw new Error(err?.message || `Failed to update status to ${status}`);
       }
     }
 
@@ -413,6 +437,10 @@ export const bookingService = {
             end_time: dbItem.end_time,
             total_price: dbItem.total_price || 25000,
             status: dbItem.status || "Confirmed",
+            payment_status: dbItem.payment_status || "unpaid",
+            service_started_at: dbItem.service_started_at,
+            service_completed_at: dbItem.service_completed_at,
+            dispute_reason: dbItem.dispute_reason,
             reference_number: dbItem.reference_number || `TRM-SCHED-${dbItem.booking_id || idx + 1}`,
             created_at: dbItem.created_at || dbItem.start_time || new Date().toISOString(),
           };
