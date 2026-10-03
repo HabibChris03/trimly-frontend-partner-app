@@ -25,7 +25,7 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { t } = useLanguage();
   const { showToast } = useToast();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   // Step 1: 'email' (request code), Step 2: 'verify' (enter code & new password)
   const [step, setStep] = useState<"email" | "verify">("email");
@@ -168,6 +168,13 @@ export default function ForgotPasswordScreen() {
           res?.user?.parent_salon_id || (res?.user as any)?.staff_title
         );
 
+        if (actualRole === "client") {
+          logout();
+          showToast("Password reset! This is a client account — please log in via the Trimly Client app.", "info");
+          router.replace("/(auth)/login");
+          return;
+        }
+
         if (actualRole === "barber" || actualRole === "salon" || actualRole === "hairdresser") {
           if (hasParentSalon) {
             await setActiveMode("sub-barber");
@@ -177,8 +184,8 @@ export default function ForgotPasswordScreen() {
             router.replace("/(barbers)");
           }
         } else {
-          await setActiveMode("barber");
-          router.replace("/(barbers)");
+          logout();
+          router.replace("/(auth)/login");
         }
       } catch {
         // In case auto-login fails, redirect gracefully to login

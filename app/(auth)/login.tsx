@@ -33,7 +33,7 @@ const GOOGLE_CLIENT_ID = "446635548067-l57kdu46j2if0pd3rke70hsks4kibq03.apps.goo
 export default function LoginScreen() {
   const colors = useColors();
   const router = useRouter();
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, logout } = useAuth();
   const { showToast } = useToast();
   const { t } = useLanguage();
 
@@ -61,16 +61,18 @@ export default function LoginScreen() {
         setIsSubmitting(true);
         loginWithGoogle(token, role)
           .then(async (res) => {
+            if (res?.user?.role === "client") {
+              const errMsg = "This account is registered as a client. Please use the Trimly Client app to log in.";
+              showToast(errMsg, "error");
+              logout();
+              return;
+            }
+
             const isSubBarber = Boolean(
               res?.user?.parent_salon_id ||
               res?.user?.is_sub_barber ||
               (res?.user as any)?.staff_title
             );
-
-            if (res?.user?.role === "client" && !isSubBarber) {
-              showToast("This account is not registered as a barber, hairdresser, or affiliated with any salon.", "error");
-              return;
-            }
 
             showToast("Signed in successfully! 🎉", "success");
 
@@ -83,6 +85,7 @@ export default function LoginScreen() {
             }
           })
           .catch((err: any) => {
+            logout();
             showToast(err?.message || "Google sign-in failed.", "error");
           })
           .finally(() => {
@@ -113,18 +116,20 @@ export default function LoginScreen() {
       setIsSubmitting(true);
       try {
         const res = await login(email.trim(), password);
+
+        if (res?.user?.role === "client") {
+          const errMsg = "This account is registered as a client. Please use the Trimly Client app to log in.";
+          showToast(errMsg, "error");
+          setErrors((prev) => ({ ...prev, email: errMsg, general: errMsg }));
+          logout();
+          return;
+        }
+
         const isSubBarber = Boolean(
           res?.user?.parent_salon_id ||
           res?.user?.is_sub_barber ||
           (res?.user as any)?.staff_title
         );
-
-        if (res?.user?.role === "client" && !isSubBarber) {
-          const errMsg = "This account is registered as a client and is not affiliated with any salon. Please use the Trimly Client app.";
-          showToast(errMsg, "error");
-          setErrors((prev) => ({ ...prev, general: errMsg }));
-          return;
-        }
 
         if (isSubBarber) {
           await setActiveMode("sub-barber");
@@ -136,9 +141,15 @@ export default function LoginScreen() {
           router.replace("/(barbers)");
         }
       } catch (err: any) {
+        logout();
         const errorMsg = err.message || "Failed to sign in. Please verify your credentials.";
         showToast(errorMsg, "error");
-        setErrors((prev) => ({ ...prev, general: errorMsg }));
+        const lowerErr = errorMsg.toLowerCase();
+        if (lowerErr.includes("client") || lowerErr.includes("email") || lowerErr.includes("account")) {
+          setErrors((prev) => ({ ...prev, email: errorMsg, general: errorMsg }));
+        } else {
+          setErrors((prev) => ({ ...prev, general: errorMsg }));
+        }
       } finally {
         setIsSubmitting(false);
       }

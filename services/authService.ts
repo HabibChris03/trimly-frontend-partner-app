@@ -2,7 +2,7 @@ import { apiRequest, setAuthToken, setActiveMode } from "./api";
 
 export interface UserCreateInput {
   email: string;
-  role: "client" | "barber" | "salon";
+  role: "client" | "barber" | "salon" | "hairdresser";
   password: string;
   name?: string | null;
   phone?: string | null;

@@ -59,6 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await setAuthToken(savedToken);
         const userData = await authService.getMe();
         const parsed = normalizeUser(userData);
+        if (parsed?.role === "client") {
+          setUser(null);
+          setToken(null);
+          await setAuthToken(null);
+          return;
+        }
         setUser(parsed);
         websocketService.connect();
         notificationService.registerForPushNotificationsAsync().catch(() => null);
@@ -83,6 +89,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const res = await authService.login(email, password);
+
+      if (res?.user?.role === "client") {
+        setUser(null);
+        setToken(null);
+        await setAuthToken(null);
+        throw new Error("This account is registered as a client. Please use the Trimly Client app to log in.");
+      }
+
       setToken(res.access_token);
       await setAuthToken(res.access_token);
 
@@ -94,8 +108,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const userData = await authService.getMe();
         const parsed = normalizeUser(userData);
+        if (parsed?.role === "client") {
+          setUser(null);
+          setToken(null);
+          await setAuthToken(null);
+          throw new Error("This account is registered as a client. Please use the Trimly Client app to log in.");
+        }
         if (parsed) setUser(parsed);
-      } catch {
+      } catch (err: any) {
+        if (err?.message?.includes("client")) throw err;
         // Keep login response user if getMe fails temporarily
       }
 
@@ -134,6 +155,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     try {
       const res = await authService.loginWithGoogle(googleToken, userRole);
+
+      if (res?.user?.role === "client") {
+        setUser(null);
+        setToken(null);
+        await setAuthToken(null);
+        throw new Error("This account is registered as a client. Please use the Trimly Client app to log in.");
+      }
+
       setToken(res.access_token);
       await setAuthToken(res.access_token);
 
@@ -144,8 +173,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const userData = await authService.getMe();
         const parsed = normalizeUser(userData);
+        if (parsed?.role === "client") {
+          setUser(null);
+          setToken(null);
+          await setAuthToken(null);
+          throw new Error("This account is registered as a client. Please use the Trimly Client app to log in.");
+        }
         if (parsed) setUser(parsed);
-      } catch {
+      } catch (err: any) {
+        if (err?.message?.includes("client")) throw err;
         // Fallback to response user
       }
 
