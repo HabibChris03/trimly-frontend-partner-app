@@ -139,7 +139,7 @@ export default function SignupScreen() {
     }
 
     if (!businessName.trim()) {
-      newErrors.businessName = role === "salon" ? "Please enter your salon or shop name" : "Please enter your brand or business name";
+      newErrors.businessName = role === "salon" ? "Please enter your salon or shop name" : role === "hairdresser" ? "Please enter your salon or hair studio name" : "Please enter your brand or business name";
     }
 
     if (!location.trim() && (!coords || !coords.latitude)) {
@@ -254,9 +254,9 @@ export default function SignupScreen() {
 
           {/* Shop / Brand Name */}
           <InputField
-            label={role === "salon" ? "Salon or Shop Name" : "Brand or Business Name"}
+            label={role === "salon" ? "Salon or Shop Name" : role === "hairdresser" ? "Hair Studio Name" : "Brand or Business Name"}
             iconName="business-outline"
-            placeholder={role === "salon" ? "e.g. VIP Barber Studio" : "e.g. Habib Hair Studio"}
+            placeholder={role === "salon" ? "e.g. VIP Barber Studio" : role === "hairdresser" ? "e.g. Grace Hair Studio" : "e.g. Habib Hair Studio"}
             value={businessName}
             onChangeText={(val) => {
               setBusinessName(val);
@@ -271,7 +271,7 @@ export default function SignupScreen() {
           <InputField
             label={t("auth.emailPlaceholder")}
             iconName="mail-outline"
-            placeholder="barber@trimly237.com"
+            placeholder="partner@trimly237.com"
             value={email}
             onChangeText={(val) => {
               setEmail(val);
@@ -300,7 +300,7 @@ export default function SignupScreen() {
           <View style={styles.locationContainer}>
             <View style={styles.locationHeaderRow}>
               <Text style={[styles.locationLabel, { color: colors.primarytext }]}>
-                {role === "salon" ? "Salon / Shop Location" : "Barber Location"}
+                {role === "salon" ? "Salon / Shop Location" : role === "hairdresser" ? "Hair Studio Location" : "Barber Location"}
               </Text>
               <View style={[styles.locationBadgeWrap, { backgroundColor: `${colors.primary}18` }]}>
                 <Ionicons name="location" size={11} color={colors.primary} style={{ marginRight: 3 }} />
@@ -349,15 +349,15 @@ export default function SignupScreen() {
               </Text>
             ) : (
               <Text style={[styles.locationHelper, { color: colors.secondarytext }]}>
-                Tap to pinpoint your exact shop or barber chair location on the map.
+                Tap to pinpoint your exact shop or chair location on the map.
               </Text>
             )}
           </View>
 
           <InputField
-            label={role === "salon" ? "Services & Specialties Offered" : "Specialties / Cuts Offered"}
+            label={role === "salon" ? "Services & Specialties Offered" : role === "hairdresser" ? "Styles & Specialties Offered" : "Specialties / Cuts Offered"}
             iconName="cut-outline"
-            placeholder="Skin Fades, Beard Sculpting, Hot Towel"
+            placeholder={role === "hairdresser" ? "Box Braids, Locs, Weave Installation" : "Skin Fades, Beard Sculpting, Hot Towel"}
             value={specialty}
             onChangeText={(val) => setSpecialty(val)}
             autoCapitalize="words"

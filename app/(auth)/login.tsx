@@ -68,7 +68,7 @@ export default function LoginScreen() {
             );
 
             if (res?.user?.role === "client" && !isSubBarber) {
-              showToast("This account is not registered as a barber or affiliated with any salon.", "error");
+              showToast("This account is not registered as a barber, hairdresser, or affiliated with any salon.", "error");
               return;
             }
 

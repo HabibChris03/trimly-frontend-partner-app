@@ -168,7 +168,7 @@ export default function ForgotPasswordScreen() {
           res?.user?.parent_salon_id || (res?.user as any)?.staff_title
         );
 
-        if (actualRole === "barber" || actualRole === "salon") {
+        if (actualRole === "barber" || actualRole === "salon" || actualRole === "hairdresser") {
           if (hasParentSalon) {
             await setActiveMode("sub-barber");
             router.replace("/(sub-barber)/bookings" as any);

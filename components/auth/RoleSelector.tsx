@@ -2,7 +2,7 @@ import useColors from "@/hooks/usecolor";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export type UserRole = "barber" | "salon";
+export type UserRole = "barber" | "salon" | "hairdresser";
 
 interface RoleSelectorProps {
   role: UserRole;
@@ -15,59 +15,43 @@ export default function RoleSelector({
 }: RoleSelectorProps) {
   const colors = useColors();
 
+  const roles: { value: UserRole; label: string }[] = [
+    { value: "barber", label: "Solo Barber" },
+    { value: "hairdresser", label: "Hairdresser" },
+    { value: "salon", label: "Salon / Shop" },
+  ];
+
   return (
     <View
       style={[styles.container, { backgroundColor: colors.surfacevariant }]}
     >
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onRoleChange("barber")}
-        style={[
-          styles.tab,
-          role === "barber" && [
-            styles.activeTab,
-            {
-              backgroundColor: colors.tabActiveBg,
-            },
-          ],
-        ]}
-      >
-        <Text
+      {roles.map(({ value, label }) => (
+        <TouchableOpacity
+          key={value}
+          activeOpacity={0.8}
+          onPress={() => onRoleChange(value)}
           style={[
-            styles.tabText,
-            role === "barber"
-              ? [styles.activeTabText, { color: colors.primarytext }]
-              : [styles.inactiveTabText, { color: colors.secondarytext }],
+            styles.tab,
+            role === value && [
+              styles.activeTab,
+              {
+                backgroundColor: colors.tabActiveBg,
+              },
+            ],
           ]}
         >
-          Solo Barber
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => onRoleChange("salon")}
-        style={[
-          styles.tab,
-          role === "salon" && [
-            styles.activeTab,
-            {
-              backgroundColor: colors.tabActiveBg,
-            },
-          ],
-        ]}
-      >
-        <Text
-          style={[
-            styles.tabText,
-            role === "salon"
-              ? [styles.activeTabText, { color: colors.primarytext }]
-              : [styles.inactiveTabText, { color: colors.secondarytext }],
-          ]}
-        >
-          Salon / Shop
-        </Text>
-      </TouchableOpacity>
+          <Text
+            style={[
+              styles.tabText,
+              role === value
+                ? [styles.activeTabText, { color: colors.primarytext }]
+                : [styles.inactiveTabText, { color: colors.secondarytext }],
+            ]}
+          >
+            {label}
+          </Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 }
@@ -96,7 +80,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   tabText: {
-    fontSize: 15,
+    fontSize: 13,
     letterSpacing: 0.2,
   },
   activeTabText: {
