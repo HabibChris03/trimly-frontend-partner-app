@@ -7,6 +7,11 @@ export function usePushNotifications(userId?: number | null) {
   const [notification, setNotification] = useState<any>(null);
 
   useEffect(() => {
+    // Register push notification token on device
+    notificationService.registerForPushNotificationsAsync()
+      .then((token) => setExpoPushToken(token))
+      .catch(() => null);
+
     // Connect to real-time notification socket
     websocketService.connect();
 

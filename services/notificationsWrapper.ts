@@ -1,4 +1,4 @@
-﻿import { Platform } from "react-native";
+import { Platform } from "react-native";
 import { isRunningInExpoGo } from "expo";
 
 let NotificationsModule: any = null;
@@ -28,6 +28,7 @@ export const Notifications: any = NotificationsModule || {
   setBadgeCountAsync: async () => {},
   addNotificationReceivedListener: () => ({ remove: () => {} }),
   addNotificationResponseReceivedListener: () => ({ remove: () => {} }),
+  getLastNotificationResponseAsync: async () => null,
   AndroidNotificationPriority: {
     MIN: 1,
     LOW: 2,

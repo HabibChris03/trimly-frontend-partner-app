@@ -5,6 +5,7 @@ import { isRunningInExpoGo } from "expo";
 import { notificationService } from "@/services/notificationService";
 import { websocketService } from "@/services/websocketService";
 import { barberService } from "@/services/barberService";
+import { router } from "expo-router";
 
 export interface NotificationItem {
   id: string;
@@ -133,7 +134,40 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         setNotifications((prev) => [incomingItem, ...prev]);
       });
     } catch {
-      // Push listener not available
+      // Foreground notification listener not available
+    }
+
+    // Listen to notification interactions (tapping a push banner from lock screen or status tray)
+    let responseSubscription: any = null;
+    try {
+      responseSubscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
+        const data = response?.notification?.request?.content?.data;
+        const targetRoute = data?.actionRoute || data?.action_route || "/(barbers)/bookings";
+        if (targetRoute) {
+          try {
+            router.push(targetRoute as any);
+          } catch {
+            // Fallback
+          }
+        }
+      });
+
+      // Cold start check (when app launched directly by tapping notification)
+      Notifications.getLastNotificationResponseAsync?.().then((resp: any) => {
+        if (resp) {
+          const data = resp?.notification?.request?.content?.data;
+          const targetRoute = data?.actionRoute || data?.action_route;
+          if (targetRoute) {
+            try {
+              router.push(targetRoute as any);
+            } catch {
+              // Fallback
+            }
+          }
+        }
+      }).catch(() => null);
+    } catch {
+      // Notification interaction listeners not available
     }
 
     const unsubscribeWs = websocketService.subscribe((incoming) => {
@@ -166,6 +200,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       unsubscribeWs();
       if (notifSubscription && typeof notifSubscription.remove === "function") {
         notifSubscription.remove();
+      }
+      if (responseSubscription && typeof responseSubscription.remove === "function") {
+        responseSubscription.remove();
       }
     };
   }, [refreshNotifications]);

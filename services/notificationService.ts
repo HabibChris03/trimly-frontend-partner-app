@@ -3,6 +3,7 @@ import { Notifications } from "./notificationsWrapper";
 import { isRunningInExpoGo } from "expo";
 import { Platform } from "react-native";
 import { apiRequest } from "./api";
+import Constants from "expo-constants";
 
 // Configure notification behavior for incoming alerts
 try {
@@ -43,6 +44,8 @@ export const notificationService = {
           vibrationPattern: [0, 250, 250, 250],
           lightColor: "#A3B39C",
           sound: "default",
+          enableVibrate: true,
+          showBadge: true,
         });
       }
 
@@ -55,28 +58,36 @@ export const notificationService = {
       }
 
       if (finalStatus !== "granted") {
+        console.log("[Push] Notification permission not granted:", finalStatus);
         return null;
       }
 
       let token: string | null = null;
       try {
+        const projectId =
+          Constants?.expoConfig?.extra?.eas?.projectId ??
+          Constants?.easConfig?.projectId ??
+          "b89a4d76-2f14-4582-98b3-46f311c1c1a6";
+
         const pushTokenData = await Notifications.getExpoPushTokenAsync({
-          projectId: "b2510eee-7bcd-4a5a-a045-539c6ea2e9d5",
+          projectId,
         });
         token = pushTokenData?.data || null;
 
         if (token) {
+          console.log("[Push] Acquired Expo Push Token:", token);
           await this.registerDevice(
             token,
             Platform.OS === "ios" ? "ios" : "android"
-          ).catch(() => null);
+          ).catch((e) => console.log("[Push] Error syncing device token with backend:", e?.message));
         }
       } catch (e: any) {
         console.log("[Push] Could not retrieve Expo push token:", e?.message);
       }
 
       return token;
-    } catch {
+    } catch (err: any) {
+      console.log("[Push] Error in registerForPushNotificationsAsync:", err?.message);
       return null;
     }
   },
