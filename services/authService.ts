@@ -146,13 +146,32 @@ export const authService = {
    * Login or signup via Google OAuth ID token / access token.
    * Endpoint: POST /api/v1/auth/google
    */
-  async loginWithGoogle(token: string, role: string = "client"): Promise<LoginResponse> {
+  async loginWithGoogle(
+    token: string,
+    role: string = "barber",
+    accessToken?: string
+  ): Promise<LoginResponse> {
+    const isJwt = typeof token === "string" && token.includes(".") && token.split(".").length === 3;
+    const body: Record<string, any> = {
+      role,
+      app: "partner",
+      token,
+    };
+
+    if (isJwt) {
+      body.id_token = token;
+      if (accessToken) body.access_token = accessToken;
+    } else {
+      body.access_token = token;
+      if (accessToken) body.id_token = accessToken;
+    }
+
     const result = await apiRequest<any>("/api/v1/auth/google", {
       method: "POST",
       headers: {
         "X-App-Type": "partner",
       },
-      body: JSON.stringify({ id_token: token, role, app: "partner" }),
+      body: JSON.stringify(body),
     });
 
     if (result?.access_token) {

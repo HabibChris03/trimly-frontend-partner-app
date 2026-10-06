@@ -10,7 +10,7 @@ interface AuthContextType {
   role: "client" | "barber" | "salon" | string;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<LoginResponse>;
-  loginWithGoogle: (token: string, role?: string) => Promise<LoginResponse>;
+  loginWithGoogle: (token: string, role?: string, accessToken?: string) => Promise<LoginResponse>;
   signup: (data: UserCreateInput) => Promise<UserRead>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -151,10 +151,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async (googleToken: string, userRole: string = "client") => {
+  const loginWithGoogle = async (googleToken: string, userRole: string = "barber", accessToken?: string) => {
     setIsLoading(true);
     try {
-      const res = await authService.loginWithGoogle(googleToken, userRole);
+      const res = await authService.loginWithGoogle(googleToken, userRole, accessToken);
 
       if (res?.user?.role === "client") {
         setUser(null);

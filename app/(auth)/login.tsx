@@ -59,7 +59,7 @@ export default function LoginScreen() {
       const token = id_token || access_token;
       if (token) {
         setIsSubmitting(true);
-        loginWithGoogle(token, role)
+        loginWithGoogle(token, role, access_token)
           .then(async (res) => {
             if (res?.user?.role === "client") {
               const errMsg = "This account is registered as a client. Please use the Trimly Client app to log in.";
@@ -92,6 +92,9 @@ export default function LoginScreen() {
             setIsSubmitting(false);
           });
       }
+    } else if (response?.type === "error") {
+      showToast(response.error?.message || "Google sign-in encountered an error.", "error");
+      setIsSubmitting(false);
     }
   }, [response]);
 
@@ -156,17 +159,20 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSocialAuth = (provider: "google" | "apple") => {
+  const handleSocialAuth = async (provider: "google" | "apple") => {
     if (provider === "google") {
-      if (__DEV__) {
-        console.log("==========================================");
-        console.log("GOOGLE REQUEST REDIRECT URI:", request?.redirectUri);
-        console.log("==========================================");
+      if (!request) {
+        showToast("Google Sign-In is initializing. Please tap again in a moment.", "info");
+        return;
       }
-      promptAsync();
-    } else {
-      showToast("Apple sign-in is currently unavailable. Please use Google or email.", "info");
+      try {
+        await promptAsync();
+      } catch (e: any) {
+        showToast(e?.message || "Could not launch Google Sign-In", "error");
+      }
+      return;
     }
+    showToast("Apple sign-in is currently unavailable. Please use Google or email.", "info");
   };
 
   return (

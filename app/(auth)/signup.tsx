@@ -23,6 +23,7 @@ import * as Location from "expo-location";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { setActiveMode } from "@/services/api";
 import SpecialtiesDropdown from "@/components/auth/SpecialtiesDropdown";
 import BarberLocationPickerModal from "@/components/map/BarberLocationPickerModal";
 import { barberService } from "@/services/barberService";
@@ -111,9 +112,10 @@ export default function SignupScreen() {
       const token = id_token || access_token;
       if (token) {
         setIsSubmitting(true);
-        loginWithGoogle(token, role)
-          .then(() => {
+        loginWithGoogle(token, role, access_token)
+          .then(async () => {
             showToast("Account created with Google successfully! 🎉", "success");
+            await setActiveMode("barber");
             router.replace("/(barbers)");
           })
           .catch((err: any) => {
@@ -123,6 +125,9 @@ export default function SignupScreen() {
             setIsSubmitting(false);
           });
       }
+    } else if (response?.type === "error") {
+      showToast(response.error?.message || "Google registration encountered an error.", "error");
+      setIsSubmitting(false);
     }
   }, [response]);
   const [password, setPassword] = useState("");
@@ -206,12 +211,20 @@ export default function SignupScreen() {
     }
   };
 
-  const handleSocialAuth = (provider: "google" | "apple") => {
+  const handleSocialAuth = async (provider: "google" | "apple") => {
     if (provider === "google") {
-      promptAsync();
-    } else {
-      showToast("Apple sign-up is currently unavailable. Please use Google or email.", "info");
+      if (!request) {
+        showToast("Google Sign-In is initializing. Please tap again in a moment.", "info");
+        return;
+      }
+      try {
+        await promptAsync();
+      } catch (e: any) {
+        showToast(e?.message || "Could not launch Google Sign-In", "error");
+      }
+      return;
     }
+    showToast("Apple sign-up is currently unavailable. Please use Google or email.", "info");
   };
 
   return (
