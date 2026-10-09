@@ -34,6 +34,7 @@ interface Appointment {
   status: "Confirmed" | "In Progress" | "Completed" | "Cancelled" | "Pending" | "No-Show" | "disputed";
   payment_status?: string;
   dispute_reason?: string;
+  completion_pin_requested?: boolean;
 }
 
 export default function BarberBookingsScreen() {
@@ -64,6 +65,15 @@ export default function BarberBookingsScreen() {
 
   const [noShowModalVisible, setNoShowModalVisible] = useState(false);
   const [isSubmittingNoShow, setIsSubmittingNoShow] = useState(false);
+
+  // Ending Service Handshake Modal & Code
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [completionPinInput, setCompletionPinInput] = useState("");
+  const [isRequestingPin, setIsRequestingPin] = useState(false);
+  const [pinSentSuccess, setPinSentSuccess] = useState(false);
+  const [isBypassingCompletionPin, setIsBypassingCompletionPin] = useState(false);
+  const [bypassCompletionReason, setBypassCompletionReason] = useState("");
+  const [isSubmittingCompletion, setIsSubmittingCompletion] = useState(false);
 
   const fetchSchedule = useCallback(async () => {
     try {
@@ -113,6 +123,7 @@ export default function BarberBookingsScreen() {
               status: finalStatus,
               payment_status: b.payment_status || "unpaid",
               dispute_reason: b.dispute_reason,
+              completion_pin_requested: Boolean(b.completion_pin_requested),
             };
           });
           setAppointments(mapped);
@@ -248,6 +259,55 @@ export default function BarberBookingsScreen() {
     }
   };
 
+  // Handler: Send 4-digit Service Ending Code to Client
+  const handleSendEndingCode = async (targetApp?: Appointment) => {
+    const app = targetApp || selectedAppointment;
+    if (!app) return;
+    setIsRequestingPin(true);
+    try {
+      const targetId = app.booking_id || app.id;
+      await bookingService.requestCompletionPin(targetId);
+      setPinSentSuccess(true);
+      showToast(`Ending code sent to ${app.client}'s Trimly app!`, "success");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to send ending code to client.", "error");
+    } finally {
+      setIsRequestingPin(false);
+    }
+  };
+
+  // Handler: Verify Client's Ending Code, Complete Service & Release Payout
+  const handleConfirmEndService = async () => {
+    if (!selectedAppointment) return;
+    if (!isBypassingCompletionPin && completionPinInput.trim().length !== 4) {
+      showToast("Please enter the 4-digit code provided by the client", "error");
+      return;
+    }
+
+    setIsSubmittingCompletion(true);
+    try {
+      const targetId = selectedAppointment.booking_id || selectedAppointment.id;
+      await bookingService.updateBookingStatus(targetId, "Completed", {
+        completion_pin: isBypassingCompletionPin ? undefined : completionPinInput.trim(),
+        bypass_pin: isBypassingCompletionPin,
+        bypass_reason: isBypassingCompletionPin ? (bypassCompletionReason.trim() || "Service completion verified in person") : undefined,
+      });
+
+      showToast(`🎉 Service Ended! ${selectedAppointment.price.toLocaleString()} CFA credited to your account.`, "success");
+      setCompletionModalVisible(false);
+      setSelectedAppointment(null);
+      setCompletionPinInput("");
+      setPinSentSuccess(false);
+      setIsBypassingCompletionPin(false);
+      setBypassCompletionReason("");
+      await fetchSchedule();
+    } catch (err: any) {
+      showToast(err?.message || "Invalid Ending Code. Please check the code with the client.", "error");
+    } finally {
+      setIsSubmittingCompletion(false);
+    }
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -354,7 +414,17 @@ export default function BarberBookingsScreen() {
             <TouchableOpacity
               key={item.id}
               activeOpacity={0.85}
-              onPress={() => setSelectedAppointment(item)}
+              onPress={() => {
+                setSelectedAppointment(item);
+                if (item.status === "In Progress") {
+                  setCompletionModalVisible(true);
+                  if (!item.completion_pin_requested) {
+                    handleSendEndingCode(item);
+                  } else {
+                    setPinSentSuccess(true);
+                  }
+                }
+              }}
               style={[
                 styles.card,
                 {
@@ -405,6 +475,14 @@ export default function BarberBookingsScreen() {
                 >
                   {item.service} • {item.price.toLocaleString()} CFA
                 </Text>
+                {item.status === "In Progress" && (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 5 }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#F59E0B" }} />
+                    <Text style={{ fontSize: 11.5, color: "#F59E0B", fontWeight: "700" }}>
+                      Service In Progress • Tap to End Service
+                    </Text>
+                  </View>
+                )}
                 {item.status === "disputed" && item.dispute_reason ? (
                   <Text style={{ fontSize: 11, color: "#EF4444", marginTop: 3 }}>
                     ⚠️ {item.dispute_reason}
@@ -422,7 +500,7 @@ export default function BarberBookingsScreen() {
       </ScrollView>
 
       {/* 1. Main Appointment Detail Modal */}
-      {selectedAppointment && !pinModalVisible && !paymentModalVisible && !noShowModalVisible && (
+      {selectedAppointment && !pinModalVisible && !paymentModalVisible && !noShowModalVisible && !completionModalVisible && (
         <CustomModal
           visible={!!selectedAppointment}
           onClose={() => setSelectedAppointment(null)}
@@ -435,7 +513,7 @@ export default function BarberBookingsScreen() {
               : selectedAppointment.status === "Confirmed"
               ? "Start Service (Verify PIN)"
               : selectedAppointment.status === "In Progress"
-              ? "Complete & Collect Payment"
+              ? "End Service (Await Code)"
               : null
           }
           onPrimary={async () => {
@@ -448,7 +526,12 @@ export default function BarberBookingsScreen() {
             } else if (selectedAppointment.status === "Confirmed") {
               setPinModalVisible(true);
             } else if (selectedAppointment.status === "In Progress") {
-              setPaymentModalVisible(true);
+              setCompletionModalVisible(true);
+              if (!selectedAppointment.completion_pin_requested) {
+                handleSendEndingCode(selectedAppointment);
+              } else {
+                setPinSentSuccess(true);
+              }
             }
           }}
           secondaryText={
@@ -721,6 +804,177 @@ export default function BarberBookingsScreen() {
         secondaryText="Keep Waiting"
         onSecondary={() => setNoShowModalVisible(false)}
       />
+
+      {/* 5. Service Ending PIN Handshake Modal */}
+      <CustomModal
+        visible={completionModalVisible}
+        onClose={() => {
+          setCompletionModalVisible(false);
+          setCompletionPinInput("");
+          setIsBypassingCompletionPin(false);
+          setBypassCompletionReason("");
+        }}
+        title="End Service & Receive Payment"
+        description={
+          isBypassingCompletionPin
+            ? "Enter a verification note to complete service without the client's code."
+            : pinSentSuccess || selectedAppointment?.completion_pin_requested
+            ? `A 4-digit service ending code was sent to ${selectedAppointment?.client || "the client"}'s Trimly app. Ask the client for their code to finalize the service and receive payment.`
+            : `Send a 4-digit ending code to ${selectedAppointment?.client || "the client"}'s Trimly app to verify haircut completion.`
+        }
+        icon="checkmark-done-circle-outline"
+        primaryText={
+          isSubmittingCompletion
+            ? "Verifying..."
+            : pinSentSuccess || selectedAppointment?.completion_pin_requested || isBypassingCompletionPin
+            ? "Verify Code & End Service"
+            : isRequestingPin
+            ? "Sending Code..."
+            : "Send Ending Code to Client"
+        }
+        onPrimary={() => {
+          if (pinSentSuccess || selectedAppointment?.completion_pin_requested || isBypassingCompletionPin) {
+            handleConfirmEndService();
+          } else {
+            handleSendEndingCode();
+          }
+        }}
+        secondaryText="Cancel"
+        onSecondary={() => {
+          setCompletionModalVisible(false);
+          setCompletionPinInput("");
+          setIsBypassingCompletionPin(false);
+          setBypassCompletionReason("");
+        }}
+      >
+        <View style={{ width: "100%", marginVertical: 12 }}>
+          {isRequestingPin ? (
+            <View style={{ alignItems: "center", paddingVertical: 16 }}>
+              <ActivityIndicator size="small" color="#A3B39C" />
+              <Text style={{ fontSize: 13, color: colors.secondarytext, marginTop: 8 }}>
+                Sending ending code to client...
+              </Text>
+            </View>
+          ) : !isBypassingCompletionPin ? (
+            <View>
+              {(pinSentSuccess || selectedAppointment?.completion_pin_requested) ? (
+                <>
+                  <View
+                    style={{
+                      backgroundColor: "rgba(163, 179, 156, 0.15)",
+                      borderColor: "#8BA888",
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      padding: 10,
+                      marginBottom: 12,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: "#8BA888", letterSpacing: 0.5 }}>
+                      CODE DISPATCHED TO CLIENT
+                    </Text>
+                    <Text style={{ fontSize: 11.5, color: colors.primarytext, marginTop: 2, textAlign: "center" }}>
+                      Awaiting 4-digit ending code from {selectedAppointment?.client || "client"}...
+                    </Text>
+                  </View>
+
+                  <TextInput
+                    value={completionPinInput}
+                    onChangeText={(val) => setCompletionPinInput(val.replace(/\D/g, "").slice(0, 4))}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    placeholder="• • • •"
+                    placeholderTextColor={colors.secondarytext}
+                    style={{
+                      height: 56,
+                      backgroundColor: colors.background,
+                      borderColor: colors.surfacevariant,
+                      borderWidth: 1.5,
+                      borderRadius: 16,
+                      textAlign: "center",
+                      fontSize: 28,
+                      fontWeight: "800",
+                      letterSpacing: 10,
+                      color: colors.primarytext,
+                    }}
+                  />
+
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12, alignItems: "center" }}>
+                    <TouchableOpacity
+                      onPress={() => handleSendEndingCode()}
+                      disabled={isRequestingPin}
+                    >
+                      <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>
+                        Resend Code
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => setIsBypassingCompletionPin(true)}>
+                      <Text style={{ fontSize: 12, color: colors.secondarytext, textDecorationLine: "underline" }}>
+                        Client phone dead? Bypass
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <View style={{ alignItems: "center", paddingVertical: 10 }}>
+                  <Text style={{ fontSize: 13, color: colors.secondarytext, textAlign: "center", marginBottom: 12 }}>
+                    When you finish the service, send the ending code to the client to verify completion and credit your earnings.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => handleSendEndingCode()}
+                    style={{
+                      backgroundColor: colors.primary,
+                      paddingHorizontal: 20,
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Ionicons name="paper-plane" size={16} color="#1C1E1B" />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#1C1E1B" }}>
+                      Send Ending Code to Client
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View>
+              <Text style={{ fontSize: 12, color: "#F59E0B", fontWeight: "600", marginBottom: 6 }}>
+                Bypass Ending Code (Requires Verification Note)
+              </Text>
+              <TextInput
+                value={bypassCompletionReason}
+                onChangeText={setBypassCompletionReason}
+                placeholder="e.g. Service finished, client phone died in shop"
+                placeholderTextColor={colors.secondarytext}
+                style={{
+                  minHeight: 46,
+                  backgroundColor: colors.background,
+                  borderColor: colors.surfacevariant,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  fontSize: 13,
+                  color: colors.primarytext,
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => setIsBypassingCompletionPin(false)}
+                style={{ marginTop: 10, alignItems: "center" }}
+              >
+                <Text style={{ fontSize: 12, color: colors.secondarytext, textDecorationLine: "underline" }}>
+                  Back to Code Entry
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </CustomModal>
     </SafeAreaView>
   );
 }

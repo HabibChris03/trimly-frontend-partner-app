@@ -14,6 +14,7 @@ export interface BookingCreateInput {
 
 export interface StatusUpdateOptions {
   arrival_pin?: string;
+  completion_pin?: string;
   bypass_pin?: boolean;
   bypass_reason?: string;
   payment_method?: "cash" | "momo" | "unpaid";
@@ -34,6 +35,7 @@ export interface BookingReceipt {
   total_price?: number;
   status?: string;
   payment_status?: string;
+  completion_pin_requested?: boolean;
   service_started_at?: string;
   service_completed_at?: string;
   dispute_reason?: string;
@@ -260,6 +262,7 @@ export const bookingService = {
       try {
         const payload: any = { status };
         if (options?.arrival_pin) payload.arrival_pin = options.arrival_pin;
+        if (options?.completion_pin) payload.completion_pin = options.completion_pin;
         if (options?.bypass_pin !== undefined) payload.bypass_pin = options.bypass_pin;
         if (options?.bypass_reason) payload.bypass_reason = options.bypass_reason;
         if (options?.payment_method) payload.payment_method = options.payment_method;
@@ -286,6 +289,25 @@ export const bookingService = {
     });
 
     return { status: "success", message: `Booking status updated to ${status}.` };
+  },
+
+  /**
+   * Request a 4-digit service ending PIN from client to finalize service and receive payout.
+   */
+  async requestCompletionPin(bookingId: number | string): Promise<any> {
+    const rawStr = String(bookingId);
+    const numId = typeof bookingId === "number" ? bookingId : parseInt(rawStr.replace(/\D/g, ""), 10);
+    if (!isNaN(numId) && numId < 1000000000) {
+      try {
+        const res = await apiRequest(`/api/v1/bookings/${numId}/request-completion-pin`, {
+          method: "POST",
+        });
+        return res;
+      } catch (err: any) {
+        throw new Error(err?.message || "Failed to send ending code to client.");
+      }
+    }
+    return { status: "success", message: "Service ending code sent to client." };
   },
 
   /**
@@ -438,6 +460,7 @@ export const bookingService = {
             total_price: dbItem.total_price || 25000,
             status: dbItem.status || "Confirmed",
             payment_status: dbItem.payment_status || "unpaid",
+            completion_pin_requested: Boolean(dbItem.completion_pin_requested),
             service_started_at: dbItem.service_started_at,
             service_completed_at: dbItem.service_completed_at,
             dispute_reason: dbItem.dispute_reason,
