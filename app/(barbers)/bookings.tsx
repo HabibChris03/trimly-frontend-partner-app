@@ -973,6 +973,19 @@ export default function BarberBookingsScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          <TouchableOpacity
+            onPress={() => {
+              setCompletionModalVisible(false);
+              setSelectedPaymentMethod("unpaid");
+              setPaymentModalVisible(true);
+            }}
+            style={{ marginTop: 14, alignItems: "center", borderTopWidth: 1, borderTopColor: colors.surfacevariant, paddingTop: 10 }}
+          >
+            <Text style={{ fontSize: 11.5, color: "#EF4444", fontWeight: "600" }}>
+              ⚠️ Client refused to pay or walked out? Report Incident
+            </Text>
+          </TouchableOpacity>
         </View>
       </CustomModal>
     </SafeAreaView>
