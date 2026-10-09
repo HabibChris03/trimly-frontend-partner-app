@@ -164,10 +164,7 @@ export default function HelpSupportScreen() {
 
   const handleAction = async (type: string) => {
     if (type === "chat") {
-      await openWhatsApp(
-        SUPPORT_WHATSAPP_NUMBER,
-        "Hello Trimly Support, I need assistance with the app."
-      );
+      router.push("/Pages/support-chat" as any);
     } else if (type === "call") {
       const telUrl = `tel:+237${SUPPORT_WHATSAPP_NUMBER}`;
       try {
@@ -261,13 +258,13 @@ export default function HelpSupportScreen() {
             ]}
           >
             <View style={styles.actionIconCircle}>
-              <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+              <Ionicons name="chatbubbles" size={22} color={colors.primary} />
             </View>
             <Text style={[styles.actionTitle, { color: colors.primarytext }]}>
-              WhatsApp
+              Admin Chat
             </Text>
             <Text style={[styles.actionSub, { color: colors.secondarytext }]}>
-              653811357
+              Report Issue
             </Text>
           </TouchableOpacity>
 

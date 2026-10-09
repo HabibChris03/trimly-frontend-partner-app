@@ -507,6 +507,38 @@ export default function BarberProfileSettingsScreen() {
             ]}
           />
 
+          {/* Report Issue & Admin Live Chat */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => router.push("/Pages/support-chat" as any)}
+            style={styles.menuItem}
+          >
+            <Ionicons name="chatbubbles-outline" size={20} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.menuText, { color: colors.primarytext }]}>
+                Report Issue & Admin Chat
+              </Text>
+              <Text style={{ fontSize: 11, color: colors.secondarytext, marginTop: 1 }}>
+                Direct live chat with Trimly operations team
+              </Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#10B981" }} />
+              <Ionicons
+                name="chevron-forward"
+                size={18}
+                color={colors.secondarytext}
+              />
+            </View>
+          </TouchableOpacity>
+
+          <View
+            style={[
+              styles.divider,
+              { backgroundColor: colors.surfacevariant },
+            ]}
+          />
+
           {/* Help Center & Support */}
           <TouchableOpacity
             activeOpacity={0.7}
