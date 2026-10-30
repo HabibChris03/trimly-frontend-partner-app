@@ -211,31 +211,18 @@ export default function BarberAvailabilityScreen() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const enabledSlots = schedule
-        .map((slot, index) => ({ slot, index }))
-        .filter((item) => item.slot.enabled);
+      const daysPayload = schedule.map((slot, index) => ({
+        day_of_week: index,
+        enabled: slot.enabled,
+        start_time: slot.open.length === 5 ? `${slot.open}:00` : slot.open,
+        end_time: slot.close.length === 5 ? `${slot.close}:00` : slot.close,
+      }));
 
-      for (const item of enabledSlots) {
-        await availabilityService
-          .createWindow({
-            day_of_week: item.index,
-            start_time:
-              item.slot.open.length === 5
-                ? `${item.slot.open}:00`
-                : item.slot.open,
-            end_time:
-              item.slot.close.length === 5
-                ? `${item.slot.close}:00`
-                : item.slot.close,
-            is_blocked: false,
-          })
-          .catch(() => null);
-      }
-
-      showToast("Working hours and schedule saved successfully.", "success");
+      await availabilityService.setWeeklySchedule(daysPayload);
+      showToast(t("availability.savedSuccess") || "Working hours and schedule saved successfully.", "success");
       router.back();
-    } catch {
-      showToast("Schedule updated locally.", "info");
+    } catch (e: any) {
+      showToast(e?.message || t("availability.saveError") || "Schedule updated locally.", "info");
       router.back();
     } finally {
       setIsSaving(false);
@@ -280,7 +267,7 @@ export default function BarberAvailabilityScreen() {
         <View style={styles.headerTitleWrap}>
           <Text style={[styles.headerTitle, { color: colors.primarytext }]}>{t("availability.scheduleAndHours")}</Text>
           <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
-            {activeDaysCount} of 7 days active • {totalWeeklyHours} hrs weekly
+            {t("availability.daysActiveSummary", { active: activeDaysCount, hours: totalWeeklyHours }) || `${activeDaysCount} of 7 days active • ${totalWeeklyHours} hrs weekly`}
           </Text>
         </View>
 
@@ -353,7 +340,7 @@ export default function BarberAvailabilityScreen() {
                 {blockedDates.length}
               </Text>
               <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-                Blocked Days
+                {t("availability.blockedDays") || "Blocked Days"}
               </Text>
             </View>
           </View>
@@ -363,10 +350,10 @@ export default function BarberAvailabilityScreen() {
         <View style={styles.sectionWrap}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-              Quick Shift Presets
+              {t("availability.quickPresets") || "Quick Shift Presets"}
             </Text>
             <Text style={[styles.sectionSubtitle, { color: colors.secondarytext }]}>
-              Apply standard hours across all open days
+              {t("availability.quickPresetsSub") || "Apply standard hours across all open days"}
             </Text>
           </View>
 
@@ -385,7 +372,7 @@ export default function BarberAvailabilityScreen() {
             >
               <Ionicons name="flash-outline" size={13} color={colors.primary} />
               <Text style={[styles.presetChipText, { color: colors.primarytext }]}>
-                Standard (9 AM - 6 PM)
+                {t("availability.presetStandard") || "Standard (9 AM - 6 PM)"}
               </Text>
             </TouchableOpacity>
 
@@ -399,7 +386,7 @@ export default function BarberAvailabilityScreen() {
             >
               <Ionicons name="sunny-outline" size={13} color={colors.primary} />
               <Text style={[styles.presetChipText, { color: colors.primarytext }]}>
-                Early Bird (8 AM - 5 PM)
+                {t("availability.presetEarly") || "Early Bird (8 AM - 5 PM)"}
               </Text>
             </TouchableOpacity>
 
@@ -413,7 +400,7 @@ export default function BarberAvailabilityScreen() {
             >
               <Ionicons name="moon-outline" size={13} color={colors.primary} />
               <Text style={[styles.presetChipText, { color: colors.primarytext }]}>
-                Evening (10 AM - 8 PM)
+                {t("availability.presetEvening") || "Evening (10 AM - 8 PM)"}
               </Text>
             </TouchableOpacity>
 
@@ -427,7 +414,7 @@ export default function BarberAvailabilityScreen() {
             >
               <Ionicons name="time-outline" size={13} color={colors.primary} />
               <Text style={[styles.presetChipText, { color: colors.primarytext }]}>
-                Full Day (8 AM - 8 PM)
+                {t("availability.presetFullDay") || "Full Day (8 AM - 8 PM)"}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -437,10 +424,10 @@ export default function BarberAvailabilityScreen() {
         <View style={styles.sectionWrap}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-              Weekly Operating Schedule
+              {t("availability.weeklyScheduleTitle") || "Weekly Operating Schedule"}
             </Text>
             <Text style={[styles.sectionSubtitle, { color: colors.secondarytext }]}>
-              Toggle open days and tap opening / closing time to adjust
+              {t("availability.weeklyScheduleSub") || "Toggle open days and tap opening / closing time to adjust"}
             </Text>
           </View>
 
@@ -489,7 +476,7 @@ export default function BarberAvailabilityScreen() {
                           },
                         ]}
                       >
-                        <Text style={styles.closedBadgeText}>Closed</Text>
+                        <Text style={styles.closedBadgeText}>{t("availability.closed") || "Closed"}</Text>
                       </View>
                     )}
                   </View>
@@ -514,7 +501,7 @@ export default function BarberAvailabilityScreen() {
                       </TouchableOpacity>
 
                       <Text style={[styles.timeBetweenText, { color: colors.secondarytext }]}>
-                        to
+                        {t("availability.to") || "to"}
                       </Text>
 
                       <TouchableOpacity
@@ -536,7 +523,7 @@ export default function BarberAvailabilityScreen() {
                     </View>
                   ) : (
                     <Text style={[styles.dayHoursOff, { color: colors.secondarytext }]}>
-                      No appointments accepted on this day
+                      {t("availability.noAppointmentsOnDay") || "No appointments accepted on this day"}
                     </Text>
                   )}
                 </View>
@@ -557,10 +544,10 @@ export default function BarberAvailabilityScreen() {
         <View style={styles.sectionWrap}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-              Booking Buffer Time
+              {t("availability.bookingBufferTitle") || "Booking Buffer Time"}
             </Text>
             <Text style={[styles.sectionSubtitle, { color: colors.secondarytext }]}>
-              Automatic rest / sanitization buffer added between appointments
+              {t("availability.bookingBufferSub") || "Automatic rest / sanitization buffer added between appointments"}
             </Text>
           </View>
 
@@ -604,10 +591,10 @@ export default function BarberAvailabilityScreen() {
           <View style={styles.sectionHeaderRowWithBtn}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-                Blocked Dates & Holidays
+                {t("availability.blockedDatesTitle") || "Blocked Dates & Holidays"}
               </Text>
               <Text style={[styles.sectionSubtitle, { color: colors.secondarytext }]}>
-                Dates when appointments cannot be scheduled
+                {t("availability.blockedDatesSub") || "Dates when appointments cannot be scheduled"}
               </Text>
             </View>
 
@@ -624,7 +611,7 @@ export default function BarberAvailabilityScreen() {
             >
               <Ionicons name="add" size={14} color={colors.primary} />
               <Text style={[styles.addBlockBtnText, { color: colors.primary }]}>
-                Block Date
+                {t("availability.blockDateBtn") || "Block Date"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -638,7 +625,7 @@ export default function BarberAvailabilityScreen() {
             >
               <Ionicons name="calendar-outline" size={28} color={colors.secondarytext} />
               <Text style={[styles.emptyBlockedText, { color: colors.secondarytext }]}>
-                No blocked dates on your calendar. You are operating all open days.
+                {t("availability.noBlockedDates") || "No blocked dates on your calendar. You are operating all open days."}
               </Text>
             </View>
           ) : (
@@ -692,7 +679,7 @@ export default function BarberAvailabilityScreen() {
             <>
               <Ionicons name="checkmark-circle" size={19} color={colors.onBrand} />
               <Text style={[styles.primarySaveCTAText, { color: colors.onBrand }]}>
-                Save Schedule Configuration
+                {t("availability.saveScheduleBtn") || "Save Schedule Configuration"}
               </Text>
             </>
           )}
@@ -785,7 +772,7 @@ export default function BarberAvailabilityScreen() {
       >
         <View style={styles.blockModalBody}>
           <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
-            Date to Block
+            {t("availability.dateToBlock") || "Date to Block"}
           </Text>
           <TextInput
             style={[
@@ -799,7 +786,7 @@ export default function BarberAvailabilityScreen() {
           />
 
           <Text style={[styles.inputLabel, { color: colors.primarytext, marginTop: 10 }]}>
-            Reason (Optional)
+            {t("availability.reasonOptional") || "Reason (Optional)"}
           </Text>
           <TextInput
             style={[
@@ -818,7 +805,7 @@ export default function BarberAvailabilityScreen() {
             style={[styles.confirmBlockBtn, { backgroundColor: colors.primary, marginTop: 14 }]}
           >
             <Text style={[styles.confirmBlockBtnText, { color: colors.onBrand }]}>
-              Confirm Blocked Date
+              {t("availability.confirmBlockedDate") || "Confirm Blocked Date"}
             </Text>
           </TouchableOpacity>
         </View>

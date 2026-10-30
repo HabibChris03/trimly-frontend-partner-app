@@ -32,6 +32,22 @@ export const availabilityService = {
   },
 
   /**
+   * Configure or update weekly operating schedule across all 7 days.
+   * Endpoint: POST /api/v1/availability/weekly-schedule
+   */
+  async setWeeklySchedule(
+    days: { day_of_week: number; enabled: boolean; start_time: string; end_time: string }[]
+  ): Promise<{ status: string; message: string; availability: AvailabilityWindow[] }> {
+    return apiRequest<{ status: string; message: string; availability: AvailabilityWindow[] }>(
+      "/api/v1/availability/weekly-schedule",
+      {
+        method: "POST",
+        body: JSON.stringify({ days }),
+      }
+    );
+  },
+
+  /**
    * Get all working windows for the current logged-in barber.
    */
   async getMyAvailability(): Promise<AvailabilityWindow[]> {
@@ -75,6 +91,7 @@ export const availabilityService = {
     date: string;
     duration_minutes?: number;
     category?: string;
+    is_closed?: boolean;
     slots: { time: string; end_time?: string; available: boolean; is_full?: boolean; booked_count?: number; duration_minutes?: number }[];
   }> {
     const params: Record<string, any> = { date };
