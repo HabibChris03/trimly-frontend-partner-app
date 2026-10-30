@@ -1,4 +1,3 @@
-import useColors from "@/hooks/usecolor";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs, Redirect } from "expo-router";
 import React from "react";
@@ -6,13 +5,12 @@ import AnimatedTabBar from "@/components/navigation/AnimatedTabBar";
 import { useAuth } from "@/context/AuthContext";
 
 export default function SubBarberTabLayout() {
-  const colors = useColors();
   const { user } = useAuth();
 
   const isSubBarber = Boolean(
     user?.parent_salon_id ||
-    user?.is_sub_barber ||
-    (user as any)?.staff_title
+      user?.is_sub_barber ||
+      (user as any)?.staff_title
   );
 
   // If user is a solo barber or salon owner, redirect to full barber dashboard
@@ -22,10 +20,10 @@ export default function SubBarberTabLayout() {
 
   return (
     <Tabs
-      tabBar={(props) => <AnimatedTabBar {...props} showLabels={true} />}
+      tabBar={(props: any) => <AnimatedTabBar {...props} showLabels={false} />}
       screenOptions={{
         headerShown: false,
-        tabBarShowLabel: true,
+        tabBarShowLabel: false,
         tabBarHideOnKeyboard: true,
       }}
     >
@@ -35,9 +33,9 @@ export default function SubBarberTabLayout() {
           title: "My Appointments",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={22}
+              size={23}
               name={focused ? "calendar" : "calendar-outline"}
-              color={color}
+              color={typeof color === "string" ? color : undefined}
             />
           ),
         }}
@@ -48,9 +46,9 @@ export default function SubBarberTabLayout() {
           title: "My Profile",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={22}
+              size={23}
               name={focused ? "person" : "person-outline"}
-              color={color}
+              color={typeof color === "string" ? color : undefined}
             />
           ),
         }}

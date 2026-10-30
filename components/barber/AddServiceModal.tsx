@@ -127,7 +127,7 @@ const CATEGORY_DEFAULT_DURATIONS: Record<string, string> = {
 };
 
 const DURATION_PRESETS = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
-const PRICE_PRESETS = [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000];
+const PRICE_PRESETS = [1000, 2500, 5000, 10000, 15000, 20000, 25000, 30000, 50000];
 
 function formatDurationDisplay(minutes: number): string {
   if (minutes < 60) return `${minutes} mins`;
@@ -151,7 +151,7 @@ export function AddServiceModal({
   const [serviceName, setServiceName] = useState("");
   const [serviceCategory, setServiceCategory] = useState("Haircuts & Styling");
   const [serviceDuration, setServiceDuration] = useState("45");
-  const [servicePrice, setServicePrice] = useState("25000");
+  const [servicePrice, setServicePrice] = useState("1000");
   const [isExtra, setIsExtra] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -192,7 +192,7 @@ export function AddServiceModal({
         setServiceDuration(
           editingService.duration_minutes?.toString() || "45"
         );
-        setServicePrice(editingService.price?.toString() || "25000");
+        setServicePrice(editingService.price ? editingService.price.toString() : "1000");
         setIsExtra(!!editingService.is_extra);
         setImageUrl(editingService.image_url || "");
         setShowUrlInput(
@@ -205,7 +205,7 @@ export function AddServiceModal({
         setServiceName("");
         setServiceCategory("Haircuts & Styling");
         setServiceDuration("45");
-        setServicePrice("25000");
+        setServicePrice("1000");
         setIsExtra(false);
         setImageUrl("");
         setShowUrlInput(false);
@@ -276,15 +276,11 @@ export function AddServiceModal({
       showToast("Please enter a service name.", "error");
       return;
     }
-    const priceNum = parseFloat(servicePrice.replace(/[^0-9.]/g, "")) || 0;
+    const rawPrice = parseFloat(servicePrice.replace(/[^0-9.]/g, ""));
+    const priceNum = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : 1000;
     const durNum = isExtra
       ? 0
       : parseInt(serviceDuration.replace(/[^0-9]/g, ""), 10) || 30;
-
-    if (priceNum <= 0) {
-      showToast("Please enter a valid price in CFA.", "error");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -328,7 +324,7 @@ export function AddServiceModal({
         style={[styles.container, { backgroundColor: colors.background }]}
         edges={["top", "bottom"]}
       >
-        <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+        <StatusBar barStyle="light-content" />
 
         {/* Full Screen Header */}
         <View
@@ -367,7 +363,7 @@ export function AddServiceModal({
             onPress={() => {
               setServiceName("");
               setServiceDuration("45");
-              setServicePrice("25000");
+              setServicePrice("1000");
               setImageUrl("");
             }}
             style={styles.resetBtn}
@@ -499,7 +495,7 @@ export function AddServiceModal({
                 <View
                   style={[
                     styles.uploadIconCircle,
-                    { backgroundColor: "rgba(163, 179, 156, 0.15)" },
+                    { backgroundColor: "rgba(138, 158, 131, 0.15)" },
                   ]}
                 >
                   <Ionicons
@@ -579,7 +575,7 @@ export function AddServiceModal({
                   onPress={() => setIsAddingNewCategory(true)}
                   style={[
                     styles.addCategoryHeaderBtn,
-                    { backgroundColor: "rgba(163, 179, 156, 0.15)" },
+                    { backgroundColor: "rgba(138, 158, 131, 0.15)" },
                   ]}
                 >
                   <Ionicons name="add" size={14} color={colors.primary} />
@@ -609,7 +605,7 @@ export function AddServiceModal({
               >
                 <TextInput
                   style={[styles.newCategoryInput, { color: colors.primarytext }]}
-                  placeholder="Enter new category name..."
+                  placeholder={t("manageServices.enterCategoryPlaceholder") || "Enter new category name..."}
                   placeholderTextColor={colors.inputPlaceholder}
                   value={newCategoryInput}
                   onChangeText={setNewCategoryInput}
@@ -798,7 +794,7 @@ export function AddServiceModal({
                           style={[
                             styles.dropdownItem,
                             isKnownSelected && {
-                              backgroundColor: "rgba(163, 179, 156, 0.15)",
+                              backgroundColor: "rgba(138, 158, 131, 0.15)",
                             },
                           ]}
                         >
@@ -844,7 +840,7 @@ export function AddServiceModal({
                         { color: colors.primary, fontWeight: "600" },
                       ]}
                     >
-                      Or type custom name below ✍️
+                      Or type custom name below
                     </Text>
                   </TouchableOpacity>
                 </ScrollView>
@@ -908,7 +904,7 @@ export function AddServiceModal({
                 <View
                   style={[
                     styles.durationBadgePill,
-                    { backgroundColor: "rgba(163, 179, 156, 0.2)" },
+                    { backgroundColor: "rgba(138, 158, 131, 0.2)" },
                   ]}
                 >
                   <Text
@@ -1115,8 +1111,8 @@ export function AddServiceModal({
                 style={[
                   styles.durationNoticeBox,
                   {
-                    backgroundColor: "rgba(163, 179, 156, 0.12)",
-                    borderColor: "rgba(163, 179, 156, 0.3)",
+                    backgroundColor: "rgba(138, 158, 131, 0.12)",
+                    borderColor: "rgba(138, 158, 131, 0.3)",
                   },
                 ]}
               >

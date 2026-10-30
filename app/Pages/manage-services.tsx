@@ -2,15 +2,16 @@ import { BarberCardSkeleton } from "@/components/ui/Skeleton";
 import { CustomModal } from "@/components/ui/CustomModal";
 import { PageTutorialModal } from "@/components/barber/PageTutorialModal";
 import { MANAGE_SERVICES_TUTORIAL } from "@/constants/barberTutorials";
+import { FontFamily } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { useLanguage } from "@/context/LanguageContext";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { barberService, BarberServiceItem } from "@/services/barberService";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -125,7 +126,6 @@ const KNOWN_SERVICES_BY_CATEGORY: Record<string, string[]> = {
   ],
 };
 
-// Suggested default durations per category (in minutes)
 const CATEGORY_DEFAULT_DURATIONS: Record<string, string> = {
   "Haircuts & Styling": "45",
   "Braids & Locs": "120",
@@ -137,11 +137,11 @@ const CATEGORY_DEFAULT_DURATIONS: Record<string, string> = {
   "Extra Services": "0",
 };
 
-const DURATION_PRESETS = [15, 30, 45, 60, 75, 90, 120, 150, 180, 240];
-const PRICE_PRESETS = [5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000];
+const DURATION_PRESETS = [15, 30, 45, 60, 75, 90, 120, 150, 180];
+const PRICE_PRESETS = [1000, 2000, 3500, 5000, 10000, 15000, 20000, 30000, 50000];
 
 function formatDurationDisplay(mins: number): string {
-  if (mins <= 0) return "0 min";
+  if (mins <= 0) return "Add-on";
   if (mins < 60) return `${mins} mins`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -149,7 +149,7 @@ function formatDurationDisplay(mins: number): string {
 }
 
 export default function ManageServicesScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -171,7 +171,7 @@ export default function ManageServicesScreen() {
   const [serviceName, setServiceName] = useState("");
   const [serviceCategory, setServiceCategory] = useState("Haircuts & Styling");
   const [serviceDuration, setServiceDuration] = useState("45");
-  const [servicePrice, setServicePrice] = useState("25000");
+  const [servicePrice, setServicePrice] = useState("1000");
   const [isExtra, setIsExtra] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -199,7 +199,6 @@ export default function ManageServicesScreen() {
       const list = await barberService.getBarberServices(barberId);
       setServices(list);
 
-      // Extract custom categories from existing services
       const existingCustom = list
         .map((s) => s.category)
         .filter((cat): cat is string => Boolean(cat) && !DEFAULT_CATEGORIES.includes(cat));
@@ -208,7 +207,6 @@ export default function ManageServicesScreen() {
         setCustomCategories((prev) => Array.from(new Set([...prev, ...existingCustom])));
       }
 
-      // Also fetch categories registered on backend
       try {
         const catRes = await barberService.getCategories(barberId);
         if (catRes?.categories && Array.isArray(catRes.categories)) {
@@ -248,14 +246,14 @@ export default function ManageServicesScreen() {
     setServiceName("");
     if (catalogTab === "extras") {
       setIsExtra(true);
-      setServiceCategory("Skincare & Facials");
+      setServiceCategory("Extra Services");
       setServiceDuration("0");
     } else {
       setIsExtra(false);
       setServiceCategory("Haircuts & Styling");
       setServiceDuration("45");
     }
-    setServicePrice("25000");
+    setServicePrice("1000");
     setImageUrl("");
     setDropdownOpen(false);
     setIsAddingNewCategory(false);
@@ -267,9 +265,11 @@ export default function ManageServicesScreen() {
   const handleOpenEditModal = (service: BarberServiceItem) => {
     setEditingServiceId(service.id || null);
     setServiceName(service.name);
-    setServiceCategory(service.category || (service.is_extra ? "Skincare & Facials" : "Haircuts & Styling"));
+    setServiceCategory(
+      service.category || (service.is_extra ? "Extra Services" : "Haircuts & Styling")
+    );
     setServiceDuration(service.duration_minutes?.toString() || "30");
-    setServicePrice(service.price?.toString() || "20000");
+    setServicePrice(service.price ? service.price.toString() : "1000");
     setIsExtra(!!service.is_extra);
     setImageUrl(service.image_url || "");
     setDropdownOpen(false);
@@ -328,13 +328,9 @@ export default function ManageServicesScreen() {
       showToast("Please enter a service name.", "error");
       return;
     }
-    const priceNum = parseFloat(servicePrice.replace(/[^0-9.]/g, "")) || 0;
+    const rawPrice = parseFloat(servicePrice.replace(/[^0-9.]/g, ""));
+    const priceNum = !isNaN(rawPrice) && rawPrice >= 1000 ? rawPrice : 1000;
     const durNum = isExtra ? 0 : (parseInt(serviceDuration.replace(/[^0-9]/g, ""), 10) || 30);
-
-    if (priceNum <= 0) {
-      showToast("Please enter a valid price in CFA.", "error");
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -353,157 +349,234 @@ export default function ManageServicesScreen() {
 
       if (editingServiceId) {
         setServices((prev) =>
-          prev.map((s) => (s.id === editingServiceId ? saved : s))
+          prev.map((s) => (s.id === editingServiceId ? { ...s, ...saved } : s))
         );
-        showToast(`Service "${saved.name}" updated successfully.`, "success");
+        showToast(`"${serviceName}" updated successfully.`, "success");
       } else {
         setServices((prev) => [saved, ...prev]);
-        showToast(`Service "${saved.name}" added to your menu.`, "success");
+        showToast(`"${serviceName}" added to services catalog.`, "success");
       }
-
       setModalVisible(false);
     } catch {
-      showToast("Failed to save service.", "error");
+      showToast("Failed to save service. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (serviceToDelete) {
-      await barberService.deleteService(serviceToDelete.id!, barberId);
-      setServices((prev) => prev.filter((s) => s.id !== serviceToDelete.id));
-      showToast(`"${serviceToDelete.name}" removed from catalog.`, "info");
-      setServiceToDelete(null);
+  const confirmDeleteService = async () => {
+    if (serviceToDelete && serviceToDelete.id != null) {
+      try {
+        await barberService.deleteService(serviceToDelete.id, barberId);
+        setServices((prev) => prev.filter((s) => s.id !== serviceToDelete.id));
+        showToast(`Service "${serviceToDelete.name}" deleted.`, "info");
+      } catch {
+        showToast("Failed to delete service.", "error");
+      } finally {
+        setServiceToDelete(null);
+      }
     }
   };
 
   const filteredServices = services.filter((s) => {
     if (catalogTab === "hairstyles" && s.is_extra) return false;
     if (catalogTab === "extras" && !s.is_extra) return false;
-    if (selectedCategory === "All") return true;
-    return s.category === selectedCategory;
+    if (selectedCategory !== "All" && s.category !== selectedCategory)
+      return false;
+    return true;
   });
+
+  // Telemetry Aggregates
+  const haircutsCount = services.filter((s) => !s.is_extra).length;
+  const extrasCount = services.filter((s) => s.is_extra).length;
+  const avgPrice =
+    services.length > 0
+      ? Math.round(services.reduce((acc, s) => acc + (s.price || 0), 0) / services.length)
+      : 0;
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
-      edges={["top", "left", "right"]}
+      edges={["top", "bottom"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Screen Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.back()}
-          style={styles.headerBtn}
+          style={[
+            styles.headerCircleBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.primarytext} />
         </TouchableOpacity>
 
         <View style={styles.headerTitleWrap}>
           <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-            {t("manageServices.title")}
+            Services & Pricing
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
-            {t("manageServices.subtitle")}
+            {services.length} services • Avg {avgPrice.toLocaleString()} CFA
           </Text>
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <TouchableOpacity
-            activeOpacity={0.8}
+            activeOpacity={0.85}
             onPress={() => setTutorialVisible(true)}
             style={[
-              styles.headerBtn,
-              {
-                backgroundColor: colors.surface,
-                borderWidth: 1,
-                borderColor: colors.surfacevariant,
-              },
+              styles.headerCircleBtn,
+              { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <Ionicons
-              name="help-circle-outline"
-              size={20}
-              color={colors.primary}
-            />
+            <Ionicons name="help-circle-outline" size={19} color={colors.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={handleOpenAddModal}
-            style={[styles.addHeaderBtn, { backgroundColor: colors.primary }]}
+            style={[styles.addServiceBtn, { backgroundColor: colors.primary }]}
           >
-            <Ionicons name="add" size={22} color="#1C1E1B" />
+            <Ionicons name="add" size={18} color={colors.onBrand} />
+            <Text style={[styles.addServiceBtnText, { color: colors.onBrand }]}>
+              Add Service
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Catalog Tabs: Hairstyles vs Extra Services */}
-      <View style={styles.catalogTabRow}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => {
-            setCatalogTab("hairstyles");
-            setSelectedCategory("All");
-          }}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        {/* Telemetry Summary Command Card */}
+        <View
           style={[
-            styles.catalogTabBtn,
-            {
-              backgroundColor: catalogTab === "hairstyles" ? colors.primary : colors.surface,
-              borderColor: catalogTab === "hairstyles" ? colors.primary : colors.surfacevariant,
-            },
+            styles.telemetryCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
         >
-          <Ionicons
-            name="cut-outline"
-            size={16}
-            color={catalogTab === "hairstyles" ? "#1C1E1B" : colors.secondarytext}
-          />
-          <Text
-            style={[
-              styles.catalogTabBtnText,
-              { color: catalogTab === "hairstyles" ? "#1C1E1B" : colors.primarytext },
-            ]}
-          >
-            {t("manageServices.hairstylesTab")}
-          </Text>
-        </TouchableOpacity>
+          <View style={styles.telemetryGrid}>
+            <View style={styles.telemetryCell}>
+              <Text style={[styles.telemetryValue, { color: colors.primary }]}>
+                {services.length}
+              </Text>
+              <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                Total Catalog
+              </Text>
+            </View>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => {
-            setCatalogTab("extras");
-            setSelectedCategory("All");
-          }}
+            <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
+
+            <View style={styles.telemetryCell}>
+              <Text style={[styles.telemetryValue, { color: colors.primarytext }]}>
+                {haircutsCount}
+              </Text>
+              <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                Core Styles
+              </Text>
+            </View>
+
+            <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
+
+            <View style={styles.telemetryCell}>
+              <Text style={[styles.telemetryValue, { color: colors.primarytext }]}>
+                {extrasCount}
+              </Text>
+              <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                Add-ons
+              </Text>
+            </View>
+
+            <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
+
+            <View style={styles.telemetryCell}>
+              <Text style={[styles.telemetryValue, { color: colors.primary }]}>
+                {avgPrice.toLocaleString()} CFA
+              </Text>
+              <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                {t("manageServices.averagePrice") || "Average Price"}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Catalog Segment Switcher (Hairstyles vs Extras) */}
+        <View
           style={[
-            styles.catalogTabBtn,
-            {
-              backgroundColor: catalogTab === "extras" ? colors.primary : colors.surface,
-              borderColor: catalogTab === "extras" ? colors.primary : colors.surfacevariant,
-            },
+            styles.catalogTabTrack,
+            { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
         >
-          <Ionicons
-            name="sparkles-outline"
-            size={16}
-            color={catalogTab === "extras" ? "#1C1E1B" : colors.secondarytext}
-          />
-          <Text
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              setCatalogTab("hairstyles");
+              setSelectedCategory("All");
+            }}
             style={[
-              styles.catalogTabBtnText,
-              { color: catalogTab === "extras" ? "#1C1E1B" : colors.primarytext },
+              styles.catalogTabPill,
+              catalogTab === "hairstyles"
+                ? { backgroundColor: colors.primary }
+                : { backgroundColor: "transparent" },
             ]}
           >
-            {t("manageServices.extrasTab")}
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <Ionicons
+              name="cut-outline"
+              size={15}
+              color={catalogTab === "hairstyles" ? colors.onBrand : colors.secondarytext}
+            />
+            <Text
+              style={[
+                styles.catalogTabPillText,
+                { color: catalogTab === "hairstyles" ? colors.onBrand : colors.primarytext },
+              ]}
+            >
+              Core Hairstyles ({haircutsCount})
+            </Text>
+          </TouchableOpacity>
 
-      {/* Category Pills */}
-      <View style={styles.categoriesRow}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              setCatalogTab("extras");
+              setSelectedCategory("All");
+            }}
+            style={[
+              styles.catalogTabPill,
+              catalogTab === "extras"
+                ? { backgroundColor: colors.primary }
+                : { backgroundColor: "transparent" },
+            ]}
+          >
+            <Ionicons
+              name="sparkles-outline"
+              size={15}
+              color={catalogTab === "extras" ? colors.onBrand : colors.secondarytext}
+            />
+            <Text
+              style={[
+                styles.catalogTabPillText,
+                { color: catalogTab === "extras" ? colors.onBrand : colors.primarytext },
+              ]}
+            >
+              Add-ons & Extras ({extrasCount})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Category Filter Carousel */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -517,73 +590,60 @@ export default function ManageServicesScreen() {
                 activeOpacity={0.8}
                 onPress={() => setSelectedCategory(cat)}
                 style={[
-                  styles.categoryPill,
+                  styles.categoryChip,
                   {
-                    backgroundColor: isSelected
-                      ? colors.primary
-                      : colors.surface,
-                    borderColor: isSelected
-                      ? colors.primary
-                      : colors.surfacevariant,
+                    backgroundColor: isSelected ? colors.primary : colors.surface,
+                    borderColor: isSelected ? colors.primary : colors.border,
                   },
                 ]}
               >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                  <Ionicons
-                    name={cat === "All" ? "grid-outline" : getCategoryIcon(cat)}
-                    size={13}
-                    color={isSelected ? "#1C1E1B" : colors.secondarytext}
-                  />
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      {
-                        color: isSelected ? "#1C1E1B" : colors.secondarytext,
-                        fontWeight: isSelected ? "700" : "500",
-                      },
-                    ]}
-                  >
-                    {cat}
-                  </Text>
-                </View>
+                <Ionicons
+                  name={cat === "All" ? "grid-outline" : getCategoryIcon(cat)}
+                  size={13}
+                  color={isSelected ? colors.onBrand : colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    {
+                      color: isSelected ? colors.onBrand : colors.primarytext,
+                      fontWeight: isSelected ? "700" : "500",
+                    },
+                  ]}
+                >
+                  {cat}
+                </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
-      </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#A3B39C"
-            colors={["#A3B39C"]}
-          />
-        }
-      >
+        {/* Services List */}
         {isLoading ? (
           <View style={{ gap: 12 }}>
             <BarberCardSkeleton />
             <BarberCardSkeleton />
           </View>
         ) : filteredServices.length === 0 ? (
-          <View style={styles.emptyState}>
+          <View
+            style={[
+              styles.emptyStateCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View
               style={[
                 styles.emptyIconCircle,
-                { backgroundColor: colors.surface, borderColor: colors.surfacevariant },
+                { backgroundColor: colors.background, borderColor: colors.border },
               ]}
             >
-              <Ionicons name="cut-outline" size={36} color={colors.secondarytext} />
+              <Ionicons name="cut-outline" size={32} color={colors.primary} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-              {t("manageServices.noServicesFound")}
+              No Services Found
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
-              {t("manageServices.noServicesHint")}
+              {t("manageServices.tapAddServiceFirst") || "Tap \"Add Service\" above to add your first hairstyle or grooming service."}
             </Text>
           </View>
         ) : (
@@ -595,76 +655,112 @@ export default function ManageServicesScreen() {
                   styles.serviceCard,
                   {
                     backgroundColor: colors.surface,
-                    borderColor: colors.surfacevariant,
+                    borderColor: colors.border,
                   },
                 ]}
               >
+                {/* Thumbnail / Monogram */}
                 {service.image_url ? (
                   <Image
                     source={{ uri: service.image_url }}
                     style={styles.serviceThumbnail}
                     resizeMode="cover"
                   />
-                ) : null}
+                ) : (
+                  <View
+                    style={[
+                      styles.serviceThumbnailFallback,
+                      { backgroundColor: colors.background, borderColor: colors.border },
+                    ]}
+                  >
+                    <Ionicons
+                      name={
+                        service.is_extra
+                          ? "sparkles"
+                          : getCategoryIcon(service.category || "Haircuts & Styling")
+                      }
+                      size={24}
+                      color={colors.primary}
+                    />
+                  </View>
+                )}
 
+                {/* Details */}
                 <View style={styles.serviceInfo}>
-                  <View style={styles.serviceTitleRow}>
+                  <View style={styles.serviceNamePriceRow}>
                     <Text
                       style={[styles.serviceName, { color: colors.primarytext }]}
+                      numberOfLines={1}
                     >
                       {service.name}
                     </Text>
-                    <View
-                      style={[
-                        styles.categoryBadge,
-                        { backgroundColor: service.is_extra ? "rgba(245, 158, 11, 0.15)" : "rgba(163, 179, 156, 0.15)" },
-                      ]}
-                    >
-                      <Text style={[styles.categoryBadgeText, { color: service.is_extra ? "#F59E0B" : colors.primary }]}>
-                        {service.is_extra ? "Extra Service" : (service.category || "General")}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.serviceMetaRow}>
-                    <View style={styles.metaItem}>
-                      <Ionicons
-                        name={service.is_extra ? "sparkles-outline" : "time-outline"}
-                        size={14}
-                        color={colors.secondarytext}
-                      />
-                      <Text style={[styles.metaText, { color: colors.secondarytext }]}>
-                        {service.is_extra ? t("manageServices.extraServiceAddon") : `${service.duration_minutes} mins`}
-                      </Text>
-                    </View>
-                    <Text style={[styles.priceTag, { color: colors.primary }]}>
+                    <Text style={[styles.servicePrice, { color: colors.primary }]}>
                       {service.price.toLocaleString()} CFA
                     </Text>
                   </View>
+
+                  <View style={styles.serviceMetaRow}>
+                    <View
+                      style={[
+                        styles.categoryPillSmall,
+                        {
+                          backgroundColor: service.is_extra
+                            ? "rgba(245, 158, 11, 0.12)"
+                            : "rgba(199, 243, 107, 0.12)",
+                          borderColor: service.is_extra
+                            ? "rgba(245, 158, 11, 0.3)"
+                            : "rgba(199, 243, 107, 0.3)",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryPillSmallText,
+                          { color: service.is_extra ? "#F59E0B" : colors.primary },
+                        ]}
+                      >
+                        {service.is_extra ? "Extra Add-on" : (service.category || "General")}
+                      </Text>
+                    </View>
+
+                    <View style={styles.durationRow}>
+                      <Ionicons
+                        name={service.is_extra ? "sparkles-outline" : "time-outline"}
+                        size={12}
+                        color={colors.secondarytext}
+                      />
+                      <Text style={[styles.durationText, { color: colors.secondarytext }]}>
+                        {formatDurationDisplay(service.duration_minutes || 0)}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
 
-                {/* Card Action Buttons */}
-                <View style={styles.actionBtnsRow}>
+                {/* Actions: Edit & Delete */}
+                <View style={styles.actionBtnsCol}>
                   <TouchableOpacity
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                     onPress={() => handleOpenEditModal(service)}
                     style={[
-                      styles.actionBtn,
-                      { backgroundColor: "rgba(255, 255, 255, 0.06)" },
+                      styles.actionIconBtn,
+                      { backgroundColor: colors.background, borderColor: colors.border },
                     ]}
                   >
-                    <Ionicons name="create-outline" size={16} color={colors.primarytext} />
+                    <Ionicons name="pencil" size={14} color={colors.primarytext} />
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                     onPress={() => setServiceToDelete(service)}
                     style={[
-                      styles.actionBtn,
-                      { backgroundColor: "rgba(239, 68, 68, 0.12)" },
+                      styles.actionIconBtn,
+                      {
+                        backgroundColor: "rgba(239, 68, 68, 0.1)",
+                        borderColor: "rgba(239, 68, 68, 0.25)",
+                      },
                     ]}
                   >
-                    <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                    <Ionicons name="trash-outline" size={14} color="#EF4444" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -673,7 +769,7 @@ export default function ManageServicesScreen() {
         )}
       </ScrollView>
 
-      {/* Full Screen Add / Edit Service Modal */}
+      {/* FULL SCREEN ADD / EDIT SERVICE MODAL */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -684,24 +780,32 @@ export default function ManageServicesScreen() {
           style={[styles.fullScreenModalContainer, { backgroundColor: colors.background }]}
           edges={["top", "bottom"]}
         >
-          <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+          <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-          {/* Full Screen Header */}
-          <View style={[styles.fullScreenHeader, { borderBottomColor: colors.surfacevariant }]}>
+          {/* Modal Header */}
+          <View style={[styles.fullScreenHeader, { borderBottomColor: colors.border }]}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setModalVisible(false)}
-              style={[styles.fullScreenCloseBtn, { backgroundColor: colors.surface }]}
+              style={[
+                styles.headerCircleBtn,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
             >
-              <Ionicons name="close" size={22} color={colors.primarytext} />
+              <Ionicons name="close" size={20} color={colors.primarytext} />
             </TouchableOpacity>
 
-            <View style={styles.fullScreenTitleWrap}>
-              <Text style={[styles.fullScreenTitle, { color: colors.primarytext }]}>
-                {editingServiceId ? t("manageServices.editService") : t("manageServices.addService")}
+            <View style={styles.headerTitleWrap}>
+              <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
+                {editingServiceId ? "Edit Service" : "Add New Service"}
               </Text>
-              <Text style={[styles.fullScreenSubtitle, { color: colors.secondarytext }]} numberOfLines={1}>
-                {editingServiceId ? "Modify pricing, custom duration & details" : "Set custom duration, price, category & design photo"}
+              <Text
+                style={[styles.headerSubtitle, { color: colors.secondarytext }]}
+                numberOfLines={1}
+              >
+                {editingServiceId
+                  ? "Update duration, pricing & catalog details"
+                  : "Set custom price, duration, category & design photo"}
               </Text>
             </View>
 
@@ -710,29 +814,35 @@ export default function ManageServicesScreen() {
               onPress={() => {
                 setServiceName("");
                 setServiceDuration("45");
-                setServicePrice("25000");
+                setServicePrice("1000");
                 setImageUrl("");
               }}
               style={styles.fullScreenResetBtn}
             >
-              <Text style={[styles.fullScreenResetText, { color: colors.primary }]}>Reset</Text>
+              <Text style={[styles.fullScreenResetText, { color: colors.primary }]}>
+                Reset
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Full Screen Scrollable Body */}
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={styles.fullScreenScrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* 1. Design Photo Upload Section */}
-            <View style={[styles.modalCardSection, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}>
+            {/* 1. Design Photo Upload Dropzone */}
+            <View
+              style={[
+                styles.modalCardSection,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.sectionHeaderRow}>
                 <View style={styles.sectionTitleWithIcon}>
-                  <Ionicons name="camera-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.inputLabel, { color: colors.primarytext, marginBottom: 0 }]}>
-                    {t("manageServices.uploadDesignPhoto")}
+                  <Ionicons name="camera-outline" size={17} color={colors.primary} />
+                  <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
+                    Hairstyle Cut Photo
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -740,16 +850,21 @@ export default function ManageServicesScreen() {
                   onPress={() => setShowUrlInput(!showUrlInput)}
                 >
                   <Text style={[styles.toggleUrlText, { color: colors.primary }]}>
-                    {showUrlInput ? "Hide Link" : "Paste Link"}
+                    {showUrlInput ? "Hide Link" : "Paste URL"}
                   </Text>
                 </TouchableOpacity>
               </View>
               <Text style={[styles.sectionHintText, { color: colors.secondarytext }]}>
-                Upload high-definition photos of this specific cut or hairstyle to showcase on your profile.
+                {t("manageServices.showcasePhotosDesc") || "Showcase high-definition reference photos of this cut so clients can book directly from your photos."}
               </Text>
 
               {imageUrl ? (
-                <View style={[styles.previewContainer, { borderColor: colors.surfacevariant, backgroundColor: colors.background, marginTop: 10 }]}>
+                <View
+                  style={[
+                    styles.previewContainer,
+                    { borderColor: colors.border, backgroundColor: colors.background },
+                  ]}
+                >
                   <Image
                     source={{ uri: imageUrl }}
                     style={styles.designPreviewImg}
@@ -759,22 +874,31 @@ export default function ManageServicesScreen() {
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={handlePickDesignPhoto}
-                      style={[styles.photoActionBtn, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}
+                      style={[
+                        styles.photoActionBtn,
+                        { backgroundColor: colors.surface, borderColor: colors.border },
+                      ]}
                     >
                       <Ionicons name="image-outline" size={14} color={colors.primarytext} />
                       <Text style={[styles.photoActionText, { color: colors.primarytext }]}>
-                        {t("manageServices.changePhoto")}
+                        Change Photo
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => setImageUrl("")}
-                      style={[styles.photoActionBtn, { backgroundColor: "rgba(239, 68, 68, 0.12)", borderColor: "rgba(239, 68, 68, 0.3)" }]}
+                      style={[
+                        styles.photoActionBtn,
+                        {
+                          backgroundColor: "rgba(239, 68, 68, 0.12)",
+                          borderColor: "rgba(239, 68, 68, 0.3)",
+                        },
+                      ]}
                     >
                       <Ionicons name="trash-outline" size={14} color="#EF4444" />
                       <Text style={[styles.photoActionText, { color: "#EF4444" }]}>
-                        {t("manageServices.removePhoto")}
+                        Remove
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -785,21 +909,25 @@ export default function ManageServicesScreen() {
                   onPress={handlePickDesignPhoto}
                   style={[
                     styles.uploadDottedBox,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: colors.surfacevariant,
-                      marginTop: 10,
-                    },
+                    { backgroundColor: colors.background, borderColor: colors.border },
                   ]}
                 >
-                  <View style={[styles.uploadIconCircle, { backgroundColor: "rgba(163, 179, 156, 0.15)" }]}>
-                    <Ionicons name="cloud-upload-outline" size={26} color={colors.primary} />
+                  <View
+                    style={[
+                      styles.uploadIconCircle,
+                      {
+                        backgroundColor: "rgba(199, 243, 107, 0.12)",
+                        borderColor: "rgba(199, 243, 107, 0.3)",
+                      },
+                    ]}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
                   </View>
                   <Text style={[styles.uploadBoxTitle, { color: colors.primarytext }]}>
-                    {t("manageServices.chooseFromGallery")}
+                    Upload Cut Design Photo
                   </Text>
                   <Text style={[styles.uploadBoxSubtitle, { color: colors.secondarytext }]}>
-                    {t("manageServices.uploadPhotoPrompt")}
+                    {t("manageServices.tapSelectLibrary") || "Tap to select an image from your library"}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -810,12 +938,12 @@ export default function ManageServicesScreen() {
                     styles.textInput,
                     {
                       backgroundColor: colors.background,
-                      borderColor: colors.surfacevariant,
+                      borderColor: colors.border,
                       color: colors.primarytext,
                       marginTop: 10,
                     },
                   ]}
-                  placeholder="https://images.unsplash.com/photo-..."
+                  placeholder="https://images.unsplash.com/..."
                   placeholderTextColor={colors.secondarytext}
                   value={imageUrl}
                   onChangeText={setImageUrl}
@@ -823,13 +951,18 @@ export default function ManageServicesScreen() {
               )}
             </View>
 
-            {/* 2. Category Section with Vector Icons & Add Category */}
-            <View style={[styles.modalCardSection, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}>
+            {/* 2. Service Category Selection */}
+            <View
+              style={[
+                styles.modalCardSection,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.sectionHeaderRow}>
                 <View style={styles.sectionTitleWithIcon}>
-                  <Ionicons name="pricetags-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.inputLabel, { color: colors.primarytext, marginBottom: 0 }]}>
-                    {t("manageServices.categoryLabel")}
+                  <Ionicons name="pricetags-outline" size={17} color={colors.primary} />
+                  <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
+                    Service Category
                   </Text>
                 </View>
 
@@ -837,11 +970,17 @@ export default function ManageServicesScreen() {
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => setIsAddingNewCategory(true)}
-                    style={[styles.addCategoryHeaderBtn, { backgroundColor: "rgba(163, 179, 156, 0.15)" }]}
+                    style={[
+                      styles.addCategoryHeaderBtn,
+                      {
+                        backgroundColor: "rgba(199, 243, 107, 0.12)",
+                        borderColor: "rgba(199, 243, 107, 0.3)",
+                      },
+                    ]}
                   >
-                    <Ionicons name="add" size={14} color={colors.primary} />
+                    <Ionicons name="add" size={13} color={colors.primary} />
                     <Text style={[styles.addCategoryHeaderText, { color: colors.primary }]}>
-                      {t("manageServices.addNewCategory")}
+                      {t("manageServices.newCategory") || "New Category"}
                     </Text>
                   </TouchableOpacity>
                 ) : null}
@@ -849,10 +988,15 @@ export default function ManageServicesScreen() {
 
               {/* Inline Custom Category Creator */}
               {isAddingNewCategory && (
-                <View style={[styles.newCategoryCard, { backgroundColor: colors.background, borderColor: colors.primary, marginTop: 10 }]}>
+                <View
+                  style={[
+                    styles.newCategoryCard,
+                    { backgroundColor: colors.background, borderColor: colors.primary },
+                  ]}
+                >
                   <TextInput
                     style={[styles.newCategoryInput, { color: colors.primarytext }]}
-                    placeholder={t("manageServices.enterCategoryName")}
+                    placeholder={t("manageServices.enterCategoryPlaceholder") || "Enter category name..."}
                     placeholderTextColor={colors.secondarytext}
                     value={newCategoryInput}
                     onChangeText={setNewCategoryInput}
@@ -865,11 +1009,9 @@ export default function ManageServicesScreen() {
                         setIsAddingNewCategory(false);
                         setNewCategoryInput("");
                       }}
-                      style={[styles.newCatCancelBtn, { borderColor: colors.surfacevariant }]}
+                      style={[styles.newCatCancelBtn, { borderColor: colors.border }]}
                     >
-                      <Text style={{ color: colors.secondarytext, fontSize: 12 }}>
-                        {t("common.cancel")}
-                      </Text>
+                      <Text style={{ color: colors.secondarytext, fontSize: 12 }}>{t("common.cancel") || "Cancel"}</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -877,16 +1019,16 @@ export default function ManageServicesScreen() {
                       onPress={handleAddNewCategory}
                       style={[styles.newCatAddBtn, { backgroundColor: colors.primary }]}
                     >
-                      <Text style={{ color: "#1C1E1B", fontWeight: "700", fontSize: 12 }}>
-                        {t("manageServices.addCategoryBtn")}
+                      <Text style={{ color: colors.onBrand, fontWeight: "700", fontSize: 12 }}>
+                        {t("manageServices.addCategory") || "Add Category"}
                       </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
 
-              {/* Category Grid with Vector Icons */}
-              <View style={[styles.categoryGrid, { marginTop: 10 }]}>
+              {/* Category Grid */}
+              <View style={styles.categoryGrid}>
                 {modalCategories.map((cat) => {
                   const isSelected = serviceCategory === cat;
                   return (
@@ -904,28 +1046,24 @@ export default function ManageServicesScreen() {
                       style={[
                         styles.categoryGridItem,
                         {
-                          backgroundColor: isSelected
-                            ? colors.primary
-                            : colors.background,
-                          borderColor: isSelected
-                            ? colors.primary
-                            : colors.surfacevariant,
+                          backgroundColor: isSelected ? colors.primary : colors.background,
+                          borderColor: isSelected ? colors.primary : colors.border,
                         },
                       ]}
                     >
                       <Ionicons
                         name={getCategoryIcon(cat)}
-                        size={20}
-                        color={isSelected ? "#1C1E1B" : colors.primary}
+                        size={18}
+                        color={isSelected ? colors.onBrand : colors.primary}
                       />
                       <Text
-                        style={{
-                          color: isSelected ? "#1C1E1B" : colors.primarytext,
-                          fontSize: 11.5,
-                          fontWeight: isSelected ? "700" : "500",
-                          textAlign: "center",
-                          lineHeight: 15,
-                        }}
+                        style={[
+                          styles.categoryGridItemText,
+                          {
+                            color: isSelected ? colors.onBrand : colors.primarytext,
+                            fontWeight: isSelected ? "700" : "500",
+                          },
+                        ]}
                         numberOfLines={2}
                       >
                         {cat}
@@ -936,16 +1074,21 @@ export default function ManageServicesScreen() {
               </View>
             </View>
 
-            {/* 3. Service Name & Popular Presets */}
-            <View style={[styles.modalCardSection, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}>
+            {/* 3. Service Name & Quick Suggestions */}
+            <View
+              style={[
+                styles.modalCardSection,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.sectionTitleWithIcon}>
-                <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-                <Text style={[styles.inputLabel, { color: colors.primarytext, marginBottom: 0 }]}>
-                  {t("manageServices.selectPopularService")}
+                <Ionicons name="sparkles-outline" size={17} color={colors.primary} />
+                <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
+                  {t("manageServices.serviceNamePresets") || "Service Name & Presets"}
                 </Text>
               </View>
 
-              {/* Dropdown Selector Button */}
+              {/* Suggestions Dropdown Trigger */}
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => setDropdownOpen(!dropdownOpen)}
@@ -953,8 +1096,7 @@ export default function ManageServicesScreen() {
                   styles.dropdownButton,
                   {
                     backgroundColor: colors.background,
-                    borderColor: dropdownOpen ? colors.primary : colors.surfacevariant,
-                    marginTop: 10,
+                    borderColor: dropdownOpen ? colors.primary : colors.border,
                   },
                 ]}
               >
@@ -965,7 +1107,7 @@ export default function ManageServicesScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  {serviceName ? `Selected: ${serviceName}` : t("manageServices.selectPopularService")}
+                  {serviceName ? `Selected: ${serviceName}` : "Choose popular service name..."}
                 </Text>
                 <Ionicons
                   name={dropdownOpen ? "chevron-up" : "chevron-down"}
@@ -974,15 +1116,11 @@ export default function ManageServicesScreen() {
                 />
               </TouchableOpacity>
 
-              {/* Dropdown Menu List */}
               {dropdownOpen && (
                 <View
                   style={[
                     styles.dropdownMenu,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: colors.surfacevariant,
-                    },
+                    { backgroundColor: colors.background, borderColor: colors.border },
                   ]}
                 >
                   <ScrollView
@@ -1003,7 +1141,7 @@ export default function ManageServicesScreen() {
                           style={[
                             styles.dropdownItem,
                             isKnownSelected && {
-                              backgroundColor: "rgba(163, 179, 156, 0.15)",
+                              backgroundColor: "rgba(199, 243, 107, 0.12)",
                             },
                           ]}
                         >
@@ -1011,9 +1149,7 @@ export default function ManageServicesScreen() {
                             style={[
                               styles.dropdownItemText,
                               {
-                                color: isKnownSelected
-                                  ? colors.primary
-                                  : colors.primarytext,
+                                color: isKnownSelected ? colors.primary : colors.primarytext,
                                 fontWeight: isKnownSelected ? "700" : "500",
                               },
                             ]}
@@ -1021,54 +1157,30 @@ export default function ManageServicesScreen() {
                             {known}
                           </Text>
                           {isKnownSelected && (
-                            <Ionicons
-                              name="checkmark"
-                              size={16}
-                              color={colors.primary}
-                            />
+                            <Ionicons name="checkmark" size={16} color={colors.primary} />
                           )}
                         </TouchableOpacity>
                       );
                     })}
-
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        setDropdownOpen(false);
-                      }}
-                      style={[
-                        styles.dropdownItem,
-                        { borderTopWidth: 1, borderTopColor: colors.surfacevariant },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownItemText,
-                          { color: colors.primary, fontWeight: "600" },
-                        ]}
-                      >
-                        {t("manageServices.customServiceOption")}
-                      </Text>
-                    </TouchableOpacity>
                   </ScrollView>
                 </View>
               )}
 
-              {/* Direct Service Name TextInput */}
+              {/* Direct Name TextInput */}
               <View style={{ marginTop: 12 }}>
-                <Text style={[styles.fieldSubLabel, { color: colors.secondarytext, marginBottom: 6 }]}>
-                  {t("manageServices.orEnterCustomName")}
+                <Text style={[styles.fieldSubLabel, { color: colors.secondarytext }]}>
+                  {t("manageServices.orEnterCustomService") || "Or Enter Custom Service Name"}
                 </Text>
                 <TextInput
                   style={[
                     styles.textInput,
                     {
                       backgroundColor: colors.background,
-                      borderColor: colors.surfacevariant,
+                      borderColor: colors.border,
                       color: colors.primarytext,
                     },
                   ]}
-                  placeholder={t("manageServices.serviceNamePlaceholder")}
+                  placeholder="e.g. Executive Beard Sculpt & Razor Line"
                   placeholderTextColor={colors.secondarytext}
                   value={serviceName}
                   onChangeText={setServiceName}
@@ -1076,288 +1188,225 @@ export default function ManageServicesScreen() {
               </View>
             </View>
 
-            {/* 4. BARBER DURATION SETTINGS (Prominent duration control) */}
+            {/* 4. Service Duration (Barber Set) */}
             {!isExtra && (
-              <View style={[styles.modalCardSection, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}>
+              <View
+                style={[
+                  styles.modalCardSection,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
                 <View style={styles.sectionHeaderRow}>
                   <View style={styles.sectionTitleWithIcon}>
-                    <Ionicons name="time-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.inputLabel, { color: colors.primarytext, marginBottom: 0 }]}>
-                      Service Duration (Set by Barber)
+                    <Ionicons name="time-outline" size={17} color={colors.primary} />
+                    <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
+                      Service Duration
                     </Text>
                   </View>
-                  <View style={[styles.durationBadgePill, { backgroundColor: "rgba(163, 179, 156, 0.2)" }]}>
+                  <View
+                    style={[
+                      styles.durationBadgePill,
+                      {
+                        backgroundColor: "rgba(199, 243, 107, 0.12)",
+                        borderColor: "rgba(199, 243, 107, 0.3)",
+                      },
+                    ]}
+                  >
                     <Text style={[styles.durationBadgePillText, { color: colors.primary }]}>
                       {formatDurationDisplay(parseInt(serviceDuration, 10) || 45)}
                     </Text>
                   </View>
                 </View>
 
-                <Text style={[styles.sectionHintText, { color: colors.secondarytext }]}>
-                  You have full control over the duration. Client booking slots on the calendar will be automatically partitioned according to this exact duration.
-                </Text>
-
-                {/* Quick Presets */}
-                <Text style={[styles.fieldSubLabel, { color: colors.secondarytext, marginTop: 12, marginBottom: 8 }]}>
-                  Quick Select Duration:
-                </Text>
-                <View style={styles.durationPresetWrap}>
-                  {DURATION_PRESETS.map((mins) => {
-                    const isSelected = parseInt(serviceDuration, 10) === mins;
+                {/* Duration Presets */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.presetScroll}
+                >
+                  {DURATION_PRESETS.map((d) => {
+                    const isSelected = parseInt(serviceDuration, 10) === d;
                     return (
                       <TouchableOpacity
-                        key={mins}
+                        key={d}
                         activeOpacity={0.8}
-                        onPress={() => setServiceDuration(String(mins))}
+                        onPress={() => setServiceDuration(d.toString())}
                         style={[
-                          styles.durationPresetChip,
+                          styles.presetChip,
                           {
                             backgroundColor: isSelected ? colors.primary : colors.background,
-                            borderColor: isSelected ? colors.primary : colors.surfacevariant,
+                            borderColor: isSelected ? colors.primary : colors.border,
                           },
                         ]}
                       >
                         <Text
                           style={[
-                            styles.durationPresetText,
+                            styles.presetChipText,
                             {
-                              color: isSelected ? "#1C1E1B" : colors.primarytext,
+                              color: isSelected ? colors.onBrand : colors.primarytext,
                               fontWeight: isSelected ? "700" : "500",
                             },
                           ]}
                         >
-                          {mins < 60 ? `${mins}m` : mins % 60 === 0 ? `${mins / 60}h` : `${Math.floor(mins / 60)}h ${mins % 60}m`}
+                          {formatDurationDisplay(d)}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
-                </View>
-
-                {/* Stepper and Custom Minutes Input */}
-                <Text style={[styles.fieldSubLabel, { color: colors.secondarytext, marginTop: 12, marginBottom: 8 }]}>
-                  Or Enter Custom Minutes:
-                </Text>
-                <View style={styles.durationStepperRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      const cur = parseInt(serviceDuration, 10) || 45;
-                      setServiceDuration(String(Math.max(15, cur - 15)));
-                    }}
-                    style={[styles.stepperButton, { backgroundColor: colors.background, borderColor: colors.surfacevariant }]}
-                  >
-                    <Text style={[styles.stepperButtonText, { color: colors.primarytext }]}>-15m</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      const cur = parseInt(serviceDuration, 10) || 45;
-                      setServiceDuration(String(Math.max(15, cur - 5)));
-                    }}
-                    style={[styles.stepperButton, { backgroundColor: colors.background, borderColor: colors.surfacevariant }]}
-                  >
-                    <Ionicons name="remove" size={18} color={colors.primarytext} />
-                  </TouchableOpacity>
-
-                  <View style={[styles.durationInputBox, { backgroundColor: colors.background, borderColor: colors.surfacevariant }]}>
-                    <TextInput
-                      style={[styles.durationTextInput, { color: colors.primarytext }]}
-                      keyboardType="numeric"
-                      value={serviceDuration}
-                      onChangeText={(val) => setServiceDuration(val.replace(/[^0-9]/g, ""))}
-                      placeholder="45"
-                      placeholderTextColor={colors.secondarytext}
-                    />
-                    <Text style={[styles.durationInputUnit, { color: colors.secondarytext }]}>mins</Text>
-                  </View>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      const cur = parseInt(serviceDuration, 10) || 45;
-                      setServiceDuration(String(cur + 5));
-                    }}
-                    style={[styles.stepperButton, { backgroundColor: colors.background, borderColor: colors.surfacevariant }]}
-                  >
-                    <Ionicons name="add" size={18} color={colors.primarytext} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      const cur = parseInt(serviceDuration, 10) || 45;
-                      setServiceDuration(String(cur + 15));
-                    }}
-                    style={[styles.stepperButton, { backgroundColor: colors.background, borderColor: colors.surfacevariant }]}
-                  >
-                    <Text style={[styles.stepperButtonText, { color: colors.primarytext }]}>+15m</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={[styles.durationNoticeBox, { backgroundColor: "rgba(163, 179, 156, 0.12)", borderColor: "rgba(163, 179, 156, 0.3)" }]}>
-                  <Ionicons name="calendar-outline" size={16} color={colors.primary} />
-                  <Text style={[styles.durationNoticeText, { color: colors.primary }]}>
-                    Clients booking "{serviceName || "this service"}" will be offered slots every {serviceDuration || 45} minutes.
-                  </Text>
-                </View>
+                </ScrollView>
               </View>
             )}
 
-            {/* 5. Pricing Section */}
-            <View style={[styles.modalCardSection, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}>
+            {/* 5. Service Pricing (XAF / CFA) */}
+            <View
+              style={[
+                styles.modalCardSection,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.sectionTitleWithIcon}>
-                <Ionicons name="cash-outline" size={18} color={colors.primary} />
-                <Text style={[styles.inputLabel, { color: colors.primarytext, marginBottom: 0 }]}>
-                  {t("manageServices.priceLabel")} (CFA)
+                <Ionicons name="cash-outline" size={17} color={colors.primary} />
+                <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
+                  {t("manageServices.servicePriceCFA") || "Service Price (CFA)"}
                 </Text>
               </View>
-              <Text style={[styles.sectionHintText, { color: colors.secondarytext }]}>
-                Set your standard price in FCFA for this service.
-              </Text>
 
-              <View style={[styles.priceInputWrapper, { backgroundColor: colors.background, borderColor: colors.surfacevariant, marginTop: 10 }]}>
-                <Text style={[styles.priceCurrencyPrefix, { color: colors.primary }]}>FCFA</Text>
+              <View
+                style={[
+                  styles.priceInputBox,
+                  { backgroundColor: colors.background, borderColor: colors.border },
+                ]}
+              >
                 <TextInput
-                  style={[styles.priceTextInput, { color: colors.primarytext }]}
-                  keyboardType="numeric"
-                  placeholder="25000"
+                  style={[styles.priceInput, { color: colors.primary }]}
+                  placeholder="5000"
                   placeholderTextColor={colors.secondarytext}
+                  keyboardType="numeric"
                   value={servicePrice}
-                  onChangeText={setServicePrice}
+                  onChangeText={(val) => setServicePrice(val.replace(/[^0-9]/g, ""))}
                 />
+                <Text style={[styles.priceCurrencyTag, { color: colors.primary }]}>
+                  CFA
+                </Text>
               </View>
 
-              {/* Price Shortcuts */}
-              <View style={styles.priceShortcutsRow}>
+              {/* Price Presets */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.presetScroll, { marginTop: 10 }]}
+              >
                 {PRICE_PRESETS.map((p) => {
-                  const isSelected = servicePrice === String(p);
+                  const isSelected = parseInt(servicePrice, 10) === p;
                   return (
                     <TouchableOpacity
                       key={p}
                       activeOpacity={0.8}
-                      onPress={() => setServicePrice(String(p))}
+                      onPress={() => setServicePrice(p.toString())}
                       style={[
-                        styles.priceShortcutChip,
+                        styles.presetChip,
                         {
                           backgroundColor: isSelected ? colors.primary : colors.background,
-                          borderColor: isSelected ? colors.primary : colors.surfacevariant,
+                          borderColor: isSelected ? colors.primary : colors.border,
                         },
                       ]}
                     >
                       <Text
                         style={[
-                          styles.priceShortcutText,
+                          styles.presetChipText,
                           {
-                            color: isSelected ? "#1C1E1B" : colors.primarytext,
+                            color: isSelected ? colors.onBrand : colors.primarytext,
                             fontWeight: isSelected ? "700" : "500",
                           },
                         ]}
                       >
-                        {p.toLocaleString()}
+                        {p.toLocaleString()} CFA
                       </Text>
                     </TouchableOpacity>
                   );
                 })}
-              </View>
+              </ScrollView>
             </View>
 
-            {/* 6. Extra Service / Add-on Toggle */}
+            {/* 6. Extra Add-on Toggle */}
             <View
               style={[
                 styles.extraToggleCard,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: isExtra ? "#F59E0B" : colors.surfacevariant,
-                },
+                { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
             >
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={[styles.extraToggleTitle, { color: colors.primarytext }]}>
-                  Extra Service / Add-on
-                </Text>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                  <Ionicons name="sparkles" size={16} color="#F59E0B" />
+                  <Text style={[styles.extraToggleTitle, { color: colors.primarytext }]}>
+                    Extra / Add-on Service
+                  </Text>
+                </View>
                 <Text style={[styles.extraToggleSub, { color: colors.secondarytext }]}>
-                  No separate calendar slot required (e.g. Beard Oil, Facial Scrub, Eyebrows). Added alongside primary haircut.
+                  {t("manageServices.extrasOptional") || "Extras are optional add-ons during booking (e.g. shampoo, facial mask, hot towel)."}
                 </Text>
               </View>
+
               <Switch
                 value={isExtra}
-                onValueChange={setIsExtra}
-                trackColor={{ false: "#767577", true: colors.primary }}
-                thumbColor={isExtra ? "#1C1E1B" : "#f4f3f4"}
+                onValueChange={(val) => {
+                  setIsExtra(val);
+                  if (val) {
+                    setServiceDuration("0");
+                  }
+                }}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={isDark ? colors.background : "#FFFFFF"}
               />
             </View>
-          </ScrollView>
 
-          {/* Sticky Bottom Full Screen Footer */}
-          <View style={[styles.fullScreenFooterBar, { backgroundColor: colors.surface, borderTopColor: colors.surfacevariant }]}>
+            {/* Submit Action CTA */}
             <TouchableOpacity
-              activeOpacity={0.88}
-              onPress={handleSaveService}
+              activeOpacity={0.85}
               disabled={isSubmitting}
-              style={[styles.fullScreenSaveBtn, { backgroundColor: colors.primary }]}
+              onPress={handleSaveService}
+              style={[styles.saveServiceCTA, { backgroundColor: colors.primary }]}
             >
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#1C1E1B" />
+                <ActivityIndicator size="small" color={colors.onBrand} />
               ) : (
                 <>
-                  <Ionicons name={editingServiceId ? "save-outline" : "checkmark-circle-outline"} size={20} color="#1C1E1B" />
-                  <Text style={styles.fullScreenSaveBtnText}>
-                    {editingServiceId ? t("manageServices.updateService") : t("manageServices.addToCatalog")}
+                  <Ionicons name="checkmark-circle" size={19} color={colors.onBrand} />
+                  <Text style={[styles.saveServiceCTAText, { color: colors.onBrand }]}>
+                    {editingServiceId ? "Save Service Changes" : "Publish to Salon Catalog"}
                   </Text>
                 </>
               )}
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </SafeAreaView>
       </Modal>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Service Confirmation Modal */}
       <CustomModal
         visible={!!serviceToDelete}
-        title={t("manageServices.removeService")}
         onClose={() => setServiceToDelete(null)}
-      >
-        <View style={{ gap: 16 }}>
-          <Text style={{ color: colors.secondarytext, fontSize: 13.5, lineHeight: 19 }}>
-            Are you sure you want to remove "{serviceToDelete?.name}" from your service
-            catalog? {t("manageServices.removeServiceMsg")}
-          </Text>
+        title={t("manageServices.deleteServiceTitle") || "Delete Service"}
+        description={
+          serviceToDelete
+            ? `Are you sure you want to remove "${serviceToDelete.name}" from your service catalog? This action cannot be undone.`
+            : ""
+        }
+        icon="trash-outline"
+        primaryText="Delete Service"
+        primaryDanger={true}
+        secondaryText="Keep Service"
+        onPrimary={confirmDeleteService}
+      />
 
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setServiceToDelete(null)}
-              style={[
-                styles.modalCancelBtn,
-                { borderColor: colors.surfacevariant },
-              ]}
-            >
-              <Text style={{ color: colors.primarytext, fontWeight: "600" }}>
-                {t("common.cancel")}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.88}
-              onPress={handleConfirmDelete}
-              style={[styles.modalDeleteBtn, { backgroundColor: "#EF4444" }]}
-            >
-              <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t("manageServices.remove")}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </CustomModal>
-
-      {/* In-App Page Tutorial Modal */}
+      {/* Tutorial Modal */}
       <PageTutorialModal
+        visible={tutorialVisible}
+        onClose={() => setTutorialVisible(false)}
         screenKey="manage_services"
         title={MANAGE_SERVICES_TUTORIAL.title}
         subtitle={MANAGE_SERVICES_TUTORIAL.subtitle}
         steps={MANAGE_SERVICES_TUTORIAL.steps}
-        visible={tutorialVisible}
-        onClose={() => setTutorialVisible(false)}
-        autoTrigger={true}
       />
     </SafeAreaView>
   );
@@ -1371,54 +1420,144 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
   },
-  headerBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: "center",
+  headerCircleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   headerTitleWrap: {
     flex: 1,
-    marginHorizontal: 12,
+    paddingHorizontal: 12,
   },
   headerTitle: {
-    fontSize: 19,
+    fontSize: 18,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
   headerSubtitle: {
-    fontSize: 12,
-    marginTop: 1,
+    fontSize: 11.5,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
   },
-  addHeaderBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: "center",
+  addServiceBtn: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 12,
   },
-  categoriesRow: {
-    paddingBottom: 10,
-  },
-  categoriesScroll: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  categoryPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 18,
-    borderWidth: 1,
-  },
-  categoryText: {
-    fontSize: 12.5,
+  addServiceBtnText: {
+    fontSize: 12,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
+    paddingTop: 16,
     paddingBottom: 40,
+    gap: 14,
+  },
+  telemetryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+  },
+  telemetryGrid: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  telemetryCell: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  telemetryDivider: {
+    width: 1,
+    height: 28,
+  },
+  telemetryValue: {
+    fontSize: 14.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  telemetryLabel: {
+    fontSize: 10.5,
+    fontFamily: FontFamily.medium,
+    textAlign: "center",
+  },
+  catalogTabTrack: {
+    flexDirection: "row",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 4,
+    gap: 4,
+  },
+  catalogTabPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  catalogTabPillText: {
+    fontSize: 12,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  categoriesScroll: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  categoryChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  categoryChipText: {
+    fontSize: 12,
+    fontFamily: FontFamily.semibold,
+  },
+  emptyStateCard: {
+    padding: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    gap: 8,
+  },
+  emptyIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  emptySubtitle: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.regular,
+    textAlign: "center",
   },
   servicesList: {
     gap: 12,
@@ -1426,334 +1565,80 @@ const styles = StyleSheet.create({
   serviceCard: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-  },
-  serviceInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  serviceTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
-  },
-  serviceName: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  categoryBadgeText: {
-    fontSize: 10.5,
-    fontWeight: "600",
-  },
-  serviceMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-  },
-  priceTag: {
-    fontSize: 14.5,
-    fontWeight: "800",
-  },
-  actionBtnsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  actionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 6,
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 46,
-    fontSize: 13.5,
-  },
-  categorySelectPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  saveBtn: {
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 6,
-  },
-  saveBtnText: {
-    color: "#1C1E1B",
-    fontSize: 14.5,
-    fontWeight: "700",
-  },
-  modalCancelBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalDeleteBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 60,
-    paddingHorizontal: 24,
-  },
-  emptyIconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    textAlign: "center",
-    lineHeight: 18,
-  },
-  catalogTabRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 10,
-  },
-  catalogTabBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 6,
-  },
-  catalogTabBtnText: {
-    fontSize: 13,
-    fontWeight: "700",
+    padding: 12,
+    gap: 12,
   },
   serviceThumbnail: {
     width: 60,
     height: 60,
-    borderRadius: 10,
-    marginRight: 12,
+    borderRadius: 12,
   },
-  extraToggleCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
+  serviceThumbnailFallback: {
+    width: 60,
+    height: 60,
     borderRadius: 12,
     borderWidth: 1,
-    marginTop: 4,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  extraToggleTitle: {
-    fontSize: 13,
+  serviceInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  serviceNamePriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
+  },
+  serviceName: {
+    fontSize: 14.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+    flex: 1,
+  },
+  servicePrice: {
+    fontSize: 13.5,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
-  extraToggleSub: {
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
-  },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 4,
-  },
-  categoryGridItem: {
-    width: "48%",
+  serviceMetaRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    gap: 6,
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  sectionTitleWithIcon: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  toggleUrlText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  previewContainer: {
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-    padding: 8,
     gap: 8,
   },
-  designPreviewImg: {
-    width: "100%",
-    height: 150,
-    borderRadius: 10,
-  },
-  previewActionsRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  photoActionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: 10,
+  categoryPillSmall: {
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
     borderWidth: 1,
   },
-  photoActionText: {
-    fontSize: 12,
-    fontWeight: "600",
+  categoryPillSmallText: {
+    fontSize: 10,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
   },
-  uploadDottedBox: {
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderRadius: 16,
-    padding: 16,
+  durationRow: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 4,
   },
-  uploadIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  durationText: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.regular,
+  },
+  actionBtnsCol: {
+    gap: 6,
+  },
+  actionIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    borderWidth: 1,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 2,
-  },
-  uploadBoxTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  uploadBoxSubtitle: {
-    fontSize: 11,
-    textAlign: "center",
-  },
-  addCategoryHeaderBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  addCategoryHeaderText: {
-    fontSize: 11.5,
-    fontWeight: "700",
-  },
-  newCategoryCard: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 10,
-    gap: 8,
-    marginBottom: 10,
-  },
-  newCategoryInput: {
-    fontSize: 13.5,
-    paddingVertical: 4,
-  },
-  newCategoryBtnRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 8,
-  },
-  newCatCancelBtn: {
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  newCatAddBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  dropdownButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 46,
-    marginTop: 6,
-  },
-  dropdownButtonText: {
-    fontSize: 13.5,
-    flex: 1,
-    marginRight: 8,
-  },
-  dropdownMenu: {
-    borderWidth: 1,
-    borderRadius: 12,
-    overflow: "hidden",
-    marginTop: 4,
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  dropdownItemText: {
-    fontSize: 13,
-  },
-  fieldSubLabel: {
-    fontSize: 11.5,
-    marginBottom: 4,
   },
   fullScreenModalContainer: {
     flex: 1,
@@ -1763,28 +1648,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingTop: 8,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-  },
-  fullScreenCloseBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fullScreenTitleWrap: {
-    flex: 1,
-    marginHorizontal: 12,
-  },
-  fullScreenTitle: {
-    fontSize: 17.5,
-    fontWeight: "700",
-    letterSpacing: -0.2,
-  },
-  fullScreenSubtitle: {
-    fontSize: 11.5,
-    marginTop: 2,
   },
   fullScreenResetBtn: {
     paddingHorizontal: 8,
@@ -1792,146 +1658,286 @@ const styles = StyleSheet.create({
   },
   fullScreenResetText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
   },
   fullScreenScrollContent: {
     paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 40,
     gap: 14,
-    paddingBottom: 60,
   },
   modalCardSection: {
-    padding: 14,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
+    padding: 16,
+    gap: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  sectionTitleWithIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  toggleUrlText: {
+    fontSize: 12,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
   },
   sectionHintText: {
-    fontSize: 11.5,
-    marginTop: 4,
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
     lineHeight: 16,
   },
-  durationBadgePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  durationBadgePillText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  durationPresetWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  durationPresetChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  previewContainer: {
     borderRadius: 12,
     borderWidth: 1,
+    overflow: "hidden",
+    padding: 8,
+    gap: 8,
+    marginTop: 6,
   },
-  durationPresetText: {
-    fontSize: 12,
+  designPreviewImg: {
+    width: "100%",
+    height: 160,
+    borderRadius: 8,
   },
-  durationStepperRow: {
+  previewActionsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  photoActionBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-  },
-  stepperButton: {
-    height: 42,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
     justifyContent: "center",
-    alignItems: "center",
-  },
-  stepperButtonText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  durationInputBox: {
-    flex: 1,
-    height: 42,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-  },
-  durationTextInput: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  durationInputUnit: {
-    fontSize: 12,
-    marginLeft: 2,
-  },
-  durationNoticeBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 12,
-  },
-  durationNoticeText: {
-    flex: 1,
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
-  priceInputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1,
-    height: 46,
-    paddingHorizontal: 14,
-  },
-  priceCurrencyPrefix: {
-    fontSize: 14,
-    fontWeight: "800",
-    marginRight: 8,
-  },
-  priceTextInput: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  priceShortcutsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
     gap: 6,
-    marginTop: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  priceShortcutChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+  photoActionText: {
+    fontSize: 12,
+    fontFamily: FontFamily.semibold,
+    fontWeight: "600",
+  },
+  uploadDottedBox: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderRadius: 14,
+    padding: 24,
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+  },
+  uploadIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  uploadBoxTitle: {
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  uploadBoxSubtitle: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.regular,
+  },
+  textInput: {
+    height: 44,
     borderRadius: 10,
     borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontFamily: FontFamily.medium,
   },
-  priceShortcutText: {
+  addCategoryHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  addCategoryHeaderText: {
+    fontSize: 11,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  newCategoryCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    gap: 8,
+    marginTop: 8,
+  },
+  newCategoryInput: {
+    fontSize: 13,
+    fontFamily: FontFamily.medium,
+    paddingVertical: 4,
+  },
+  newCategoryBtnRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  newCatCancelBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  newCatAddBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 6,
+  },
+  categoryGridItem: {
+    width: "48%",
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  categoryGridItemText: {
     fontSize: 11.5,
+    fontFamily: FontFamily.semibold,
+    flex: 1,
   },
-  fullScreenFooterBar: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderTopWidth: 1,
+  dropdownButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: 44,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    marginTop: 6,
   },
-  fullScreenSaveBtn: {
+  dropdownButtonText: {
+    fontSize: 13,
+    fontFamily: FontFamily.medium,
+  },
+  dropdownMenu: {
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownItemText: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.medium,
+  },
+  fieldSubLabel: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.medium,
+    marginBottom: 6,
+  },
+  durationBadgePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  durationBadgePillText: {
+    fontSize: 11,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  presetScroll: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  presetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
+  presetChipText: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.semibold,
+  },
+  priceInputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 46,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    marginTop: 6,
+  },
+  priceInput: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  priceCurrencyTag: {
+    fontSize: 13,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  extraToggleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  extraToggleTitle: {
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  extraToggleSub: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.regular,
+    lineHeight: 16,
+  },
+  saveServiceCTA: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    height: 50,
-    borderRadius: 25,
+    height: 48,
+    borderRadius: 14,
+    marginTop: 6,
   },
-  fullScreenSaveBtnText: {
-    color: "#1C1E1B",
-    fontSize: 15,
-    fontWeight: "800",
+  saveServiceCTAText: {
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
   },
 });

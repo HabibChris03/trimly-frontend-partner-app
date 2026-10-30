@@ -19,10 +19,10 @@ export default function OAuthRedirect() {
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#0F100E",
+        backgroundColor: "#171918",
       }}
     >
-      <ActivityIndicator size="large" color="#A3B39C" />
+      <ActivityIndicator size="large" color="#C7F36B" />
     </View>
   );
 }

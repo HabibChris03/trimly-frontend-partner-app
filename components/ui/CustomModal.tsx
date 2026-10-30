@@ -99,8 +99,8 @@ export function CustomModal({
                 style={[
                   styles.card,
                   {
-                    backgroundColor: colors.surface || "#222620",
-                    borderColor: colors.surfacevariant || "#383D33",
+                    backgroundColor: colors.card || "#252926",
+                    borderColor: colors.border || "#383D38",
                   },
                   scrollable && {
                     maxHeight: maxHeight || Dimensions.get("window").height * 0.85,
@@ -114,9 +114,15 @@ export function CustomModal({
                     activeOpacity={0.7}
                     onPress={onClose}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                    style={styles.closeBtn}
+                    style={[
+                      styles.closeBtn,
+                      {
+                        backgroundColor: colors.secondarySurface || "#2E332F",
+                        borderColor: colors.border || "#383D38",
+                      },
+                    ]}
                   >
-                    <Ionicons name="close" size={20} color={colors.secondarytext} />
+                    <Ionicons name="close" size={18} color={colors.secondaryText} />
                   </TouchableOpacity>
                 )}
 
@@ -128,28 +134,28 @@ export function CustomModal({
                         backgroundColor:
                           iconBg ||
                           (primaryDanger
-                            ? "rgba(239, 68, 68, 0.15)"
-                            : "rgba(163, 179, 156, 0.15)"),
+                            ? "rgba(239, 68, 68, 0.14)"
+                            : "rgba(199, 243, 107, 0.14)"),
                       },
                     ]}
                   >
                     <Ionicons
                       name={icon}
-                      size={28}
+                      size={26}
                       color={
                         iconColor ||
-                        (primaryDanger ? "#EF4444" : colors.primary || "#A3B39C")
+                        (primaryDanger ? "#EF4444" : colors.brand || "#C7F36B")
                       }
                     />
                   </View>
                 ) : null}
 
-                <Text style={[styles.title, { color: colors.primarytext }]}>
+                <Text style={[styles.title, { color: colors.primaryText }]}>
                   {title}
                 </Text>
 
                 {description ? (
-                  <Text style={[styles.description, { color: colors.secondarytext }]}>
+                  <Text style={[styles.description, { color: colors.secondaryText }]}>
                     {description}
                   </Text>
                 ) : null}
@@ -168,91 +174,91 @@ export function CustomModal({
                   children
                 )}
 
-              {(effectiveSecondaryText || effectivePrimaryText) ? (
-                <View style={styles.buttonRow}>
-                  {effectiveSecondaryText ? (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      disabled={isActionLoading}
-                      onPress={onSecondary || onClose}
-                      style={[
-                        styles.btn,
-                        styles.secondaryBtn,
-                        {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.surfacevariant,
-                          opacity: isActionLoading ? 0.5 : 1,
-                        },
-                      ]}
-                    >
-                      <Text
+                {effectiveSecondaryText || effectivePrimaryText ? (
+                  <View style={styles.buttonRow}>
+                    {effectiveSecondaryText ? (
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        disabled={isActionLoading}
+                        onPress={onSecondary || onClose}
                         style={[
-                          styles.secondaryBtnText,
-                          { color: colors.secondarytext },
+                          styles.btn,
+                          styles.secondaryBtn,
+                          {
+                            backgroundColor: colors.secondarySurface || "#2E332F",
+                            borderColor: colors.border || "#383D38",
+                            opacity: isActionLoading ? 0.5 : 1,
+                          },
                         ]}
                       >
-                        {effectiveSecondaryText}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null}
-
-                  {effectivePrimaryText ? (
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={isActionLoading}
-                      onPress={async () => {
-                        if (isActionLoading) return;
-                        if (onPrimary) {
-                          try {
-                            const res = onPrimary();
-                            if (res && typeof (res as any).then === "function") {
-                              setInternalLoading(true);
-                              await res;
-                            }
-                          } finally {
-                            setInternalLoading(false);
-                          }
-                        }
-                        onClose();
-                      }}
-                      style={[
-                        styles.btn,
-                        styles.primaryBtn,
-                        {
-                          backgroundColor: primaryDanger
-                            ? "#EF4444"
-                            : colors.primary || "#A3B39C",
-                          opacity: isActionLoading ? 0.75 : 1,
-                        },
-                      ]}
-                    >
-                      {isActionLoading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={primaryDanger ? "#FFFFFF" : "#1C1E1B"}
-                        />
-                      ) : (
                         <Text
                           style={[
-                            styles.primaryBtnText,
-                            {
-                              color: primaryDanger
-                                ? "#FFFFFF"
-                                : colors.background || "#181B16",
-                            },
+                            styles.secondaryBtnText,
+                            { color: colors.primaryText },
                           ]}
                         >
-                          {effectivePrimaryText}
+                          {effectiveSecondaryText}
                         </Text>
-                      )}
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {effectivePrimaryText ? (
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        disabled={isActionLoading}
+                        onPress={async () => {
+                          if (isActionLoading) return;
+                          if (onPrimary) {
+                            try {
+                              const res = onPrimary();
+                              if (res && typeof (res as any).then === "function") {
+                                setInternalLoading(true);
+                                await res;
+                              }
+                            } finally {
+                              setInternalLoading(false);
+                            }
+                          }
+                          onClose();
+                        }}
+                        style={[
+                          styles.btn,
+                          styles.primaryBtn,
+                          {
+                            backgroundColor: primaryDanger
+                              ? "#EF4444"
+                              : colors.brand || "#C7F36B",
+                            opacity: isActionLoading ? 0.75 : 1,
+                          },
+                        ]}
+                      >
+                        {isActionLoading ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={primaryDanger ? "#FFFFFF" : colors.onBrand || "#171918"}
+                          />
+                        ) : (
+                          <Text
+                            style={[
+                              styles.primaryBtnText,
+                              {
+                                color: primaryDanger
+                                  ? "#FFFFFF"
+                                  : colors.onBrand || "#171918",
+                              },
+                            ]}
+                          >
+                            {effectivePrimaryText}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -261,28 +267,28 @@ export function CustomModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backgroundColor: "rgba(10, 11, 10, 0.78)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    padding: 22,
   },
   card: {
     width: "100%",
     maxWidth: 380,
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1,
     padding: 22,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.45,
     shadowRadius: 20,
-    elevation: 15,
+    elevation: 14,
   },
   iconWrapper: {
-    width: 58,
-    height: 58,
-    borderRadius: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
@@ -302,14 +308,14 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
-    gap: 12,
+    gap: 10,
     width: "100%",
     marginTop: 4,
   },
   btn: {
     flex: 1,
     height: 48,
-    borderRadius: 14,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -330,12 +336,12 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     position: "absolute",
-    top: 16,
-    right: 16,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    top: 14,
+    right: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 10,

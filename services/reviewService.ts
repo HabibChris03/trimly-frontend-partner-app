@@ -20,6 +20,8 @@ export interface ReviewItemResponse {
   tags?: string[];
   photo_url?: string;
   created_at?: string;
+  reply?: string | null;
+  replied_at?: string | null;
 }
 
 export interface BarberReviewsResponse {
@@ -66,6 +68,28 @@ export const reviewService = {
       average_rating: 0.0,
       total_reviews: 0,
       reviews: [],
+    };
+  },
+
+  /**
+   * Submit or update a barber's reply to a client review.
+   * Endpoint: POST /api/v1/reviews/{review_id}/reply
+   */
+  async replyToReview(
+    reviewId: number | string,
+    reply: string
+  ): Promise<{ success: boolean; reply: string; replied_at: string }> {
+    const res = await apiRequest<{ status?: string; reply: string; replied_at: string }>(
+      `/api/v1/reviews/${reviewId}/reply`,
+      {
+        method: "POST",
+        body: JSON.stringify({ reply }),
+      }
+    );
+    return {
+      success: true,
+      reply: res?.reply || reply,
+      replied_at: res?.replied_at || new Date().toISOString(),
     };
   },
 };

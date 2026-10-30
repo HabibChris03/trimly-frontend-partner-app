@@ -18,9 +18,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
+import { useLanguage } from "@/context/LanguageContext";
 import {
   supportService,
   SupportTicketSummary,
@@ -36,7 +37,8 @@ const CATEGORIES = [
 ];
 
 export default function SupportChatScreen() {
-  const colors = useColors();
+  const { t } = useLanguage();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -180,7 +182,7 @@ export default function SupportChatScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "left", "right"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Top Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -193,9 +195,7 @@ export default function SupportChatScreen() {
         </TouchableOpacity>
 
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-            Admin Support Chat
-          </Text>
+          <Text style={[styles.headerTitle, { color: colors.primarytext }]}>{t("supportChat.adminSupportChat")}</Text>
           <View style={styles.statusRow}>
             <View style={styles.onlineDot} />
             <Text style={[styles.headerSub, { color: colors.secondarytext }]}>
@@ -209,10 +209,8 @@ export default function SupportChatScreen() {
           onPress={() => setShowNewModal(true)}
           style={[styles.newTicketBtn, { backgroundColor: colors.primary }]}
         >
-          <Ionicons name="add" size={16} color={colors.primarytext} />
-          <Text style={[styles.newTicketBtnText, { color: colors.primarytext }]}>
-            New Issue
-          </Text>
+          <Ionicons name="add" size={16} color="#FFFFFF" />
+          <Text style={[styles.newTicketBtnText, { color: "#FFFFFF" }]}>{t("supportChat.newIssue")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -243,7 +241,7 @@ export default function SupportChatScreen() {
                   <Text
                     style={[
                       styles.ticketTabText,
-                      { color: isSelected ? colors.primarytext : colors.secondarytext },
+                      { color: isSelected ? "#FFFFFF" : colors.secondarytext },
                     ]}
                     numberOfLines={1}
                   >
@@ -271,9 +269,7 @@ export default function SupportChatScreen() {
         {isLoading ? (
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.secondarytext }]}>
-              Connecting to support...
-            </Text>
+            <Text style={[styles.loadingText, { color: colors.secondarytext }]}>{t("supportChat.connectingToSupport")}</Text>
           </View>
         ) : tickets.length === 0 ? (
           /* Empty State: Prompt to report an issue */
@@ -281,19 +277,15 @@ export default function SupportChatScreen() {
             <View style={[styles.emptyIconCircle, { backgroundColor: `${colors.primary}18` }]}>
               <Ionicons name="chatbubbles" size={38} color={colors.primary} />
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-              No Support Tickets Yet
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
-              Need assistance with payouts, clients, app bugs, or bookings? Chat directly with the Trimly administration team.
-            </Text>
+            <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>{t("supportChat.noSupportTicketsYet")}</Text>
+            <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>{t("supportChat.needAssistance")}</Text>
             <TouchableOpacity
               activeOpacity={0.85}
               onPress={() => setShowNewModal(true)}
               style={[styles.startReportBtn, { backgroundColor: colors.primary }]}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primarytext} style={{ marginRight: 8 }} />
-              <Text style={[styles.startReportText, { color: colors.primarytext }]}>
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+              <Text style={[styles.startReportText, { color: "#FFFFFF" }]}>
                 Report an Issue / Start Chat
               </Text>
             </TouchableOpacity>
@@ -391,7 +383,7 @@ export default function SupportChatScreen() {
           >
             <TextInput
               style={[styles.chatTextInput, { color: colors.primarytext }]}
-              placeholder="Type your reply or question to admin..."
+              placeholder={t("supportChat.typeMessagePlaceholder") || "Type your reply or question to admin..."}
               placeholderTextColor={colors.inputPlaceholder}
               value={inputText}
               onChangeText={setInputText}
@@ -412,9 +404,9 @@ export default function SupportChatScreen() {
               ]}
             >
               {isSending ? (
-                <ActivityIndicator size="small" color={colors.primarytext} />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Ionicons name="send" size={16} color={colors.primarytext} />
+                <Ionicons name="send" size={16} color="#FFFFFF" />
               )}
             </TouchableOpacity>
           </View>
@@ -433,10 +425,10 @@ export default function SupportChatScreen() {
             <View style={styles.modalHeaderRow}>
               <View>
                 <Text style={[styles.modalTitle, { color: colors.primarytext }]}>
-                  Report Issue to Admin
+                  {t("supportChat.reportIssueToAdmin") || "Report Issue to Admin"}
                 </Text>
                 <Text style={[styles.modalSubtitle, { color: colors.secondarytext }]}>
-                  Describe what went wrong and our team will reply here.
+                  {t("supportChat.reportIssueDesc") || "Describe what went wrong and our team will reply here."}
                 </Text>
               </View>
               <TouchableOpacity
@@ -468,7 +460,7 @@ export default function SupportChatScreen() {
                     <Text
                       style={[
                         styles.categoryChipText,
-                        { color: isSelected ? colors.primarytext : colors.secondarytext },
+                        { color: isSelected ? "#FFFFFF" : colors.secondarytext },
                       ]}
                     >
                       {cat}
@@ -506,7 +498,7 @@ export default function SupportChatScreen() {
                   color: colors.primarytext,
                 },
               ]}
-              placeholder="Provide complete details (booking numbers, client names, timestamps, error messages)..."
+              placeholder={t("supportChat.ticketDetailsPlaceholder") || "Provide complete details (booking numbers, client names, timestamps, error messages)..."}
               placeholderTextColor={colors.inputPlaceholder}
               value={newMessage}
               onChangeText={setNewMessage}
@@ -539,9 +531,9 @@ export default function SupportChatScreen() {
                 ]}
               >
                 {isCreating ? (
-                  <ActivityIndicator size="small" color={colors.primarytext} />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={[styles.modalSubmitText, { color: colors.primarytext }]}>
+                  <Text style={[styles.modalSubmitText, { color: "#FFFFFF" }]}>
                     Submit Report & Chat
                   </Text>
                 )}

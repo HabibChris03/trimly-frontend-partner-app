@@ -43,28 +43,34 @@ export default function SortModal({
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
           <TouchableWithoutFeedback>
             <View
               style={[
                 styles.modalContent,
-                { backgroundColor: colors.surface, borderColor: colors.surfacevariant },
+                { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
               {/* Header */}
-              <View style={styles.header}>
+              <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <View style={styles.headerTitleWrap}>
-                  <Ionicons name="swap-vertical" size={20} color={colors.primary} />
-                  <Text style={[styles.title, { color: colors.primarytext }]}>
+                  <Ionicons name="swap-vertical" size={20} color={colors.accent} />
+                  <Text style={[styles.title, { color: colors.primaryText }]}>
                     {title}
                   </Text>
                 </View>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={onClose}
-                  style={styles.closeBtn}
+                  style={[
+                    styles.closeBtn,
+                    {
+                      backgroundColor: colors.secondarySurface,
+                      borderColor: colors.border,
+                    },
+                  ]}
                 >
-                  <Ionicons name="close" size={20} color={colors.secondarytext} />
+                  <Ionicons name="close" size={18} color={colors.secondaryText} />
                 </TouchableOpacity>
               </View>
 
@@ -84,9 +90,9 @@ export default function SortModal({
                         styles.optionRow,
                         {
                           backgroundColor: isSelected
-                            ? "rgba(163, 179, 156, 0.12)"
+                            ? colors.brandSoft
                             : "transparent",
-                          borderColor: isSelected ? colors.primary : "transparent",
+                          borderColor: isSelected ? colors.brandBorder : "transparent",
                         },
                       ]}
                     >
@@ -95,7 +101,7 @@ export default function SortModal({
                           <Ionicons
                             name={option.icon}
                             size={18}
-                            color={isSelected ? colors.primary : colors.secondarytext}
+                            color={isSelected ? colors.accent : colors.secondaryText}
                             style={{ marginRight: 12 }}
                           />
                         )}
@@ -103,7 +109,7 @@ export default function SortModal({
                           style={[
                             styles.optionLabel,
                             {
-                              color: isSelected ? colors.primary : colors.primarytext,
+                              color: isSelected ? colors.accent : colors.primaryText,
                               fontWeight: isSelected ? "700" : "500",
                             },
                           ]}
@@ -116,8 +122,8 @@ export default function SortModal({
                           styles.radioOuter,
                           {
                             borderColor: isSelected
-                              ? colors.primary
-                              : colors.secondarytext,
+                              ? colors.accent
+                              : colors.secondaryText,
                           },
                         ]}
                       >
@@ -125,7 +131,7 @@ export default function SortModal({
                           <View
                             style={[
                               styles.radioInner,
-                              { backgroundColor: colors.primary },
+                              { backgroundColor: colors.accent },
                             ]}
                           />
                         )}
@@ -145,7 +151,6 @@ export default function SortModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.65)",
     justifyContent: "flex-end",
   },
   modalContent: {
@@ -163,7 +168,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.08)",
   },
   headerTitleWrap: {
     flexDirection: "row",
@@ -175,7 +179,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   closeBtn: {
-    padding: 6,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   optionsList: {
     gap: 6,

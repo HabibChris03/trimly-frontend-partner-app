@@ -1,21 +1,25 @@
-import useColors from '@/hooks/usecolor';
-import { Stack } from 'expo-router/stack';
-import React from 'react';
+import { useTheme } from "@/context/ThemeContext";
+import { Stack } from "expo-router/stack";
+import React from "react";
+import { StatusBar } from "react-native";
 
 export default function AuthLayout() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        animation: 'fade',
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
-      <Stack.Screen name="login" />
-      <Stack.Screen name="signup" />
-      <Stack.Screen name="forgot-password" />
-    </Stack>
+    <>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "fade",
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="forgot-password" />
+      </Stack>
+    </>
   );
 }

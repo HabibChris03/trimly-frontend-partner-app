@@ -9,21 +9,24 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/theme/useTheme";
-import Rating from "./Rating";
+import { BrandPhotos } from "@/theme/colors";
 
 export interface BarberCardProps {
   id: string | number;
   name: string;
   specialty?: string;
-  rating?: number;
+  rating?: number | string;
   reviewCount?: number;
   location?: string;
   distance?: string;
   price?: number | string;
   imageUrl?: any;
+  isSalon?: boolean;
   isFavorite?: boolean;
   onFavoritePress?: () => void;
+  onBookPress?: () => void;
   onPress?: () => void;
+  compact?: boolean;
   style?: ViewStyle;
 }
 
@@ -31,129 +34,206 @@ export function BarberCard({
   name,
   specialty,
   rating = 4.9,
-  reviewCount = 24,
-  location,
-  distance = "1.2 km",
+  distance = "Nearby",
   price,
   imageUrl,
+  isSalon,
   isFavorite = false,
   onFavoritePress,
+  onBookPress,
   onPress,
+  compact = false,
   style,
 }: BarberCardProps) {
-  const { colors, radius, spacing, typography, shadows } = useTheme();
+  const { colors, typography } = useTheme();
 
   const imageSource =
     typeof imageUrl === "string"
-      ? { uri: imageUrl }
-      : imageUrl || require("@/assets/images/profilepic white.png");
+      ? imageUrl.trim()
+        ? { uri: imageUrl }
+        : { uri: BrandPhotos.shopCover }
+      : imageUrl || { uri: BrandPhotos.shopCover };
+
+  const numericRating =
+    rating !== undefined && rating !== null ? Number(rating) : 0;
 
   return (
     <TouchableOpacity
-      activeOpacity={0.88}
+      activeOpacity={0.9}
       onPress={onPress}
       style={[
         styles.card,
         {
           backgroundColor: colors.card,
-          borderRadius: radius.xl,
           borderColor: colors.border,
-          borderWidth: 1,
         },
-        shadows.card,
         style,
       ]}
     >
-      <View style={styles.imageContainer}>
+      <View
+        style={[
+          styles.imageContainer,
+          {
+            height: compact ? 136 : 164,
+            backgroundColor: colors.secondarySurface,
+          },
+        ]}
+      >
         <Image source={imageSource} style={styles.image} resizeMode="cover" />
-        {onFavoritePress && (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={onFavoritePress}
-            style={[
-              styles.favoriteBtn,
-              {
-                backgroundColor: "rgba(0,0,0,0.35)",
-                borderRadius: radius.full,
-              },
-            ]}
-          >
-            <Ionicons
-              name={isFavorite ? "heart" : "heart-outline"}
-              size={18}
-              color={isFavorite ? "#EF4444" : "#FFFFFF"}
-            />
-          </TouchableOpacity>
-        )}
-      </View>
 
-      <View style={[styles.content, { padding: spacing.md }]}>
-        <View style={styles.row}>
-          <Text
-            style={[
-              styles.name,
-              {
-                color: colors.primaryText,
-                fontFamily: typography.fontFamily.bold,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {name}
-          </Text>
-          <Rating rating={rating} showScore size={13} />
-        </View>
-
-        {specialty && (
-          <Text
-            style={[
-              styles.specialty,
-              {
-                color: colors.secondaryText,
-                fontFamily: typography.fontFamily.medium,
-                marginTop: 2,
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {specialty}
-          </Text>
-        )}
-
-        <View style={[styles.footer, { marginTop: spacing.sm }]}>
-          <View style={styles.locationRow}>
-            <Ionicons
-              name="location-outline"
-              size={13}
-              color={colors.secondaryText}
-            />
+        {numericRating > 0 && (
+          <View style={styles.ratingPill}>
+            <Ionicons name="star" size={12} color={colors.brand} />
             <Text
               style={[
-                styles.distance,
+                styles.ratingText,
                 {
-                  color: colors.secondaryText,
-                  fontFamily: typography.fontFamily.regular,
-                  marginLeft: 3,
-                },
-              ]}
-            >
-              {distance}
-            </Text>
-          </View>
-
-          {price !== undefined && (
-            <Text
-              style={[
-                styles.price,
-                {
-                  color: colors.primary,
+                  color: colors.primaryText,
                   fontFamily: typography.fontFamily.bold,
                 },
               ]}
             >
-              From {typeof price === "number" ? `XAF ${price.toLocaleString()}` : price}
+              {numericRating.toFixed(1)}
+            </Text>
+          </View>
+        )}
+
+        {isSalon && (
+          <View style={styles.salonPill}>
+            <Text
+              style={[
+                styles.salonPillText,
+                {
+                  color: colors.primaryText,
+                  fontFamily: typography.fontFamily.semiBold,
+                },
+              ]}
+            >
+              Salon
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.content}>
+        <Text
+          style={[
+            styles.name,
+            {
+              color: colors.primaryText,
+              fontFamily: typography.fontFamily.bold,
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
+
+        <View style={styles.statusRow}>
+          <Text
+            style={[
+              styles.openText,
+              {
+                color: colors.brand,
+                fontFamily: typography.fontFamily.semiBold,
+              },
+            ]}
+          >
+            {price !== undefined && Number(price) > 0
+              ? `From ${typeof price === "number" ? `${price.toLocaleString()} XAF` : price}`
+              : "Available"}
+          </Text>
+          {!!specialty && (
+            <Text
+              style={[
+                styles.specialty,
+                {
+                  color: colors.secondaryText,
+                  fontFamily: typography.fontFamily.regular,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {" · "}
+              {specialty}
             </Text>
           )}
+        </View>
+
+        <View style={styles.locationRow}>
+          <Ionicons
+            name="location-sharp"
+            size={13}
+            color={colors.primaryText}
+          />
+          <Text
+            style={[
+              styles.distance,
+              {
+                color: colors.secondaryText,
+                fontFamily: typography.fontFamily.medium,
+              },
+            ]}
+            numberOfLines={1}
+          >
+            {distance}
+          </Text>
+        </View>
+
+        <View style={styles.ctaRow}>
+          {onFavoritePress && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onFavoritePress();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isFavorite ? "Remove from saved" : "Save barber"
+              }
+              style={[
+                styles.bookmarkBtn,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: isFavorite ? colors.brand : colors.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name={isFavorite ? "bookmark" : "bookmark-outline"}
+                size={17}
+                color={isFavorite ? colors.brand : colors.secondaryText}
+              />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              if (onBookPress) {
+                onBookPress();
+              } else {
+                onPress?.();
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Book ${name}`}
+            style={[styles.bookNowBtn, { backgroundColor: colors.brand }]}
+          >
+            <Text
+              style={[
+                styles.bookNowText,
+                {
+                  color: colors.onBrand,
+                  fontFamily: typography.fontFamily.bold,
+                },
+              ]}
+            >
+              Book Now
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>
@@ -162,55 +242,102 @@ export function BarberCard({
 
 const styles = StyleSheet.create({
   card: {
-    overflow: "hidden",
-    marginBottom: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 14,
   },
   imageContainer: {
-    height: 140,
     width: "100%",
-    backgroundColor: "#F0F0F0",
+    borderRadius: 13,
+    overflow: "hidden",
   },
   image: {
     width: "100%",
     height: "100%",
   },
-  favoriteBtn: {
+  ratingPill: {
     position: "absolute",
-    top: 10,
-    right: 10,
-    width: 32,
-    height: 32,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {},
-  row: {
+    top: 8,
+    right: 8,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 4,
+    backgroundColor: "rgba(23, 25, 24, 0.78)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  ratingText: {
+    fontSize: 11.5,
+  },
+  salonPill: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "rgba(23, 25, 24, 0.78)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  salonPillText: {
+    fontSize: 10.5,
+    letterSpacing: 0.2,
+  },
+  content: {
+    paddingTop: 10,
+    paddingHorizontal: 2,
   },
   name: {
-    fontSize: 16,
-    flex: 1,
-    marginRight: 8,
+    fontSize: 15,
+    letterSpacing: -0.1,
   },
-  specialty: {
-    fontSize: 13,
-  },
-  footer: {
+  statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  openText: {
+    fontSize: 12.5,
+  },
+  specialty: {
+    fontSize: 12,
+    flex: 1,
   },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
+    marginTop: 5,
   },
   distance: {
     fontSize: 12,
+    flex: 1,
   },
-  price: {
-    fontSize: 14,
+  ctaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 11,
+  },
+  bookmarkBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bookNowBtn: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bookNowText: {
+    fontSize: 13.5,
+    letterSpacing: 0.1,
   },
 });
 

@@ -23,35 +23,39 @@ export default function RoleSelector({
 
   return (
     <View
-      style={[styles.container, { backgroundColor: colors.surfacevariant }]}
+      style={[
+        styles.container,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
     >
-      {roles.map(({ value, label }) => (
-        <TouchableOpacity
-          key={value}
-          activeOpacity={0.8}
-          onPress={() => onRoleChange(value)}
-          style={[
-            styles.tab,
-            role === value && [
-              styles.activeTab,
-              {
-                backgroundColor: colors.tabActiveBg,
-              },
-            ],
-          ]}
-        >
-          <Text
+      {roles.map(({ value, label }) => {
+        const isActive = role === value;
+        return (
+          <TouchableOpacity
+            key={value}
+            activeOpacity={0.85}
+            onPress={() => onRoleChange(value)}
             style={[
-              styles.tabText,
-              role === value
-                ? [styles.activeTabText, { color: colors.primarytext }]
-                : [styles.inactiveTabText, { color: colors.secondarytext }],
+              styles.tab,
+              isActive && {
+                backgroundColor: colors.brand,
+              },
             ]}
           >
-            {label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <Text
+              style={[
+                styles.tabText,
+                isActive
+                  ? [styles.activeTabText, { color: colors.onBrand }]
+                  : [styles.inactiveTabText, { color: colors.secondaryText }],
+              ]}
+              numberOfLines={1}
+            >
+              {label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -59,34 +63,30 @@ export default function RoleSelector({
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    borderRadius: 28,
+    borderRadius: 14,
+    borderWidth: 1,
     padding: 4,
     width: "100%",
-    height: 45,
+    height: 48,
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   tab: {
     flex: 1,
     height: "100%",
-    borderRadius: 24,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-  },
-  activeTab: {
-    elevation: 3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    paddingHorizontal: 4,
   },
   tabText: {
-    fontSize: 13,
-    letterSpacing: 0.2,
+    fontSize: 12.5,
+    letterSpacing: 0.1,
   },
   activeTabText: {
     fontWeight: "700",
   },
   inactiveTabText: {
-    fontWeight: "500",
+    fontWeight: "600",
   },
 });

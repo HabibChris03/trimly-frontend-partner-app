@@ -136,7 +136,7 @@ export function PageTutorialModal({
             <View
               style={[
                 styles.stepCounterBadge,
-                { backgroundColor: "rgba(163, 179, 156, 0.15)" },
+                { backgroundColor: "rgba(138, 158, 131, 0.15)" },
               ]}
             >
               <Ionicons name="sparkles" size={13} color={colors.primary} />
@@ -208,7 +208,7 @@ export function PageTutorialModal({
             <View
               style={[
                 styles.iconCircle,
-                { backgroundColor: "rgba(163, 179, 156, 0.18)" },
+                { backgroundColor: "rgba(138, 158, 131, 0.18)" },
               ]}
             >
               <Ionicons name={step.icon} size={32} color={colors.primary} />
@@ -218,7 +218,7 @@ export function PageTutorialModal({
               <View
                 style={[
                   styles.highlightBadge,
-                  { backgroundColor: "rgba(163, 179, 156, 0.2)" },
+                  { backgroundColor: "rgba(138, 158, 131, 0.2)" },
                 ]}
               >
                 <Text
@@ -304,7 +304,7 @@ export function PageTutorialModal({
               style={[styles.nextBtn, { backgroundColor: colors.primary }]}
             >
               <Text style={styles.nextBtnText}>
-                {isLastStep ? "Got It, Let's Go! 🚀" : "Next Step"}
+                {isLastStep ? "Got It, Let's Go!" : "Next Step"}
               </Text>
               {!isLastStep && (
                 <Ionicons name="arrow-forward" size={16} color="#1C1E1B" />

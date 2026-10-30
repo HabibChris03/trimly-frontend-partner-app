@@ -1,10 +1,21 @@
 import { API_BASE_URL, getAuthToken, getStoredAuthToken } from "./api";
 
+export interface BarberSuspensionEvent {
+  event: "barber_suspended" | "barber_reactivated";
+  salon_id?: number;
+  salon_name?: string;
+  manager_phone?: string;
+  message?: string;
+}
+
+export type BarberSuspensionListener = (event: BarberSuspensionEvent) => void;
+
 type NotificationListener = (notification: any) => void;
 
 class WebSocketService {
   private socket: WebSocket | null = null;
   private listeners: Set<NotificationListener> = new Set();
+  private suspensionListeners: Set<BarberSuspensionListener> = new Set();
   private reconnectTimeout: any = null;
   private heartbeatInterval: any = null;
   private isExplicitlyClosed: boolean = false;
@@ -45,6 +56,19 @@ class WebSocketService {
           const data = JSON.parse(event.data);
           if (data.event === "new_notification" && data.notification) {
             this.notifyListeners(data.notification);
+            if (data.notification.type === "barber_suspended") {
+              this.notifySuspensionListeners({
+                event: "barber_suspended",
+                message: data.notification.description,
+              });
+            } else if (data.notification.type === "barber_reactivated") {
+              this.notifySuspensionListeners({
+                event: "barber_reactivated",
+                message: data.notification.description,
+              });
+            }
+          } else if (data.event === "barber_suspended" || data.event === "barber_reactivated") {
+            this.notifySuspensionListeners(data);
           }
         } catch {
           // Non-JSON or ping message
@@ -86,6 +110,23 @@ class WebSocketService {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  public subscribeToSuspension(listener: BarberSuspensionListener) {
+    this.suspensionListeners.add(listener);
+    return () => {
+      this.suspensionListeners.delete(listener);
+    };
+  }
+
+  private notifySuspensionListeners(event: BarberSuspensionEvent) {
+    this.suspensionListeners.forEach((listener) => {
+      try {
+        listener(event);
+      } catch {
+        // Safe dispatch
+      }
+    });
   }
 
   private notifyListeners(notification: any) {

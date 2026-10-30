@@ -31,8 +31,8 @@ export class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.subtitle}>Error Details (share this with support):</Text>
+          <Text style={styles.title}>Something went wrong / Une erreur est survenue</Text>
+          <Text style={styles.subtitle}>Error Details / Détails de l'erreur :</Text>
           <ScrollView style={styles.scroll}>
             <Text style={styles.error}>
               {this.state.error?.message ?? "Unknown error"}
@@ -60,24 +60,24 @@ export class ErrorBoundary extends React.Component<
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1C1E1B",
+    backgroundColor: "#171918",
     padding: 24,
     paddingTop: 60,
   },
   title: {
-    color: "#FF6B6B",
+    color: "#EF4444",
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 8,
   },
   subtitle: {
-    color: "#A3B39C",
+    color: "#A6ACA5",
     fontSize: 14,
     marginBottom: 12,
   },
   scroll: {
     flex: 1,
-    backgroundColor: "#2a2c29",
+    backgroundColor: "#252926",
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
@@ -94,14 +94,14 @@ const styles = StyleSheet.create({
     fontFamily: "monospace",
   },
   button: {
-    backgroundColor: "#A3B39C",
+    backgroundColor: "#C7F36B",
     borderRadius: 8,
     padding: 14,
     alignItems: "center",
   },
   buttonText: {
-    color: "#1C1E1B",
-    fontWeight: "bold",
+    color: "#171918",
+    fontWeight: "800",
     fontSize: 16,
   },
 });

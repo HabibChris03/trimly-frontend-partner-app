@@ -1,8 +1,10 @@
 import {
   DEFAULT_MAP_REGION,
+  LIGHT_MAP_STYLE,
+  DARK_MAP_STYLE,
 } from "@/constants/maps";
 import { Skeleton } from "@/components/ui/Skeleton";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { barberService } from "@/services/barberService";
 import { useThemeImages } from "@/hooks/useThemeImages";
@@ -38,7 +40,8 @@ interface BarberMapViewProps {
 
 function generateWebMapHtml(
   barbers: BarberLocationItem[],
-  selectedId: string | number | null
+  selectedId: string | number | null,
+  isDark: boolean
 ) {
   const barbersData = barbers.map((b) => ({
     id: String(b.id),
@@ -55,6 +58,18 @@ function generateWebMapHtml(
   const centerLng =
     barbers.length > 0 ? barbers[0].longitude : DEFAULT_MAP_REGION.longitude;
 
+  const tileUrl = isDark
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+  const bgColor = isDark ? "#171918" : "#F5F5F2";
+  const pinBg = isDark ? "#252926" : "#FFFFFF";
+  const pinBorder = isDark ? "#383D38" : "#DCDDD9";
+  const pinText = isDark ? "#F5F5F2" : "#171918";
+  const pinShadow = isDark
+    ? "rgba(0,0,0,0.5)"
+    : "rgba(0,0,0,0.15)";
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -69,44 +84,45 @@ function generateWebMapHtml(
       width: 100%;
       margin: 0;
       padding: 0;
-      background: #1C1E1B;
+      background: ${bgColor};
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
     }
-    .leaflet-container { background: #1C1E1B; }
+    .leaflet-container { background: ${bgColor}; }
     .barber-pin {
-      background: #232720;
-      border: 2px solid #383D34;
+      background: ${pinBg};
+      border: 1.5px solid ${pinBorder};
       border-radius: 20px;
-      padding: 5px 9px;
+      padding: 5px 10px;
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      color: #FFFFFF;
+      color: ${pinText};
       font-size: 11.5px;
       font-weight: 700;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      box-shadow: 0 3px 12px ${pinShadow};
       cursor: pointer;
       white-space: nowrap;
       transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .barber-pin:hover {
-      transform: scale(1.1);
-      border-color: #A3B39C;
+      transform: scale(1.08);
+      border-color: #C7F36B;
     }
     .barber-pin.selected {
-      background: #A3B39C;
-      color: #141712;
-      border-color: #FFFFFF;
-      transform: scale(1.15);
-      box-shadow: 0 6px 18px rgba(163,179,156,0.4);
+      background: #C7F36B;
+      color: #171918;
+      border-color: #171918;
+      transform: scale(1.12);
+      box-shadow: 0 6px 18px rgba(199,243,107,0.35);
     }
-    .barber-pin .star {
-      color: #FBBF24;
-      font-size: 11px;
+    .barber-pin .star-icon {
+      fill: #F59E0B;
+      width: 11px;
+      height: 11px;
     }
-    .barber-pin.selected .star {
-      color: #141712;
+    .barber-pin.selected .star-icon {
+      fill: #171918;
     }
   </style>
 </head>
@@ -117,9 +133,9 @@ function generateWebMapHtml(
     var defaultCenter = [${centerLat}, ${centerLng}];
     var map = L.map('map', { zoomControl: false }).setView(defaultCenter, 13);
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    L.tileLayer('${tileUrl}', {
       maxZoom: 19,
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
     }).addTo(map);
 
     barbers.forEach(function(b) {
@@ -128,7 +144,7 @@ function generateWebMapHtml(
       var icon = L.divIcon({
         className: 'custom-leaflet-marker',
         html: '<div class="barber-pin ' + (isSel ? 'selected' : '') + '">' +
-              '<span class="star">★</span>' +
+              '<svg class="star-icon" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
               '<span>' + b.rating + '</span> • <span>' + firstName + '</span>' +
               '</div>',
         iconAnchor: [40, 20]
@@ -158,7 +174,7 @@ export default function BarberMapView({
   onSelectBarber,
   style,
 }: BarberMapViewProps) {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const webIframeRef = useRef<any>(null);
@@ -308,12 +324,12 @@ export default function BarberMapView({
       {Platform.OS === "web" ? (
         React.createElement("iframe", {
           ref: webIframeRef,
-          srcDoc: generateWebMapHtml(barbersList, selectedBarber?.id || null),
+          srcDoc: generateWebMapHtml(barbersList, selectedBarber?.id || null, isDark),
           style: {
             width: "100%",
             height: "100%",
             border: "none",
-            backgroundColor: "#1C1E1B",
+            backgroundColor: isDark ? "#171918" : "#F5F5F2",
           },
           title: "Trimly Barber Map",
         })
@@ -321,7 +337,8 @@ export default function BarberMapView({
         <MapView
           ref={mapRef}
           provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-          mapType="satellite"
+          mapType="standard"
+          customMapStyle={isDark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE}
           style={styles.map}
           initialRegion={DEFAULT_MAP_REGION}
           showsUserLocation
@@ -345,11 +362,11 @@ export default function BarberMapView({
                       styles.customMarker,
                       {
                         backgroundColor: isSelected
-                          ? colors.primary
-                          : colors.surface,
+                          ? colors.brand
+                          : colors.card,
                         borderColor: isSelected
-                          ? "#FFFFFF"
-                          : colors.surfacevariant,
+                          ? colors.onBrand
+                          : colors.border,
                         transform: [{ scale: isSelected ? 1.15 : 1 }],
                       },
                     ]}
@@ -358,16 +375,27 @@ export default function BarberMapView({
                     <View
                       style={[
                         styles.markerRatingBadge,
-                        { backgroundColor: isSelected ? "#232720" : colors.primary },
+                        {
+                          backgroundColor: isSelected ? colors.onBrand : colors.card,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 2,
+                          paddingHorizontal: 4,
+                        },
                       ]}
                     >
+                      <Ionicons
+                        name="star"
+                        size={8}
+                        color={isSelected ? colors.brand : "#F59E0B"}
+                      />
                       <Text
                         style={[
                           styles.markerRatingText,
-                          { color: isSelected ? "#FFFFFF" : colors.background },
+                          { color: isSelected ? colors.brand : colors.primaryText },
                         ]}
                       >
-                        {barber.rating}★
+                        {barber.rating}
                       </Text>
                     </View>
                   </View>
@@ -396,7 +424,7 @@ export default function BarberMapView({
           styles.recenterButton,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.surfacevariant,
+            borderColor: colors.border,
           },
         ]}
       >
@@ -410,7 +438,7 @@ export default function BarberMapView({
             styles.selectedCard,
             {
               backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
+              borderColor: colors.border,
             },
           ]}
         >
@@ -429,7 +457,7 @@ export default function BarberMapView({
             styles.selectedCard,
             {
               backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
+              borderColor: colors.border,
             },
           ]}
         >
@@ -506,7 +534,7 @@ export default function BarberMapView({
               onPress={handleOpenProfile}
               style={[styles.bookBtn, { backgroundColor: colors.primary }]}
             >
-              <Text style={[styles.bookBtnText, { color: colors.background }]}>
+              <Text style={[styles.bookBtnText, { color: "#FFFFFF" }]}>
                 Book
               </Text>
             </TouchableOpacity>
@@ -539,7 +567,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 5,
     position: "relative",
   },
@@ -584,7 +612,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
   },
   selectedCard: {
@@ -600,8 +628,8 @@ const styles = StyleSheet.create({
     gap: 12,
     elevation: 8,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
     shadowRadius: 10,
   },
   cardAvatar: {
@@ -609,7 +637,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     borderWidth: 1.5,
-    borderColor: "#383D34",
+    borderColor: "#E5E6E2",
   },
   cardInfo: {
     flex: 1,
@@ -657,7 +685,7 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: "#687067",
+    backgroundColor: "#A8ABA5",
   },
   cardActionsCol: {
     alignItems: "center",

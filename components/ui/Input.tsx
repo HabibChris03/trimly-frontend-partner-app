@@ -33,7 +33,7 @@ export function Input({
   onBlur,
   ...props
 }: InputProps) {
-  const { colors, radius, spacing, typography } = useTheme();
+  const { colors, spacing, typography } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(!isPassword);
 
@@ -50,7 +50,7 @@ export function Input({
   const borderColor = error
     ? colors.error
     : isFocused
-    ? colors.primary
+    ? colors.brand
     : colors.border;
 
   return (
@@ -76,7 +76,7 @@ export function Input({
           {
             backgroundColor: colors.inputBg,
             borderColor,
-            borderRadius: radius.xl,
+            borderRadius: 14,
             paddingHorizontal: spacing.lg,
           },
         ]}
@@ -85,7 +85,7 @@ export function Input({
           <Ionicons
             name={leftIcon}
             size={20}
-            color={isFocused ? colors.primary : colors.secondaryText}
+            color={isFocused ? colors.brand : colors.secondaryText}
             style={{ marginRight: spacing.sm }}
           />
         )}
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     height: 50,
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 1.2,
+    borderWidth: 1,
   },
   textInput: {
     flex: 1,

@@ -1,6 +1,6 @@
 import { useToast } from "@/context/ToastContext";
 import { useLanguage } from "@/context/LanguageContext";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -90,7 +90,7 @@ import { notificationService } from "@/services/notificationService";
 import { ActivityIndicator } from "react-native";
 
 export default function HelpSupportScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
   const { t, language } = useLanguage();
@@ -193,16 +193,18 @@ export default function HelpSupportScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "left", "right"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+      />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.back()}
-          style={styles.headerBtn}
+          style={[styles.headerBtn, { backgroundColor: colors.surface }]}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={22} color={colors.primarytext} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
@@ -219,8 +221,8 @@ export default function HelpSupportScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#A3B39C"
-            colors={["#A3B39C"]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
@@ -280,10 +282,10 @@ export default function HelpSupportScreen() {
             ]}
           >
             <View style={styles.actionIconCircle}>
-              <Ionicons name="call-outline" size={22} color="#A3B39C" />
+              <Ionicons name="call-outline" size={22} color={colors.primary} />
             </View>
             <Text style={[styles.actionTitle, { color: colors.primarytext }]}>
-              Support Call
+              {t("helpSupport.supportCall") || "Support Call"}
             </Text>
             <Text style={[styles.actionSub, { color: colors.secondarytext }]}>
               +237 653 81 13 57
@@ -319,7 +321,7 @@ export default function HelpSupportScreen() {
           disabled={isSendingEmail}
           onPress={handleSendTestEmail}
           style={{
-            backgroundColor: "rgba(163, 179, 156, 0.12)",
+            backgroundColor: "rgba(138, 158, 131, 0.12)",
             borderColor: colors.primary,
             borderWidth: 1.5,
             borderRadius: 18,
@@ -349,7 +351,7 @@ export default function HelpSupportScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: "700", color: colors.primarytext }}>
-                Send Test Email
+                {t("helpSupport.sendTestEmail") || "Send Test Email"}
               </Text>
               <Text style={{ fontSize: 12, color: colors.secondarytext, marginTop: 2 }}>
                 Delivers to: {user?.email || "your account email"}
@@ -387,7 +389,7 @@ export default function HelpSupportScreen() {
                     {
                       backgroundColor: colors.surface,
                       borderColor: isExpanded
-                        ? "#A3B39C"
+                        ? colors.primary
                         : colors.surfacevariant,
                     },
                   ]}
@@ -408,7 +410,7 @@ export default function HelpSupportScreen() {
                     <Ionicons
                       name={isExpanded ? "chevron-up" : "chevron-down"}
                       size={18}
-                      color={isExpanded ? "#A3B39C" : colors.secondarytext}
+                      color={isExpanded ? colors.primary : colors.secondarytext}
                     />
                   </TouchableOpacity>
 
@@ -446,7 +448,7 @@ export default function HelpSupportScreen() {
               Still have questions?
             </Text>
             <Text style={[styles.ticketSub, { color: colors.secondarytext }]}>
-              Chat directly with our support team on WhatsApp (653811357).
+              {t("helpSupport.chatWhatsApp") || "Chat directly with our support team on WhatsApp (653811357)." }
             </Text>
           </View>
           <TouchableOpacity
@@ -504,10 +506,10 @@ export default function HelpSupportScreen() {
                 </View>
                 <View>
                   <Text style={[styles.modalTitle, { color: colors.primarytext }]}>
-                    Partner Support Desk
+                    {t("helpSupport.partnerSupportDesk") || "Partner Support Desk"}
                   </Text>
                   <Text style={[styles.modalSubtitle, { color: colors.secondarytext }]}>
-                    Direct to Trimly Operations & Admin
+                    {t("helpSupport.directToTrimlyOps") || "Direct to Trimly Operations & Admin"}
                   </Text>
                 </View>
               </View>
@@ -520,16 +522,16 @@ export default function HelpSupportScreen() {
               <Text style={[styles.inputLabel, { color: colors.primarytext }]}>Subject</Text>
               <TextInput
                 style={[styles.modalInput, { backgroundColor: colors.surfacevariant, color: colors.primarytext, borderColor: colors.surfacevariant }]}
-                placeholder="e.g. Payout Inquiry, Shop Listing, or Technical Issue"
+                placeholder={t("helpSupport.subjectPlaceholder") || "e.g. Payout Inquiry, Shop Listing, or Technical Issue"}
                 placeholderTextColor={colors.inputPlaceholder}
                 value={ticketSubject}
                 onChangeText={setTicketSubject}
               />
 
-              <Text style={[styles.inputLabel, { color: colors.primarytext, marginTop: 12 }]}>Details & Description</Text>
+              <Text style={[styles.inputLabel, { color: colors.primarytext, marginTop: 12 }]}>{t("helpSupport.detailsAndDescription") || "Details & Description"}</Text>
               <TextInput
                 style={[styles.modalTextarea, { backgroundColor: colors.surfacevariant, color: colors.primarytext, borderColor: colors.surfacevariant }]}
-                placeholder="Describe your inquiry, booking issue, or payout question..."
+                placeholder={t("helpSupport.messagePlaceholder") || "Describe your inquiry, booking issue, or payout question..."}
                 placeholderTextColor={colors.inputPlaceholder}
                 value={ticketMessage}
                 onChangeText={setTicketMessage}
@@ -547,8 +549,8 @@ export default function HelpSupportScreen() {
                   <ActivityIndicator color={colors.background} />
                 ) : (
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Ionicons name="send" size={16} color={colors.background} style={{ marginRight: 6 }} />
-                    <Text style={[styles.modalSubmitText, { color: colors.background }]}>
+                    <Ionicons name="send" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={[styles.modalSubmitText, { color: "#FFFFFF" }]}>
                       Submit Ticket
                     </Text>
                   </View>
@@ -622,7 +624,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "rgba(163, 179, 156, 0.15)",
+    backgroundColor: "rgba(138, 158, 131, 0.15)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 4,

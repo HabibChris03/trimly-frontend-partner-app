@@ -1,7 +1,3 @@
-import { useLanguage } from "@/context/LanguageContext";
-import useColors from "@/hooks/usecolor";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Dimensions,
@@ -13,9 +9,13 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+
+import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/theme/useTheme";
 
 const appLogo = require("@/assets/images/logo.png");
-
 const { width } = Dimensions.get("window");
 
 interface Slide {
@@ -23,11 +23,10 @@ interface Slide {
   title: string;
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
-  accent: string;
 }
 
-export default function OnboardingScreen() {
-  const colors = useColors();
+export default function PartnerOnboardingScreen() {
+  const { colors, isDark, radius } = useTheme();
   const router = useRouter();
   const { t } = useLanguage();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -35,24 +34,21 @@ export default function OnboardingScreen() {
   const slides: Slide[] = [
     {
       id: "1",
-      title: t("onboarding.slide1Title"),
-      subtitle: t("onboarding.slide1Subtitle"),
-      icon: "cut-outline",
-      accent: "#A3B39C",
+      title: "Fill Every Chair & Maximize Bookings",
+      subtitle: "Connect with thousands of local clients looking for top grooming services daily.",
+      icon: "calendar-outline",
     },
     {
       id: "2",
-      title: t("onboarding.slide2Title"),
-      subtitle: t("onboarding.slide2Subtitle"),
-      icon: "sparkles-outline",
-      accent: "#A3B39C",
+      title: "Real-Time Earnings & Instant Analytics",
+      subtitle: "Track daily revenue, tips, and booking trends with transparent financial metrics.",
+      icon: "trending-up-outline",
     },
     {
       id: "3",
-      title: t("onboarding.slide3Title"),
-      subtitle: t("onboarding.slide3Subtitle"),
-      icon: "calendar-outline",
-      accent: "#A3B39C",
+      title: "Effortless Team & Salon Management",
+      subtitle: "Coordinate staff shifts, set service catalogs, and manage multiple chairs in one app.",
+      icon: "people-outline",
     },
   ];
 
@@ -75,7 +71,9 @@ export default function OnboardingScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "bottom", "left", "right"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+      />
 
       {/* Top Bar with Skip */}
       <View style={styles.topBar}>
@@ -85,8 +83,8 @@ export default function OnboardingScreen() {
             style={{ width: 28, height: 28, borderRadius: 8 }}
             resizeMode="contain"
           />
-          <Text style={[styles.brandText, { color: colors.primarytext }]}>
-            Trimly
+          <Text style={[styles.brandText, { color: colors.primaryText }]}>
+            Trimly Partner
           </Text>
         </View>
 
@@ -94,9 +92,10 @@ export default function OnboardingScreen() {
           activeOpacity={0.7}
           onPress={handleSkip}
           style={styles.skipBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={[styles.skipText, { color: colors.secondarytext }]}>
-            {t("onboarding.skip")}
+          <Text style={[styles.skipText, { color: colors.secondaryText }]}>
+            {t("onboarding.skip") || "Skip"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -105,24 +104,16 @@ export default function OnboardingScreen() {
       <View style={styles.centerContent}>
         {/* Decorative Circle Icon Box */}
         <View style={styles.iconOuterRing}>
-          <View style={[styles.iconBox, { backgroundColor: "rgba(163, 179, 156, 0.15)" }]}>
-            {currentIndex === 0 ? (
-              <Image
-                source={appLogo}
-                style={{ width: 72, height: 72, borderRadius: 18 }}
-                resizeMode="contain"
-              />
-            ) : (
-              <Ionicons name={currentSlide.icon} size={64} color="#A3B39C" />
-            )}
+          <View style={[styles.iconBox, { backgroundColor: colors.secondarySurface }]}>
+            <Ionicons name={currentSlide.icon} size={64} color={colors.primary} />
           </View>
         </View>
 
         {/* Slide Text */}
-        <Text style={[styles.title, { color: colors.primarytext }]}>
+        <Text style={[styles.title, { color: colors.primaryText }]}>
           {currentSlide.title}
         </Text>
-        <Text style={[styles.subtitle, { color: colors.secondarytext }]}>
+        <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
           {currentSlide.subtitle}
         </Text>
       </View>
@@ -139,7 +130,7 @@ export default function OnboardingScreen() {
                 style={[
                   styles.dot,
                   {
-                    backgroundColor: isActive ? "#A3B39C" : colors.surfacevariant,
+                    backgroundColor: isActive ? colors.primary : colors.border,
                     width: isActive ? 28 : 8,
                   },
                 ]}
@@ -152,17 +143,24 @@ export default function OnboardingScreen() {
         <TouchableOpacity
           activeOpacity={0.88}
           onPress={handleNext}
-          style={[styles.nextBtn, { backgroundColor: "#A3B39C" }]}
+          style={[
+            styles.nextBtn,
+            {
+              backgroundColor: colors.primary,
+              borderRadius: radius["2xl"],
+              shadowColor: colors.primary,
+            },
+          ]}
         >
           <Text style={styles.nextBtnText}>
             {currentIndex === slides.length - 1
-              ? t("onboarding.getStarted")
-              : t("onboarding.next")}
+              ? "Get Started"
+              : "Next"}
           </Text>
           <Ionicons
             name="arrow-forward"
             size={18}
-            color="#1C1E1B"
+            color="#FFFFFF"
             style={{ marginLeft: 6 }}
           />
         </TouchableOpacity>
@@ -181,7 +179,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 16,
+    paddingTop: 12,
   },
   brandRow: {
     flexDirection: "row",
@@ -189,7 +187,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   brandText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
     letterSpacing: 0.3,
   },
@@ -206,43 +204,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   iconOuterRing: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    borderWidth: 1.5,
-    borderColor: "rgba(163, 179, 156, 0.25)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 40,
+    marginBottom: 36,
   },
   iconBox: {
     width: 130,
     height: 130,
     borderRadius: 65,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "700",
     textAlign: "center",
-    marginBottom: 14,
-    lineHeight: 36,
+    marginBottom: 12,
+    letterSpacing: -0.3,
+    lineHeight: 34,
   },
   subtitle: {
-    fontSize: 14.5,
+    fontSize: 15,
     textAlign: "center",
     lineHeight: 22,
-    paddingHorizontal: 8,
+    maxWidth: 300,
   },
   bottomControls: {
-    paddingBottom: 30,
+    paddingBottom: 24,
     gap: 24,
   },
   dotsRow: {
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
   dot: {
@@ -251,14 +243,17 @@ const styles = StyleSheet.create({
   },
   nextBtn: {
     height: 52,
-    borderRadius: 26,
     flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   nextBtnText: {
-    color: "#1C1E1B",
-    fontSize: 15.5,
+    fontSize: 16,
     fontWeight: "700",
+    color: "#FFFFFF",
   },
 });

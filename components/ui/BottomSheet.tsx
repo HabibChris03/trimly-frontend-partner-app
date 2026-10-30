@@ -3,7 +3,6 @@ import {
   Modal,
   StyleSheet,
   Text,
-  TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
@@ -32,7 +31,7 @@ export function BottomSheet({
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
           <TouchableWithoutFeedback>
             <View
               style={[
@@ -41,6 +40,8 @@ export function BottomSheet({
                   backgroundColor: colors.card,
                   borderTopLeftRadius: radius["2xl"],
                   borderTopRightRadius: radius["2xl"],
+                  borderTopWidth: 1,
+                  borderColor: colors.border,
                   padding: spacing.xl,
                 },
                 shadows.modal,
@@ -82,7 +83,6 @@ export function BottomSheet({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "flex-end",
   },
   sheet: {

@@ -1,11 +1,10 @@
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Dimensions,
+  ActivityIndicator,
   Image,
-  ImageSourcePropType,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,26 +13,23 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useThemeImages } from "@/hooks/useThemeImages";
 import { useLanguage } from "@/context/LanguageContext";
 import ImageViewerModal from "@/components/ui/ImageViewerModal";
 import { barberService } from "@/services/barberService";
-
-const { width } = Dimensions.get("window");
-const CARD_WIDTH = (width - 36 - 10) / 2;
 
 interface PortfolioItem {
   id: string;
   category: string;
   image: string;
   title: string;
+  price?: number;
   tall?: boolean;
 }
 
 const CATEGORIES = ["All", "Fades", "Classic", "Beard", "Color"];
 
 export default function PortfolioGalleryScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { t } = useLanguage();
   const params = useLocalSearchParams<{ barberId?: string; barberName?: string }>();
@@ -75,7 +71,11 @@ export default function PortfolioGalleryScreen() {
               id: item.id ? item.id.toString() : `port-${idx}`,
               category: item.category || (idx % 2 === 0 ? "Fades" : "Classic"),
               image: item.media_url || item.uri,
-              title: item.hairstyle_name || item.hairstyle_or_service_name || "Signature Cut",
+              title:
+                item.hairstyle_name ||
+                item.hairstyle_or_service_name ||
+                "Signature Cut",
+              price: item.price !== undefined ? Number(item.price) : undefined,
               tall: idx % 3 === 0,
             }))
           );
@@ -116,7 +116,7 @@ export default function PortfolioGalleryScreen() {
 
   const renderItem = (item: PortfolioItem) => {
     const isLiked = likedItems.includes(item.id);
-    const cardHeight = item.tall ? 230 : 170;
+    const cardHeight = item.tall ? 228 : 178;
     return (
       <TouchableOpacity
         key={item.id}
@@ -126,7 +126,8 @@ export default function PortfolioGalleryScreen() {
           styles.portfolioCard,
           {
             height: cardHeight,
-            borderColor: colors.surfacevariant,
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
           },
         ]}
       >
@@ -142,12 +143,19 @@ export default function PortfolioGalleryScreen() {
         >
           <Ionicons
             name={isLiked ? "heart" : "heart-outline"}
-            size={18}
-            color={isLiked ? "#EF4444" : "#FFFFFF"}
+            size={16}
+            color={isLiked ? colors.error : "#F5F5F2"}
           />
         </TouchableOpacity>
         <View style={styles.cardOverlay}>
-          <Text style={styles.cardCategoryText}>{item.title || item.category}</Text>
+          <Text style={styles.cardTitleText} numberOfLines={1}>
+            {item.title || item.category}
+          </Text>
+          <Text style={styles.cardMetaText} numberOfLines={1}>
+            {item.price
+              ? `${item.price.toLocaleString()} CFA • ${item.category}`
+              : item.category}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -158,16 +166,19 @@ export default function PortfolioGalleryScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "left", "right"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Header */}
+      {/* Dark Urban Header */}
       <View style={styles.header}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.back()}
-          style={styles.headerBtn}
+          style={[
+            styles.headerBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={20} color={colors.primarytext} />
         </TouchableOpacity>
 
         <View style={styles.headerCenter}>
@@ -180,16 +191,18 @@ export default function PortfolioGalleryScreen() {
         </View>
 
         <TouchableOpacity
-          activeOpacity={0.8}
+          activeOpacity={0.85}
           onPress={() =>
             router.push({
               pathname: "/Pages/booking-calendar" as any,
               params: { barberName },
             })
           }
-          style={[styles.bookHeaderBtn, { backgroundColor: "#A3B39C" }]}
+          style={[styles.bookHeaderBtn, { backgroundColor: colors.primary }]}
         >
-          <Text style={styles.bookHeaderBtnText}>{t("portfolioGallery.bookBtn")}</Text>
+          <Text style={[styles.bookHeaderBtnText, { color: colors.onBrand }]}>
+            {t("portfolioGallery.bookBtn")}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -199,7 +212,7 @@ export default function PortfolioGalleryScreen() {
           styles.statsRow,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.surfacevariant,
+            borderColor: colors.border,
           },
         ]}
       >
@@ -212,18 +225,21 @@ export default function PortfolioGalleryScreen() {
           </Text>
         </View>
         <View
-          style={[styles.statDivider, { backgroundColor: colors.surfacevariant }]}
+          style={[styles.statDivider, { backgroundColor: colors.border }]}
         />
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.primarytext }]}>
-            {barberRating > 0 ? barberRating.toFixed(1) : "0.0"}
-          </Text>
+          <View style={styles.ratingValueRow}>
+            <Ionicons name="star" size={14} color={colors.star} />
+            <Text style={[styles.statValue, { color: colors.primarytext, marginBottom: 0 }]}>
+              {barberRating > 0 ? barberRating.toFixed(1) : "0.0"}
+            </Text>
+          </View>
           <Text style={[styles.statLabel, { color: colors.secondarytext }]}>
             {t("portfolioGallery.rating")}
           </Text>
         </View>
         <View
-          style={[styles.statDivider, { backgroundColor: colors.surfacevariant }]}
+          style={[styles.statDivider, { backgroundColor: colors.border }]}
         />
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: colors.primarytext }]}>
@@ -236,50 +252,74 @@ export default function PortfolioGalleryScreen() {
       </View>
 
       {/* Category Filter */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesRow}
-      >
-        {CATEGORIES.map((cat) => {
-          const isActive = selectedCategory === cat;
-          return (
-            <TouchableOpacity
-              key={cat}
-              activeOpacity={0.75}
-              onPress={() => setSelectedCategory(cat)}
-              style={[
-                styles.categoryPill,
-                {
-                  backgroundColor: isActive ? "#A3B39C" : colors.surface,
-                  borderColor: isActive ? "#A3B39C" : colors.surfacevariant,
-                },
-              ]}
-            >
-              <Text
+      <View style={{ flexShrink: 0 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesRow}
+        >
+          {CATEGORIES.map((cat) => {
+            const isActive = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                activeOpacity={0.75}
+                onPress={() => setSelectedCategory(cat)}
                 style={[
-                  styles.categoryText,
+                  styles.categoryPill,
                   {
-                    color: isActive ? "#1C1E1B" : colors.primarytext,
-                    fontWeight: isActive ? "700" : "500",
+                    backgroundColor: isActive ? colors.primary : colors.surface,
+                    borderColor: isActive ? colors.primary : colors.border,
                   },
                 ]}
               >
-                {getCategoryLabel(cat)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                <Text
+                  style={[
+                    styles.categoryText,
+                    {
+                      color: isActive ? colors.onBrand : colors.primarytext,
+                      fontWeight: isActive ? "700" : "500",
+                    },
+                  ]}
+                >
+                  {getCategoryLabel(cat)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
-      {/* Masonry Grid */}
+      {/* Centered Caption & Divider matching Reference Right Phone */}
+      <View style={[styles.captionDivider, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.captionText, { color: colors.secondarytext }]}>
+          Scroll down for more styles
+        </Text>
+      </View>
+
+      {/* 2-Column Masonry Grid */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.gridContent}
       >
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="images-outline" size={38} color={colors.secondarytext} />
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : filteredItems.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View
+              style={[
+                styles.emptyIconCircle,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons
+                name="images-outline"
+                size={34}
+                color={colors.secondarytext}
+              />
+            </View>
             <Text style={[styles.emptyText, { color: colors.secondarytext }]}>
               {t("portfolioGallery.noPhotos")}
             </Text>
@@ -313,18 +353,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   headerCenter: {
     alignItems: "center",
+    flex: 1,
+    marginHorizontal: 10,
   },
   headerTitle: {
     fontSize: 17,
@@ -335,68 +379,88 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   bookHeaderBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 18,
+    paddingHorizontal: 16,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
   bookHeaderBtnText: {
-    color: "#1C1E1B",
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: "700",
   },
   statsRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 16,
+    marginHorizontal: 18,
     marginBottom: 12,
     borderRadius: 18,
     borderWidth: 1,
-    paddingVertical: 14,
+    paddingVertical: 13,
   },
   statItem: {
     flex: 1,
     alignItems: "center",
   },
+  ratingValueRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 3,
+  },
   statValue: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     marginBottom: 3,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 11.5,
   },
   statDivider: {
     width: 1,
-    height: 30,
+    height: 28,
   },
   categoriesRow: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 10,
     gap: 8,
   },
   categoryPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 15,
+    height: 36,
+    borderRadius: 11,
     borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   categoryText: {
-    fontSize: 13,
+    fontSize: 12.5,
+  },
+  captionDivider: {
+    marginHorizontal: 18,
+    paddingBottom: 10,
+    marginBottom: 14,
+    borderBottomWidth: 1,
+    alignItems: "center",
+  },
+  captionText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
   gridContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 40,
   },
   masonryGrid: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   column: {
     flex: 1,
-    gap: 10,
+    gap: 12,
   },
   portfolioCard: {
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     position: "relative",
@@ -413,43 +477,42 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(23, 25, 24, 0.72)",
     justifyContent: "center",
     alignItems: "center",
   },
-  categoryTag: {
-    position: "absolute",
-    bottom: 8,
-    left: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  categoryTagText: {
-    color: "#1C1E1B",
-    fontSize: 11,
-    fontWeight: "700",
-  },
   cardOverlay: {
     position: "absolute",
-    bottom: 8,
-    left: 8,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 10,
+    backgroundColor: "rgba(23, 25, 24, 0.76)",
   },
-  cardCategoryText: {
-    color: "#FFFFFF",
+  cardTitleText: {
+    color: "#F5F5F2",
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  cardMetaText: {
+    color: "#C7F36B",
     fontSize: 11,
     fontWeight: "600",
+    marginTop: 2,
   },
   emptyContainer: {
     paddingVertical: 60,
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
+  },
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyText: {
     fontSize: 14,

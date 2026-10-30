@@ -1,3 +1,4 @@
+import { useLanguage } from "@/context/LanguageContext";
 import useColors from "@/hooks/usecolor";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -23,6 +24,8 @@ interface ImageViewerModalProps {
   barberName?: string;
   serviceCategory?: string;
   likesCount?: number;
+  price?: number;
+  onBookStyle?: () => void;
 }
 
 export default function ImageViewerModal({
@@ -33,7 +36,10 @@ export default function ImageViewerModal({
   barberName,
   serviceCategory,
   likesCount,
+  price,
+  onBookStyle,
 }: ImageViewerModalProps) {
+  const { t } = useLanguage();
   const colors = useColors();
 
   if (!visible || !imageUrl) return null;
@@ -56,7 +62,10 @@ export default function ImageViewerModal({
               </Text>
             )}
             {barberName && (
-              <Text style={styles.headerSubtitle} numberOfLines={1}>
+              <Text
+                style={[styles.headerSubtitle, { color: colors.brand }]}
+                numberOfLines={1}
+              >
                 by {barberName}
               </Text>
             )}
@@ -67,7 +76,7 @@ export default function ImageViewerModal({
             onPress={onClose}
             style={styles.closeBtn}
           >
-            <Ionicons name="close" size={24} color="#FFFFFF" />
+            <Ionicons name="close" size={22} color="#F5F5F2" />
           </TouchableOpacity>
         </View>
 
@@ -93,13 +102,21 @@ export default function ImageViewerModal({
           <View style={styles.bottomInfoRow}>
             {serviceCategory ? (
               <View style={styles.categoryBadge}>
-                <Ionicons name="cut-outline" size={13} color="#A3B39C" />
+                <Ionicons name="cut-outline" size={13} color="#C7F36B" />
                 <Text style={styles.categoryBadgeText}>{serviceCategory}</Text>
               </View>
             ) : (
               <View style={styles.categoryBadge}>
-                <Ionicons name="sparkles-outline" size={13} color="#A3B39C" />
+                <Ionicons name="sparkles-outline" size={13} color="#C7F36B" />
                 <Text style={styles.categoryBadgeText}>Custom Cut</Text>
+              </View>
+            )}
+
+            {price !== undefined && price > 0 && (
+              <View style={styles.priceBadge}>
+                <Text style={styles.priceBadgeText}>
+                  {price.toLocaleString()} XAF
+                </Text>
               </View>
             )}
 
@@ -111,7 +128,23 @@ export default function ImageViewerModal({
             )}
           </View>
 
-          <Text style={styles.pinchHint}>Pinch to zoom • Tap close to return</Text>
+          {onBookStyle && (
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => {
+                onClose();
+                onBookStyle();
+              }}
+              style={styles.bookStyleButton}
+            >
+              <Ionicons name="calendar-outline" size={18} color="#171918" />
+              <Text style={styles.bookStyleButtonText}>
+                Book This Style {price ? `• ${price.toLocaleString()} XAF` : ""}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <Text style={styles.pinchHint}>{t("common.pinchToZoom") || "Pinch to zoom • Tap close to return"}</Text>
         </View>
       </SafeAreaView>
     </Modal>
@@ -121,7 +154,7 @@ export default function ImageViewerModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.95)",
+    backgroundColor: "rgba(15, 17, 16, 0.97)",
     justifyContent: "space-between",
   },
   topBar: {
@@ -140,19 +173,21 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: "700",
-    color: "#FFFFFF",
-    letterSpacing: 0.3,
+    color: "#F5F5F2",
+    letterSpacing: -0.1,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: "#A3B39C",
     marginTop: 2,
+    fontWeight: "600",
   },
   closeBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    backgroundColor: "#252926",
+    borderWidth: 1,
+    borderColor: "#383D38",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -167,15 +202,15 @@ const styles = StyleSheet.create({
   },
   fullImage: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.7,
+    height: SCREEN_HEIGHT * 0.68,
   },
   bottomBar: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 14,
     paddingBottom: 28,
-    backgroundColor: "rgba(15, 16, 14, 0.8)",
+    backgroundColor: "#171918",
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.08)",
+    borderTopColor: "#383D38",
   },
   bottomInfoRow: {
     flexDirection: "row",
@@ -187,17 +222,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(163, 179, 156, 0.15)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
+    backgroundColor: "#252926",
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(163, 179, 156, 0.3)",
+    borderColor: "#383D38",
   },
   categoryBadgeText: {
     fontSize: 12.5,
     fontWeight: "600",
-    color: "#A3B39C",
+    color: "#F5F5F2",
   },
   likesBadge: {
     flexDirection: "row",
@@ -206,12 +241,41 @@ const styles = StyleSheet.create({
   },
   likesText: {
     fontSize: 13,
-    color: "#E5E7EB",
+    color: "#A6ACA5",
     fontWeight: "500",
+  },
+  priceBadge: {
+    backgroundColor: "rgba(199, 243, 107, 0.14)",
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(199, 243, 107, 0.35)",
+  },
+  priceBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#C7F36B",
+  },
+  bookStyleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#C7F36B",
+    height: 50,
+    borderRadius: 14,
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  bookStyleButtonText: {
+    color: "#171918",
+    fontSize: 15,
+    fontWeight: "700",
   },
   pinchHint: {
     fontSize: 11.5,
-    color: "#6B7280",
+    color: "#A6ACA5",
     textAlign: "center",
     marginTop: 4,
   },

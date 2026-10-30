@@ -1,11 +1,11 @@
 import ImageViewerModal from "@/components/ui/ImageViewerModal";
 import { barberService } from "@/services/barberService";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  Dimensions,
+  ActivityIndicator,
   Image,
   ScrollView,
   StatusBar,
@@ -16,8 +16,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLanguage } from "@/context/LanguageContext";
-
-const { width } = Dimensions.get("window");
 
 interface GalleryItem {
   id: string;
@@ -33,7 +31,7 @@ interface GalleryItem {
 const CATEGORIES = ["All", "Skin Fades", "Classic", "Beard", "Locs", "Color"];
 
 export default function GalleryScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -60,7 +58,7 @@ export default function GalleryScreen() {
     async function loadPortfolio() {
       try {
         setIsLoading(true);
-        const [portfolioList, nearbyBarbers] = await Promise.all([
+        const [portfolioList] = await Promise.all([
           barberService.getBarberPortfolio(4).catch(() => []),
           barberService.getNearbyBarbers().catch(() => []),
         ]);
@@ -71,12 +69,16 @@ export default function GalleryScreen() {
             if (p.media_url) {
               items.push({
                 id: `p-${p.id || idx}`,
-                styleName: p.hairstyle_name || p.hairstyle_or_service_name || "Custom Haircut",
+                styleName:
+                  p.hairstyle_name ||
+                  p.hairstyle_or_service_name ||
+                  "Custom Haircut",
                 barberName: "Master Barber",
-                price: 25000,
-                likes: p.likes || 120 + (idx * 15),
+                price: p.price || 25000,
+                likes: p.likes || 120 + idx * 15,
                 image: p.media_url,
-                category: p.category || (idx % 2 === 0 ? "Skin Fades" : "Classic"),
+                category:
+                  p.category || (idx % 2 === 0 ? "Skin Fades" : "Classic"),
                 tall: idx % 3 === 0,
               });
             }
@@ -98,7 +100,7 @@ export default function GalleryScreen() {
       ? galleryItems
       : galleryItems.filter((item) => item.category === selectedCategory);
 
-  // Split into two columns for masonry layout
+  // Split into two columns for masonry layout matching Reference Right Phone
   const leftColumn: GalleryItem[] = [];
   const rightColumn: GalleryItem[] = [];
   filteredItems.forEach((item, index) => {
@@ -121,7 +123,7 @@ export default function GalleryScreen() {
 
   const renderCard = (item: GalleryItem) => {
     const isLiked = likedItems.includes(item.id);
-    const cardHeight = item.tall ? 240 : 180;
+    const cardHeight = item.tall ? 228 : 178;
 
     return (
       <TouchableOpacity
@@ -132,7 +134,7 @@ export default function GalleryScreen() {
           styles.galleryCard,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.surfacevariant,
+            borderColor: colors.border,
             height: cardHeight,
           },
         ]}
@@ -143,26 +145,25 @@ export default function GalleryScreen() {
           resizeMode="cover"
         />
 
-        {/* Gradient overlay at bottom */}
-        <View style={styles.cardOverlay}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => toggleLike(item.id)}
-            style={styles.heartButton}
-          >
-            <Ionicons
-              name={isLiked ? "heart" : "heart-outline"}
-              size={18}
-              color={isLiked ? "#EF4444" : "#FFFFFF"}
-            />
-          </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => toggleLike(item.id)}
+          style={styles.heartButton}
+        >
+          <Ionicons
+            name={isLiked ? "heart" : "heart-outline"}
+            size={16}
+            color={isLiked ? colors.error : "#F5F5F2"}
+          />
+        </TouchableOpacity>
 
+        <View style={styles.cardOverlay}>
           <View style={styles.cardMeta}>
             <Text style={styles.cardStyleName} numberOfLines={1}>
               {item.styleName}
             </Text>
             <Text style={styles.cardBarberName} numberOfLines={1}>
-              {item.category}
+              {item.price.toLocaleString()} CFA • {item.category}
             </Text>
           </View>
         </View>
@@ -175,16 +176,19 @@ export default function GalleryScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "left", "right"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Header */}
+      {/* Header matching Reference Right Phone */}
       <View style={styles.header}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.back()}
-          style={styles.headerBtn}
+          style={[
+            styles.headerBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={20} color={colors.primarytext} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
@@ -193,62 +197,120 @@ export default function GalleryScreen() {
 
         <TouchableOpacity
           activeOpacity={0.8}
+          onPress={() => router.push("/Pages/notifications" as any)}
+          style={[
+            styles.headerBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <Ionicons
+            name="notifications-outline"
+            size={19}
+            color={colors.primarytext}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Search Bar Trigger matching Reference Right Phone */}
+      <View style={styles.searchWrap}>
+        <TouchableOpacity
+          activeOpacity={0.85}
           onPress={() =>
             router.push({
               pathname: "/Pages/style-search-results" as any,
             })
           }
-          style={styles.headerBtn}
+          style={[
+            styles.searchBarTrigger,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="search-outline" size={22} color="#FFFFFF" />
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={colors.secondarytext}
+          />
+          <Text
+            style={[styles.searchPlaceholder, { color: colors.secondarytext }]}
+          >
+            {t("common.search") || "Search"}
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Category Filters */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoriesRow}
-      >
-        {CATEGORIES.map((cat) => {
-          const isSelected = selectedCategory === cat;
-          return (
-            <TouchableOpacity
-              key={cat}
-              activeOpacity={0.75}
-              onPress={() => setSelectedCategory(cat)}
-              style={[
-                styles.categoryPill,
-                {
-                  backgroundColor: isSelected ? "#A3B39C" : colors.surface,
-                  borderColor: isSelected ? "#A3B39C" : colors.surfacevariant,
-                },
-              ]}
-            >
-              <Text
+      <View style={{ flexShrink: 0 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesRow}
+        >
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                activeOpacity={0.75}
+                onPress={() => setSelectedCategory(cat)}
                 style={[
-                  styles.categoryText,
+                  styles.categoryPill,
                   {
-                    color: isSelected ? "#1C1E1B" : colors.primarytext,
-                    fontWeight: isSelected ? "700" : "500",
+                    backgroundColor: isSelected
+                      ? colors.primary
+                      : colors.surface,
+                    borderColor: isSelected ? colors.primary : colors.border,
                   },
                 ]}
               >
-                {getCategoryLabel(cat)}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+                <Text
+                  style={[
+                    styles.categoryText,
+                    {
+                      color: isSelected ? colors.onBrand : colors.primarytext,
+                      fontWeight: isSelected ? "700" : "500",
+                    },
+                  ]}
+                >
+                  {getCategoryLabel(cat)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
-      {/* Masonry Grid */}
+      {/* Centered Caption & Divider matching Reference Right Phone */}
+      <View
+        style={[styles.captionDivider, { borderBottomColor: colors.border }]}
+      >
+        <Text style={[styles.captionText, { color: colors.secondarytext }]}>
+          Scroll down for more styles
+        </Text>
+      </View>
+
+      {/* 2-Column Masonry Grid */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.masonryContent}
       >
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="images-outline" size={40} color={colors.secondarytext} />
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : filteredItems.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View
+              style={[
+                styles.emptyIconCircle,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons
+                name="images-outline"
+                size={34}
+                color={colors.secondarytext}
+              />
+            </View>
             <Text style={[styles.emptyText, { color: colors.secondarytext }]}>
               {t("portfolioGallery.noStylesFound")}
             </Text>
@@ -265,10 +327,12 @@ export default function GalleryScreen() {
       <TouchableOpacity
         activeOpacity={0.9}
         onPress={() => router.push("/Pages/booking-detail")}
-        style={[styles.floatingCTA, { backgroundColor: "#A3B39C" }]}
+        style={[styles.floatingCTA, { backgroundColor: colors.primary }]}
       >
-        <Ionicons name="add-circle-outline" size={18} color="#1C1E1B" />
-        <Text style={styles.floatingCTAText}>{t("portfolioGallery.bookNow")}</Text>
+        <Ionicons name="calendar-outline" size={18} color={colors.onBrand} />
+        <Text style={[styles.floatingCTAText, { color: colors.onBrand }]}>
+          {t("portfolioGallery.bookNow")}
+        </Text>
       </TouchableOpacity>
 
       {/* Fullscreen Image Viewer Modal */}
@@ -293,48 +357,79 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
   },
+  searchWrap: {
+    paddingHorizontal: 18,
+    marginBottom: 10,
+  },
+  searchBarTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 48,
+    borderRadius: 13,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  searchPlaceholder: {
+    fontSize: 14,
+  },
   categoriesRow: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 10,
     gap: 8,
   },
   categoryPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 15,
+    height: 36,
+    borderRadius: 11,
     borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   categoryText: {
-    fontSize: 13,
+    fontSize: 12.5,
+  },
+  captionDivider: {
+    marginHorizontal: 18,
+    paddingBottom: 10,
+    marginBottom: 14,
+    borderBottomWidth: 1,
+    alignItems: "center",
+  },
+  captionText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
   masonryContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 80,
+    paddingHorizontal: 18,
+    paddingBottom: 92,
   },
   masonryGrid: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
   },
   column: {
     flex: 1,
-    gap: 10,
+    gap: 12,
   },
   galleryCard: {
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
     position: "relative",
@@ -344,39 +439,40 @@ const styles = StyleSheet.create({
     height: "100%",
     resizeMode: "cover",
   },
+  heartButton: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(23, 25, 24, 0.72)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   cardOverlay: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     padding: 10,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(23, 25, 24, 0.76)",
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
-  },
-  heartButton: {
-    position: "absolute",
-    top: -140,
-    right: 8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   cardMeta: {
     flex: 1,
   },
   cardStyleName: {
-    color: "#FFFFFF",
+    color: "#F5F5F2",
     fontSize: 12.5,
     fontWeight: "700",
   },
   cardBarberName: {
-    color: "rgba(255,255,255,0.75)",
+    color: "#C7F36B",
     fontSize: 11,
+    fontWeight: "600",
     marginTop: 2,
   },
   floatingCTA: {
@@ -387,17 +483,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 28,
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    height: 48,
+    borderRadius: 14,
   },
   floatingCTAText: {
-    color: "#1C1E1B",
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: "700",
   },
   emptyContainer: {
@@ -405,6 +495,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
+  },
+  emptyIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyText: {
     fontSize: 14,

@@ -12,14 +12,6 @@ export interface AvatarProps {
   style?: ViewStyle;
 }
 
-const PASTEL_COLORS = [
-  "#A3B39C",
-  "#88977F",
-  "#5F7A61",
-  "#7B9E87",
-  "#6B8E7B",
-];
-
 function getInitials(name?: string): string {
   if (!name) return "U";
   const parts = name.trim().split(" ");
@@ -29,15 +21,6 @@ function getInitials(name?: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
-function getColorForName(name?: string): string {
-  if (!name) return PASTEL_COLORS[0];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length];
-}
-
 export function Avatar({
   source,
   name,
@@ -45,7 +28,7 @@ export function Avatar({
   online,
   style,
 }: AvatarProps) {
-  const { typography } = useTheme();
+  const { colors, typography } = useTheme();
 
   const getDimensions = () => {
     switch (size) {
@@ -64,7 +47,6 @@ export function Avatar({
 
   const { dim, fontSize, dot } = getDimensions();
   const initials = getInitials(name);
-  const bgColor = getColorForName(name);
 
   const imageUri = typeof source === "string" ? { uri: source } : source;
 
@@ -73,7 +55,12 @@ export function Avatar({
       {source ? (
         <Image
           source={imageUri}
-          style={{ width: dim, height: dim, borderRadius: dim / 2 }}
+          style={{
+            width: dim,
+            height: dim,
+            borderRadius: dim / 2,
+            backgroundColor: colors.secondarySurface,
+          }}
         />
       ) : (
         <View
@@ -83,7 +70,9 @@ export function Avatar({
               width: dim,
               height: dim,
               borderRadius: dim / 2,
-              backgroundColor: bgColor,
+              backgroundColor: colors.secondarySurface,
+              borderWidth: 1,
+              borderColor: colors.border,
             },
           ]}
         >
@@ -92,6 +81,7 @@ export function Avatar({
               styles.initialsText,
               {
                 fontSize,
+                color: colors.brand,
                 fontFamily: typography.fontFamily.bold,
               },
             ]}
@@ -109,7 +99,8 @@ export function Avatar({
               width: dot,
               height: dot,
               borderRadius: dot / 2,
-              backgroundColor: online ? "#2E8B57" : "#9CA3AF",
+              backgroundColor: online ? colors.success : colors.mutedText,
+              borderColor: colors.card,
             },
           ]}
         />
@@ -124,7 +115,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   initialsText: {
-    color: "#FFFFFF",
     letterSpacing: 0.5,
   },
   onlineDot: {
@@ -132,7 +122,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     right: 0,
     borderWidth: 1.8,
-    borderColor: "#FFFFFF",
   },
 });
 

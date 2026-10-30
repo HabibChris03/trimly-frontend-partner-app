@@ -31,11 +31,13 @@ export function EmptyState({
           {
             backgroundColor: colors.secondarySurface,
             borderRadius: radius.full,
+            borderWidth: 1,
+            borderColor: colors.border,
             marginBottom: spacing.lg,
           },
         ]}
       >
-        <Ionicons name={icon} size={36} color={colors.primary} />
+        <Ionicons name={icon} size={36} color={colors.brand} />
       </View>
       <Text
         style={[

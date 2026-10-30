@@ -1,4 +1,6 @@
 import { apiRequest } from "./api";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
 export interface BookingCreateInput {
   barber_id: number;
@@ -10,6 +12,8 @@ export interface BookingCreateInput {
   client_phone?: string;
   total_price?: number;
   barber_name?: string;
+  reference_photo_url?: string | null;
+  from_picture?: boolean;
 }
 
 export interface StatusUpdateOptions {
@@ -42,6 +46,14 @@ export interface BookingReceipt {
   services?: any[];
   reference_number?: string;
   created_at?: string;
+  reference_photo_url?: string | null;
+  from_picture?: boolean;
+  service_type?: "in_salon" | "home_service" | string;
+  home_address?: string;
+  home_instructions?: string;
+  barber_city?: string;
+  barber_latitude?: number;
+  barber_longitude?: number;
 }
 
 export interface ClientBookingHistory {
@@ -53,6 +65,47 @@ export interface BarberScheduleResponse {
   upcoming_bookings: BookingReceipt[];
   past_bookings?: BookingReceipt[];
   total_revenue?: number;
+}
+
+const DELETED_BOOKINGS_KEY = "trimly_deleted_booking_history_ids";
+let localDeletedBookingIds: Set<string> = new Set();
+let isDeletedCacheLoaded = false;
+
+async function loadDeletedBookings(): Promise<Set<string>> {
+  if (isDeletedCacheLoaded) return localDeletedBookingIds;
+  try {
+    let raw: string | null = null;
+    if (Platform.OS === "web") {
+      raw = localStorage.getItem(DELETED_BOOKINGS_KEY);
+    } else {
+      raw = await SecureStore.getItemAsync(DELETED_BOOKINGS_KEY);
+    }
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        localDeletedBookingIds = new Set(arr.map(String));
+      }
+    }
+  } catch {
+    // Ignore storage parse issues
+  }
+  isDeletedCacheLoaded = true;
+  return localDeletedBookingIds;
+}
+
+async function persistDeletedBooking(idStr: string) {
+  localDeletedBookingIds.add(idStr);
+  try {
+    const arr = Array.from(localDeletedBookingIds);
+    const raw = JSON.stringify(arr);
+    if (Platform.OS === "web") {
+      localStorage.setItem(DELETED_BOOKINGS_KEY, raw);
+    } else {
+      await SecureStore.setItemAsync(DELETED_BOOKINGS_KEY, raw);
+    }
+  } catch {
+    // Ignore storage write issues
+  }
 }
 
 // In-memory cache synced with database
@@ -104,6 +157,8 @@ export const bookingService = {
       status: "Confirmed",
       reference_number: refNumber,
       created_at: new Date().toISOString(),
+      reference_photo_url: data.reference_photo_url || null,
+      from_picture: data.from_picture,
     };
 
     // Save directly to the live backend database
@@ -119,6 +174,7 @@ export const bookingService = {
           service_ids: data.service_ids || [],
           portfolio_item_id: data.portfolio_item_id || null,
           custom_hairstyle_name: data.custom_hairstyle_name,
+          reference_photo_url: data.reference_photo_url || null,
         }),
       });
       if (apiRes) {
@@ -466,6 +522,13 @@ export const bookingService = {
             dispute_reason: dbItem.dispute_reason,
             reference_number: dbItem.reference_number || `TRM-SCHED-${dbItem.booking_id || idx + 1}`,
             created_at: dbItem.created_at || dbItem.start_time || new Date().toISOString(),
+            reference_photo_url: dbItem.reference_photo_url || dbItem.picture_url || dbItem.photo_url || null,
+            service_type: dbItem.service_type || "in_salon",
+            home_address: dbItem.home_address,
+            home_instructions: dbItem.home_instructions,
+            barber_city: dbItem.barber_city,
+            barber_latitude: dbItem.barber_latitude,
+            barber_longitude: dbItem.barber_longitude,
           };
           return applyOverrides(item);
         });
@@ -490,28 +553,84 @@ export const bookingService = {
       }
     });
 
-    const now = Date.now();
-    const upcoming = combined.filter((b) => {
-      const t = new Date(b.start_time).getTime();
-      return (t >= now || b.status === "Confirmed" || b.status === "Pending") && b.status !== "Cancelled";
-    });
-    const past = combined.filter((b) => {
-      const t = new Date(b.start_time).getTime();
-      return t < now || b.status === "Cancelled" || b.status === "Completed";
+    await loadDeletedBookings();
+    const visibleBookings = combined.filter((b) => {
+      const bStr = String(b.booking_id || b.id || "");
+      const bNum = String(b.booking_id || "");
+      return (
+        !localDeletedBookingIds.has(bStr) &&
+        !localDeletedBookingIds.has(bNum) &&
+        !localDeletedBookingIds.has(String(b.id))
+      );
     });
 
-    const totalRevenue = combined.reduce(
+    const now = Date.now();
+    const upcoming = visibleBookings.filter((b) => {
+      const t = new Date(b.start_time).getTime();
+      return (
+        b.status !== "Completed" &&
+        b.status !== "Cancelled" &&
+        b.status !== "No-Show" &&
+        b.status !== "disputed" &&
+        (t >= now || b.status === "Confirmed" || b.status === "Pending" || b.status === "shaving..." || b.status === "In Progress")
+      );
+    });
+    const past = visibleBookings.filter((b) => {
+      return (
+        b.status === "Completed" ||
+        b.status === "Cancelled" ||
+        b.status === "No-Show" ||
+        b.status === "disputed"
+      );
+    });
+
+    const totalRevenue = visibleBookings.reduce(
       (acc, b) => acc + (b.status !== "Cancelled" ? (b.total_price || 0) : 0),
       0
     );
 
     return {
-      schedule: combined,
+      schedule: visibleBookings,
       upcoming_bookings: upcoming,
       past_bookings: past,
-      bookings: combined,
+      bookings: visibleBookings,
       total_revenue: totalRevenue,
     };
+  },
+
+  /**
+   * Delete a past or completed booking from partner history.
+   */
+  async deleteBookingFromHistory(bookingId: number | string): Promise<any> {
+    const rawStr = String(bookingId);
+    const numId = typeof bookingId === "number" ? bookingId : parseInt(rawStr.replace(/\D/g, ""), 10);
+
+    await loadDeletedBookings();
+    await persistDeletedBooking(rawStr);
+    if (!isNaN(numId)) {
+      await persistDeletedBooking(String(numId));
+      await persistDeletedBooking(`barber-db-bk-${numId}`);
+      await persistDeletedBooking(`api-b-${numId}`);
+      await persistDeletedBooking(`client-db-bk-${numId}`);
+    }
+
+    if (!isNaN(numId) && numId < 1000000000) {
+      try {
+        await apiRequest(`/api/v1/bookings/${numId}`, {
+          method: "DELETE",
+        });
+      } catch {
+        // Backend deletion fallback
+      }
+    }
+
+    localBookingsCache = localBookingsCache.filter((b) => {
+      const bStr = String(b.booking_id || b.id || "");
+      const bNum = String(b.booking_id || "");
+      return !localDeletedBookingIds.has(bStr) && !localDeletedBookingIds.has(bNum) && !localDeletedBookingIds.has(String(b.id));
+    });
+
+    return { status: "success", message: "Past booking removed from history." };
   },
 
   /**
@@ -519,5 +638,44 @@ export const bookingService = {
    */
   getLocalBookings(): BookingReceipt[] {
     return localBookingsCache.map(applyOverrides);
+  },
+
+  /**
+   * Look up a booking by ID from schedule cache or database.
+   */
+  async getBookingById(bookingId: string | number): Promise<BookingReceipt | null> {
+    const rawStr = String(bookingId);
+    const numId = typeof bookingId === "number" ? bookingId : parseInt(rawStr.replace(/\D/g, ""), 10);
+
+    // 1. Check local session cache
+    const cached = localBookingsCache.find(
+      (b) =>
+        b.booking_id === bookingId ||
+        b.id === bookingId ||
+        String(b.booking_id) === rawStr ||
+        String(b.id) === rawStr ||
+        (!isNaN(numId) && (String(b.booking_id) === String(numId) || String(b.id).includes(String(numId))))
+    );
+    if (cached) return applyOverrides(cached);
+
+    // 2. Fetch from schedule
+    try {
+      const scheduleRes = await this.getMySchedule();
+      const list: BookingReceipt[] = scheduleRes?.schedule || scheduleRes?.bookings || [];
+      const found = list.find(
+        (b) =>
+          b.booking_id === bookingId ||
+          b.id === bookingId ||
+          String(b.booking_id) === rawStr ||
+          String(b.id) === rawStr ||
+          String(b.reference_number) === rawStr ||
+          (!isNaN(numId) && (String(b.booking_id) === String(numId) || String(b.id).includes(String(numId))))
+      );
+      if (found) return applyOverrides(found);
+    } catch {
+      // Fallback
+    }
+
+    return null;
   },
 };

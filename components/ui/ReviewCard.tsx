@@ -22,7 +22,7 @@ export function ReviewCard({
   tags,
   style,
 }: ReviewCardProps) {
-  const { colors, radius, spacing, typography, shadows } = useTheme();
+  const { colors, radius, spacing, typography } = useTheme();
 
   return (
     <View
@@ -30,12 +30,11 @@ export function ReviewCard({
         styles.card,
         {
           backgroundColor: colors.card,
-          borderRadius: radius.lg,
+          borderRadius: 16,
           borderColor: colors.border,
           borderWidth: 1,
           padding: spacing.md,
         },
-        shadows.subtle,
         style,
       ]}
     >
@@ -91,6 +90,8 @@ export function ReviewCard({
                 {
                   backgroundColor: colors.secondarySurface,
                   borderRadius: radius.full,
+                  borderWidth: 1,
+                  borderColor: colors.border,
                   marginRight: spacing.xs,
                 },
               ]}

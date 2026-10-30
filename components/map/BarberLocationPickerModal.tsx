@@ -1,5 +1,10 @@
-import { DEFAULT_MAP_REGION } from "@/constants/maps";
-import useColors from "@/hooks/usecolor";
+import {
+  DEFAULT_MAP_REGION,
+  LIGHT_MAP_STYLE,
+  DARK_MAP_STYLE,
+} from "@/constants/maps";
+import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import React, { useEffect, useRef, useState } from "react";
@@ -32,7 +37,13 @@ interface BarberLocationPickerModalProps {
   initialCity?: string;
 }
 
-function generatePickerWebMapHtml(lat: number, lng: number) {
+function generatePickerWebMapHtml(lat: number, lng: number, isDark: boolean) {
+  const tileUrl = isDark
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+  const bgColor = isDark ? "#171918" : "#F5F5F2";
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -47,21 +58,20 @@ function generatePickerWebMapHtml(lat: number, lng: number) {
       width: 100%;
       margin: 0;
       padding: 0;
-      background: #1C1E1B;
+      background: ${bgColor};
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-    .leaflet-container { background: #1C1E1B; }
+    .leaflet-container { background: ${bgColor}; }
     .picker-pin {
-      width: 38px;
-      height: 38px;
-      border-radius: 19px;
-      background: #A3B39C;
-      border: 3px solid #FFFFFF;
+      width: 40px;
+      height: 40px;
+      border-radius: 20px;
+      background: #C7F36B;
+      border: 3px solid #171918;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
       cursor: grab;
       user-select: none;
     }
@@ -74,15 +84,15 @@ function generatePickerWebMapHtml(lat: number, lng: number) {
     var currentLng = ${lng};
     var map = L.map('map', { zoomControl: false }).setView([currentLat, currentLng], 14);
 
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    L.tileLayer('${tileUrl}', {
       maxZoom: 19,
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
     }).addTo(map);
 
     var pinIcon = L.divIcon({
       className: 'picker-div-icon',
-      html: '<div class="picker-pin">✂️</div>',
-      iconAnchor: [19, 19]
+      html: '<div class="picker-pin"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#171918" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg></div>',
+      iconAnchor: [20, 20]
     });
 
     var marker = L.marker([currentLat, currentLng], { icon: pinIcon, draggable: true }).addTo(map);
@@ -120,7 +130,8 @@ export default function BarberLocationPickerModal({
   initialLongitude,
   initialCity = "Douala, Akwa",
 }: BarberLocationPickerModalProps) {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const mapRef = useRef<MapView>(null);
   const webIframeRef = useRef<any>(null);
 
@@ -168,7 +179,6 @@ export default function BarberLocationPickerModal({
   const handleUseCurrentLocation = async () => {
     setIsFetchingGPS(true);
     try {
-      // First check if permission is already granted (avoid repeated prompts)
       const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
       let finalStatus = existingStatus;
 
@@ -207,11 +217,9 @@ export default function BarberLocationPickerModal({
           "*"
         );
       } else {
-        // Animate the map camera to the GPS location
         mapRef.current?.animateToRegion(newRegion, 600);
       }
 
-      // Reverse geocode to get a readable address
       try {
         const [geo] = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (geo) {
@@ -254,18 +262,14 @@ export default function BarberLocationPickerModal({
     >
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         {/* Header Bar */}
-        <View style={[styles.header, { borderBottomColor: colors.surfacevariant }]}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity activeOpacity={0.7} onPress={onClose} style={styles.headerBtn}>
             <Ionicons name="close" size={24} color={colors.primarytext} />
           </TouchableOpacity>
 
           <View style={styles.headerTitleContainer}>
-            <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-              Pinpoint Shop Location
-            </Text>
-            <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
-              Tap on map or drag pin to your shop
-            </Text>
+            <Text style={[styles.headerTitle, { color: colors.primarytext }]}>{t("map.pinpointShopLocation") || "Pinpoint Shop Location"}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>{t("map.tapOnMapOrDrag") || "Tap on map or drag pin to your shop"}</Text>
           </View>
 
           <TouchableOpacity
@@ -273,7 +277,7 @@ export default function BarberLocationPickerModal({
             onPress={handleSave}
             style={[styles.saveHeaderBtn, { backgroundColor: colors.primary }]}
           >
-            <Text style={[styles.saveHeaderBtnText, { color: colors.background }]}>Save</Text>
+            <Text style={[styles.saveHeaderBtnText, { color: "#FFFFFF" }]}>{t("common.save") || "Save"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -284,13 +288,14 @@ export default function BarberLocationPickerModal({
               ref: webIframeRef,
               srcDoc: generatePickerWebMapHtml(
                 coordinate.latitude,
-                coordinate.longitude
+                coordinate.longitude,
+                isDark
               ),
               style: {
                 width: "100%",
                 height: "100%",
                 border: "none",
-                backgroundColor: "#1C1E1B",
+                backgroundColor: isDark ? "#171918" : "#F5F5F2",
               },
               title: "Trimly Location Picker",
             })
@@ -298,7 +303,8 @@ export default function BarberLocationPickerModal({
             <MapView
               ref={mapRef}
               provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-              mapType="satellite"
+              mapType="standard"
+              customMapStyle={isDark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE}
               style={styles.map}
               region={region}
               onRegionChangeComplete={(r) => setRegion(r)}
@@ -313,7 +319,7 @@ export default function BarberLocationPickerModal({
               >
                 <View style={styles.customPin}>
                   <View style={styles.pinBubble}>
-                    <Ionicons name="cut" size={16} color="#1C1E1B" />
+                    <Ionicons name="cut" size={16} color="#FFFFFF" />
                   </View>
                   <View style={styles.pinArrow} />
                 </View>
@@ -326,7 +332,7 @@ export default function BarberLocationPickerModal({
             activeOpacity={0.85}
             onPress={isFetchingGPS ? undefined : handleUseCurrentLocation}
             disabled={isFetchingGPS}
-            style={[styles.gpsFloatingBtn, { backgroundColor: colors.surface, borderColor: colors.surfacevariant, opacity: isFetchingGPS ? 0.7 : 1 }]}
+            style={[styles.gpsFloatingBtn, { backgroundColor: colors.surface, borderColor: colors.border, opacity: isFetchingGPS ? 0.7 : 1 }]}
           >
             {isFetchingGPS ? (
               <ActivityIndicator size="small" color={colors.primary} />
@@ -340,16 +346,16 @@ export default function BarberLocationPickerModal({
         </View>
 
         {/* Bottom Coordinates & Confirmation Card */}
-        <View style={[styles.bottomCard, { backgroundColor: colors.surface, borderTopColor: colors.surfacevariant }]}>
+        <View style={[styles.bottomCard, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
           <View style={styles.coordRow}>
-            <View style={styles.coordBadge}>
+            <View style={[styles.coordBadge, { backgroundColor: colors.surfacevariant }]}>
               <Text style={styles.coordLabel}>LAT</Text>
               <Text style={[styles.coordValue, { color: colors.primarytext }]}>
                 {coordinate.latitude.toFixed(6)}
               </Text>
             </View>
 
-            <View style={styles.coordBadge}>
+            <View style={[styles.coordBadge, { backgroundColor: colors.surfacevariant }]}>
               <Text style={styles.coordLabel}>LNG</Text>
               <Text style={[styles.coordValue, { color: colors.primarytext }]}>
                 {coordinate.longitude.toFixed(6)}
@@ -357,19 +363,15 @@ export default function BarberLocationPickerModal({
             </View>
           </View>
 
-          <Text style={[styles.helperNotice, { color: colors.secondarytext }]}>
-            📍 Clients near this location will see your shop on the Explore Map and can get driving directions directly to you.
-          </Text>
+          <Text style={[styles.helperNotice, { color: colors.secondarytext }]}>{t("map.clientsNearDesc") || "Clients near this location will see your shop on the Explore Map and can get driving directions directly to you."}</Text>
 
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={handleSave}
             style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
           >
-            <Ionicons name="checkmark-circle-outline" size={20} color={colors.background} />
-            <Text style={[styles.confirmBtnText, { color: colors.background }]}>
-              Confirm Shop Location
-            </Text>
+            <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
+            <Text style={[styles.confirmBtnText, { color: "#FFFFFF" }]}>{t("map.confirmShopLocation") || "Confirm Shop Location"}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -429,14 +431,14 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#A3B39C",
+    backgroundColor: "#C7F36B",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2.5,
-    borderColor: "#FFFFFF",
+    borderColor: "#171918",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
     shadowRadius: 5,
     elevation: 6,
   },
@@ -450,7 +452,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
-    borderTopColor: "#A3B39C",
+    borderTopColor: "#C7F36B",
     marginTop: -1,
   },
   gpsFloatingBtn: {
@@ -465,8 +467,8 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     borderWidth: 1,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 4,
   },
@@ -485,14 +487,13 @@ const styles = StyleSheet.create({
   },
   coordBadge: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
     padding: 10,
     borderRadius: 10,
   },
   coordLabel: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#A3B39C",
+    color: "#C7F36B",
     letterSpacing: 1,
     marginBottom: 2,
   },

@@ -2,10 +2,11 @@ import { BarberCardSkeleton } from "@/components/ui/Skeleton";
 import { CustomModal } from "@/components/ui/CustomModal";
 import { PageTutorialModal } from "@/components/barber/PageTutorialModal";
 import { MANAGE_STAFF_TUTORIAL } from "@/constants/barberTutorials";
+import { FontFamily } from "@/constants/theme";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/context/ToastContext";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { barberService } from "@/services/barberService";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -31,7 +32,7 @@ interface StaffMember {
   name: string;
   role: string;
   phone?: string;
-  status: "Active" | "Off Duty" | "On Break";
+  status: "Active" | "Off Duty" | "On Break" | "Suspended";
   experience?: string;
   avatarIndex?: number;
 }
@@ -54,7 +55,7 @@ const ROLES = [
 ];
 
 export default function ManageStaffScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { t } = useLanguage();
   const themeImages = useThemeImages();
@@ -63,14 +64,16 @@ export default function ManageStaffScreen() {
   const { showToast } = useToast();
 
   const salonId = user?.id || 4;
-  const salonName = user?.name ? `${user.name}'s Salon` : "Trimly VIP Lounge";
+  const salonName = user?.name ? `${user.name}'s Salon` : "Trimly Salon";
 
   // Navigation Tab State (Search & Invite, Active, Pending, Still To Send)
-  const [activeTab, setActiveTab] = useState<"invite" | "active" | "pending" | "still_to_send">("invite");
+  const [activeTab, setActiveTab] = useState<"active" | "requests" | "invite" | "pending" | "still_to_send">("active");
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [stillToSendInvites, setStillToSendInvites] = useState<any[]>([]);
+  const [joinRequests, setJoinRequests] = useState<any[]>([]);
+  const [isRespondingToRequest, setIsRespondingToRequest] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
@@ -89,10 +92,11 @@ export default function ManageStaffScreen() {
 
   const fetchStaffAndClients = useCallback(async () => {
     try {
-      const [apiStaff, clients, allInvites] = await Promise.all([
+      const [apiStaff, clients, allInvites, requests] = await Promise.all([
         barberService.listSalonStaff(salonId).catch(() => []),
         barberService.searchClients("").catch(() => []),
         barberService.listSalonInvites(salonId).catch(() => []),
+        barberService.getSalonJoinRequests(salonId).catch(() => []),
       ]);
 
       const rawInvites = Array.isArray(allInvites) ? allInvites : [];
@@ -101,7 +105,6 @@ export default function ManageStaffScreen() {
       const activeFromInvites = rawInvites.filter((i: any) => i.rawStatus === "active" || i.status === "Active");
 
       const baseStaff = Array.isArray(apiStaff) ? apiStaff : [];
-      // Combine registered staff and any stylists who accepted their invite in the DB
       const combinedActive: StaffMember[] = [
         ...baseStaff,
         ...activeFromInvites
@@ -118,11 +121,30 @@ export default function ManageStaffScreen() {
       setStaffList(combinedActive);
       setPendingInvites(pending);
       setStillToSendInvites(drafts);
+      setJoinRequests(Array.isArray(requests) ? requests : []);
       setClientsDirectory(Array.isArray(clients) ? clients : []);
-    } catch (err) {
-      console.log("[ManageStaff] Error loading staff/invites:", err);
+    } catch {
+      showToast("Unable to refresh staff roster.", "error");
     }
-  }, [salonId]);
+  }, [salonId, showToast]);
+
+  const handleRespondJoinRequest = async (requestId: number, action: "accept" | "reject") => {
+    setIsRespondingToRequest(requestId);
+    try {
+      await barberService.respondToJoinRequest(salonId, requestId, action);
+      showToast(
+        action === "accept"
+          ? "Stylist accepted onto salon floor!"
+          : "Stylist join request declined.",
+        action === "accept" ? "success" : "info"
+      );
+      await fetchStaffAndClients();
+    } catch (e: any) {
+      showToast(e?.message || "Failed to respond to join request.", "error");
+    } finally {
+      setIsRespondingToRequest(null);
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -137,7 +159,7 @@ export default function ManageStaffScreen() {
     setRefreshing(true);
     await fetchStaffAndClients();
     setRefreshing(false);
-    showToast("Staff directory & invites updated from database.", "info");
+    showToast("Staff directory & invites refreshed.", "info");
   }, [fetchStaffAndClients, showToast]);
 
   const handleSearchClients = async (query: string) => {
@@ -148,7 +170,7 @@ export default function ManageStaffScreen() {
 
   const handleSendInvite = async (isDraft: boolean = false) => {
     if (!selectedClient) {
-      showToast("Please select a registered client first.", "warning");
+      showToast("Please select a registered stylist from the directory.", "warning");
       return;
     }
 
@@ -180,13 +202,13 @@ export default function ManageStaffScreen() {
 
       if (isDraft) {
         setStillToSendInvites((prev) => [invite, ...prev]);
-        showToast(`Invitation for ${selectedClient.name} saved to drafts (Still to Send).`, "success");
+        showToast(`Invitation for ${selectedClient.name} saved to drafts.`, "success");
         setSelectedClient(null);
         setClientSearchQuery("");
         setActiveTab("still_to_send");
       } else {
         setPendingInvites((prev) => [invite, ...prev]);
-        showToast(`Invitation sent to ${selectedClient.name}! Once accepted, their profile will display "${salonName} Barber".`, "success");
+        showToast(`Invitation sent to ${selectedClient.name}!`, "success");
         setSelectedClient(null);
         setClientSearchQuery("");
         setActiveTab("pending");
@@ -264,7 +286,7 @@ export default function ManageStaffScreen() {
   const handleRemoveStaff = async (member: StaffMember) => {
     Alert.alert(
       "Remove Staff Member",
-      `Are you sure you want to remove ${member.name} from ${salonName}? They will revert to a standard client profile.`,
+      `Are you sure you want to remove ${member.name} from ${salonName}? They will revert to a standard profile.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -289,13 +311,15 @@ export default function ManageStaffScreen() {
   const getStatusColor = (status: StaffMember["status"]) => {
     switch (status) {
       case "Active":
-        return "#10B981";
+        return "#22C55E";
       case "On Break":
         return "#F59E0B";
       case "Off Duty":
         return "#6B7280";
+      case "Suspended":
+        return "#EF4444";
       default:
-        return "#10B981";
+        return "#22C55E";
     }
   };
 
@@ -305,29 +329,35 @@ export default function ManageStaffScreen() {
       (s.role && s.role.toLowerCase().includes(activeStaffSearch.toLowerCase()))
   );
 
+  const activeCount = staffList.filter((s) => s.status === "Active").length;
+  const suspendedCount = staffList.filter((s) => s.status === "Suspended").length;
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "bottom"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Screen Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.back()}
-          style={[styles.headerBtn, { backgroundColor: colors.surface }]}
+          style={[
+            styles.headerCircleBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
           <Ionicons name="arrow-back" size={20} color={colors.primarytext} />
         </TouchableOpacity>
 
         <View style={styles.headerTitleWrap}>
           <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-            {t("manageStaff.title")}
+            {t("manageStaff.staffManagement") || "Staff Management"}
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
-            {salonName} • {staffList.length} {t("manageStaff.totalMembers", { count: staffList.length })}
+            {salonName} • {staffList.length} stylists registered
           </Text>
         </View>
 
@@ -335,7 +365,10 @@ export default function ManageStaffScreen() {
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => setTutorialVisible(true)}
-            style={[styles.headerBtn, { backgroundColor: colors.surface }]}
+            style={[
+              styles.headerCircleBtn,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
           >
             <Ionicons name="help-circle-outline" size={19} color={colors.primary} />
           </TouchableOpacity>
@@ -343,67 +376,102 @@ export default function ManageStaffScreen() {
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={onRefresh}
-            style={[styles.headerBtn, { backgroundColor: colors.surface }]}
+            style={[
+              styles.headerCircleBtn,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
           >
             <Ionicons name="refresh-outline" size={18} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Segmented Top Navigation */}
-      <View style={styles.tabContainer}>
+      {/* Segmented Top Navigation Track */}
+      <View
+        style={[
+          styles.tabContainer,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.tabTrack,
-            { backgroundColor: colors.surface, borderColor: colors.surfacevariant },
-          ]}
+          contentContainerStyle={styles.tabTrack}
         >
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => setActiveTab("invite")}
-            style={[
-              styles.tabItem,
-              activeTab === "invite" && [styles.tabItemActive, { backgroundColor: colors.primary }],
-            ]}
-          >
-            <Ionicons
-              name="person-add"
-              size={14}
-              color={activeTab === "invite" ? "#1C1E1B" : colors.secondarytext}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === "invite" ? "#1C1E1B" : colors.secondarytext },
-              ]}
-            >
-              {t("manageStaff.searchAndInviteTab")}
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => setActiveTab("active")}
             style={[
               styles.tabItem,
-              activeTab === "active" && [styles.tabItemActive, { backgroundColor: colors.primary }],
+              activeTab === "active"
+                ? { backgroundColor: colors.primary }
+                : { backgroundColor: "transparent" },
             ]}
           >
             <Ionicons
               name="people"
               size={14}
-              color={activeTab === "active" ? "#1C1E1B" : colors.secondarytext}
+              color={activeTab === "active" ? colors.onBrand : colors.secondarytext}
             />
             <Text
               style={[
                 styles.tabText,
-                { color: activeTab === "active" ? "#1C1E1B" : colors.secondarytext },
+                { color: activeTab === "active" ? colors.onBrand : colors.primarytext },
               ]}
-            >
-              {t("manageStaff.activeStaffTab")} ({staffList.length})
-            </Text>
+            >{t("manageStaff.activeStaffTab")} ({staffList.length})</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setActiveTab("requests")}
+            style={[
+              styles.tabItem,
+              activeTab === "requests"
+                ? { backgroundColor: colors.primary }
+                : { backgroundColor: "transparent" },
+            ]}
+          >
+            <Ionicons
+              name="person-add-outline"
+              size={14}
+              color={activeTab === "requests" ? colors.onBrand : colors.secondarytext}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === "requests" ? colors.onBrand : colors.primarytext },
+              ]}
+            >{t("manageStaff.requestsTab")} ({joinRequests.length})</Text>
+            {joinRequests.length > 0 && activeTab !== "requests" && (
+              <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
+                <Text style={[styles.tabBadgeText, { color: colors.onBrand }]}>
+                  {joinRequests.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setActiveTab("invite")}
+            style={[
+              styles.tabItem,
+              activeTab === "invite"
+                ? { backgroundColor: colors.primary }
+                : { backgroundColor: "transparent" },
+            ]}
+          >
+            <Ionicons
+              name="person-add"
+              size={14}
+              color={activeTab === "invite" ? colors.onBrand : colors.secondarytext}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeTab === "invite" ? colors.onBrand : colors.primarytext },
+              ]}
+            >{t("manageStaff.searchAndInviteTab")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -411,22 +479,22 @@ export default function ManageStaffScreen() {
             onPress={() => setActiveTab("pending")}
             style={[
               styles.tabItem,
-              activeTab === "pending" && [styles.tabItemActive, { backgroundColor: colors.primary }],
+              activeTab === "pending"
+                ? { backgroundColor: colors.primary }
+                : { backgroundColor: "transparent" },
             ]}
           >
             <Ionicons
               name="mail-unread"
               size={14}
-              color={activeTab === "pending" ? "#1C1E1B" : colors.secondarytext}
+              color={activeTab === "pending" ? colors.onBrand : colors.secondarytext}
             />
             <Text
               style={[
                 styles.tabText,
-                { color: activeTab === "pending" ? "#1C1E1B" : colors.secondarytext },
+                { color: activeTab === "pending" ? colors.onBrand : colors.primarytext },
               ]}
-            >
-              {t("manageStaff.invitationsTab")} ({pendingInvites.length})
-            </Text>
+            >{t("manageStaff.pendingTab")} ({pendingInvites.length})</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -434,22 +502,22 @@ export default function ManageStaffScreen() {
             onPress={() => setActiveTab("still_to_send")}
             style={[
               styles.tabItem,
-              activeTab === "still_to_send" && [styles.tabItemActive, { backgroundColor: colors.primary }],
+              activeTab === "still_to_send"
+                ? { backgroundColor: colors.primary }
+                : { backgroundColor: "transparent" },
             ]}
           >
             <Ionicons
               name="time-outline"
               size={14}
-              color={activeTab === "still_to_send" ? "#1C1E1B" : colors.secondarytext}
+              color={activeTab === "still_to_send" ? colors.onBrand : colors.secondarytext}
             />
             <Text
               style={[
                 styles.tabText,
-                { color: activeTab === "still_to_send" ? "#1C1E1B" : colors.secondarytext },
+                { color: activeTab === "still_to_send" ? colors.onBrand : colors.primarytext },
               ]}
-            >
-              {t("manageStaff.stillToSendTab")} ({stillToSendInvites.length})
-            </Text>
+            >{t("manageStaff.draftsTab")} ({stillToSendInvites.length})</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
@@ -457,7 +525,6 @@ export default function ManageStaffScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -467,480 +534,487 @@ export default function ManageStaffScreen() {
           />
         }
       >
-        {/* TAB 1: SEARCH & INVITE CLIENTS */}
-        {activeTab === "invite" && (
-          <View style={{ gap: 16 }}>
-            {/* Info Banner */}
-            <View
-              style={[
-                styles.infoCard,
-                { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}35` },
-              ]}
-            >
-              <View style={[styles.infoIconCircle, { backgroundColor: `${colors.primary}25` }]}>
-                <Ionicons name="sparkles" size={18} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.infoTitle, { color: colors.primary }]}>
-                  {t("manageStaff.inviteStylistBannerTitle")}
-                </Text>
-                <Text style={[styles.infoText, { color: colors.secondarytext }]}>
-                  {t("manageStaff.inviteStylistBannerSub", { salonName })}
-                </Text>
-              </View>
-            </View>
-
-            {/* Selected Client & Role Configuration Card */}
-            {selectedClient && (
-              <View
-                style={[
-                  styles.configureInviteCard,
-                  { backgroundColor: colors.surface, borderColor: colors.primary },
-                ]}
-              >
-                <View style={styles.selectedClientHeader}>
-                  <View style={styles.selectedClientAvatar}>
-                    <Text style={[styles.selectedClientAvatarText, { color: colors.primary }]}>
-                      {selectedClient.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.selectedClientName, { color: colors.primarytext }]}>
-                      {selectedClient.name}
-                    </Text>
-                    <Text style={[styles.selectedClientMeta, { color: colors.secondarytext }]}>
-                      {selectedClient.email} • {selectedClient.phone || "No phone"}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => setSelectedClient(null)}
-                    style={styles.closeSelectedBtn}
-                  >
-                    <Ionicons name="close-circle" size={22} color={colors.secondarytext} />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Role Picker Section */}
-                <View style={{ marginTop: 12 }}>
-                  <Text style={[styles.sectionHeading, { color: colors.primarytext }]}>
-                    {t("manageStaff.selectRole")}
-                  </Text>
-                  <View style={styles.rolesGrid}>
-                    {ROLES.map((r) => {
-                      const isSelected = staffRole === r.label;
-                      return (
-                        <TouchableOpacity
-                          key={r.label}
-                          activeOpacity={0.8}
-                          onPress={() => setStaffRole(r.label)}
-                          style={[
-                            styles.roleCard,
-                            {
-                              backgroundColor: isSelected ? `${colors.primary}20` : colors.background,
-                              borderColor: isSelected ? colors.primary : colors.surfacevariant,
-                            },
-                          ]}
-                        >
-                          <Ionicons
-                            name={r.icon}
-                            size={16}
-                            color={isSelected ? colors.primary : colors.secondarytext}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text
-                              style={[
-                                styles.roleCardTitle,
-                                { color: isSelected ? colors.primary : colors.primarytext },
-                              ]}
-                            >
-                              {r.label}
-                            </Text>
-                            <Text
-                              style={[
-                                styles.roleCardDesc,
-                                { color: colors.secondarytext },
-                              ]}
-                            >
-                              {r.desc}
-                            </Text>
-                          </View>
-                          {isSelected && (
-                            <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                {/* Action Buttons: Save as Draft vs Send Official Invite */}
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => handleSendInvite(true)}
-                    disabled={isInviting}
-                    style={[
-                      styles.secondaryActionBtn,
-                      {
-                        flex: 1,
-                        backgroundColor: colors.background,
-                        borderColor: colors.surfacevariant,
-                      },
-                    ]}
-                  >
-                    <Ionicons name="time-outline" size={15} color={colors.primarytext} />
-                    <Text style={[styles.secondaryActionBtnText, { color: colors.primarytext }]}>
-                      {t("manageStaff.saveAsDraft")}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.88}
-                    onPress={() => handleSendInvite(false)}
-                    disabled={isInviting}
-                    style={[
-                      styles.primaryActionBtn,
-                      {
-                        flex: 1.4,
-                        backgroundColor: colors.primary,
-                        marginTop: 0,
-                      },
-                    ]}
-                  >
-                    {isInviting ? (
-                      <ActivityIndicator size="small" color="#1C1E1B" />
-                    ) : (
-                      <>
-                        <Ionicons name="paper-plane" size={15} color="#1C1E1B" />
-                        <Text style={styles.primaryActionBtnText}>
-                          {t("manageStaff.sendInviteNow")}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Client Search Bar */}
-            <View style={{ gap: 8 }}>
-              <Text style={[styles.sectionHeading, { color: colors.primarytext }]}>
-                {t("manageStaff.findClientToInvite")}
-              </Text>
-              <View
-                style={[
-                  styles.searchBar,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.surfacevariant,
-                  },
-                ]}
-              >
-                <Ionicons name="search-outline" size={18} color={colors.secondarytext} />
-                <TextInput
-                  style={[styles.searchInput, { color: colors.primarytext }]}
-                  placeholder={t("manageStaff.searchClientPlaceholder")}
-                  placeholderTextColor={colors.secondarytext}
-                  value={clientSearchQuery}
-                  onChangeText={handleSearchClients}
-                  autoCapitalize="none"
-                />
-                {clientSearchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => handleSearchClients("")}>
-                    <Ionicons name="close-circle" size={18} color={colors.secondarytext} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {/* Client Directory Results */}
-            <View style={{ gap: 10 }}>
-              <Text style={[styles.subSectionTitle, { color: colors.secondarytext }]}>
-                {clientSearchQuery.trim() ? t("manageStaff.searchResultsHeading") : t("manageStaff.directoryHeading")}
-              </Text>
-
-              {clientsDirectory.length === 0 ? (
-                <View style={[styles.emptyBox, { backgroundColor: colors.surface, borderColor: colors.surfacevariant }]}>
-                  <Ionicons name="person-remove-outline" size={28} color={colors.secondarytext} />
-                  <Text style={[styles.emptyBoxTitle, { color: colors.primarytext }]}>
-                    {clientSearchQuery.trim() ? t("manageStaff.noClientsFound") : t("manageStaff.noClientsYet")}
-                  </Text>
-                  <Text style={[styles.emptyBoxSubtitle, { color: colors.secondarytext }]}>
-                    {clientSearchQuery.trim()
-                      ? t("manageStaff.noClientsFoundSub", { query: clientSearchQuery })
-                      : t("manageStaff.noClientsYetSub")}
-                  </Text>
-                </View>
-              ) : (
-                clientsDirectory.map((client) => {
-                  const isSelected = selectedClient?.id === client.id;
-                  const isAlreadyStaff = staffList.some(
-                    (s) => s.id === client.id || s.name.toLowerCase() === client.name.toLowerCase()
-                  );
-                  const isPending = pendingInvites.some(
-                    (inv) => inv.clientId === client.id || inv.clientEmail === client.email
-                  );
-
-                  return (
-                    <TouchableOpacity
-                      key={client.id}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        if (isAlreadyStaff) {
-                          showToast(`${client.name} is already a staff barber.`, "info");
-                          return;
-                        }
-                        if (isPending) {
-                          showToast(`Invitation already pending for ${client.name}.`, "info");
-                          return;
-                        }
-                        setSelectedClient(client);
-                      }}
-                      style={[
-                        styles.clientCard,
-                        {
-                          backgroundColor: isSelected ? `${colors.primary}15` : colors.surface,
-                          borderColor: isSelected
-                            ? colors.primary
-                            : isPending
-                            ? "rgba(245, 158, 11, 0.4)"
-                            : colors.surfacevariant,
-                        },
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.clientAvatar,
-                          {
-                            backgroundColor: isSelected
-                              ? `${colors.primary}30`
-                              : isPending
-                              ? "rgba(245, 158, 11, 0.15)"
-                              : colors.background,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.clientAvatarText,
-                            {
-                              color: isSelected
-                                ? colors.primary
-                                : isPending
-                                ? "#F59E0B"
-                                : colors.primarytext,
-                            },
-                          ]}
-                        >
-                          {client.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-
-                      <View style={{ flex: 1, gap: 2 }}>
-                        <Text style={[styles.clientCardName, { color: colors.primarytext }]}>
-                          {client.name}
-                        </Text>
-                        <Text style={[styles.clientCardEmail, { color: colors.secondarytext }]}>
-                          {client.email}
-                        </Text>
-                        {client.phone && (
-                          <Text style={[styles.clientCardPhone, { color: colors.secondarytext }]}>
-                            📞 {client.phone}
-                          </Text>
-                        )}
-                      </View>
-
-                      {isAlreadyStaff ? (
-                        <View style={styles.badgeAlreadyStaff}>
-                          <Text style={styles.badgeAlreadyStaffText}>Staff</Text>
-                        </View>
-                      ) : isPending ? (
-                        <View style={styles.badgePendingInvite}>
-                          <Text style={styles.badgePendingInviteText}>Invited</Text>
-                        </View>
-                      ) : (
-                        <View
-                          style={[
-                            styles.actionPill,
-                            {
-                              backgroundColor: isSelected ? colors.primary : `${colors.primary}18`,
-                            },
-                          ]}
-                        >
-                          <Ionicons
-                            name={isSelected ? "checkmark" : "add"}
-                            size={14}
-                            color={isSelected ? "#1C1E1B" : colors.primary}
-                          />
-                          <Text
-                            style={[
-                              styles.actionPillText,
-                              { color: isSelected ? "#1C1E1B" : colors.primary },
-                            ]}
-                          >
-                            {isSelected ? "Selected" : "Select"}
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* TAB 2: ACTIVE SALON STAFF */}
+        {/* TAB 1: ACTIVE STAFF */}
         {activeTab === "active" && (
           <View style={{ gap: 14 }}>
-            {staffList.length > 0 && (
-              <View
-                style={[
-                  styles.searchBar,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.surfacevariant,
-                  },
-                ]}
-              >
-                <Ionicons name="search-outline" size={18} color={colors.secondarytext} />
-                <TextInput
-                  style={[styles.searchInput, { color: colors.primarytext }]}
-                  placeholder={t("manageStaff.searchStaff")}
-                  placeholderTextColor={colors.secondarytext}
-                  value={activeStaffSearch}
-                  onChangeText={setActiveStaffSearch}
-                />
-              </View>
-            )}
+            {/* Quick Summary Telemetry Strip */}
+            <View
+              style={[
+                styles.telemetryCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.telemetryGrid}>
+                <View style={styles.telemetryCell}>
+                  <Text style={[styles.telemetryValue, { color: colors.primary }]}>
+                    {staffList.length}
+                  </Text>
+                  <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                    Total Stylists
+                  </Text>
+                </View>
 
+                <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
+
+                <View style={styles.telemetryCell}>
+                  <Text style={[styles.telemetryValue, { color: colors.success }]}>
+                    {activeCount}
+                  </Text>
+                  <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                    {t("manageStaff.activeOnDuty") || "Active On Duty"}
+                  </Text>
+                </View>
+
+                <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
+
+                <View style={styles.telemetryCell}>
+                  <Text style={[styles.telemetryValue, { color: "#EF4444" }]}>
+                    {suspendedCount}
+                  </Text>
+                  <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                    Suspended
+                  </Text>
+                </View>
+
+                <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
+
+                <View style={styles.telemetryCell}>
+                  <Text style={[styles.telemetryValue, { color: colors.primarytext }]}>
+                    {pendingInvites.length}
+                  </Text>
+                  <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
+                    Invites Sent
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Staff Search Input */}
+            <View
+              style={[
+                styles.searchBox,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons name="search" size={17} color={colors.secondarytext} />
+              <TextInput
+                style={[styles.searchInput, { color: colors.primarytext }]}
+                placeholder={t("manageStaff.searchStaffPlaceholder") || "Search staff by name or specialty..."}
+                placeholderTextColor={colors.secondarytext}
+                value={activeStaffSearch}
+                onChangeText={setActiveStaffSearch}
+              />
+              {activeStaffSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setActiveStaffSearch("")}>
+                  <Ionicons name="close-circle" size={16} color={colors.secondarytext} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Staff Members List */}
             {isLoading ? (
               <View style={{ gap: 12 }}>
                 <BarberCardSkeleton />
                 <BarberCardSkeleton />
               </View>
             ) : filteredStaff.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View
-                  style={[
-                    styles.emptyIconCircle,
-                    { backgroundColor: colors.surface, borderColor: colors.surfacevariant },
-                  ]}
-                >
-                  <Ionicons name="people-outline" size={34} color={colors.secondarytext} />
-                </View>
+              <View
+                style={[
+                  styles.emptyStateCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="people-outline" size={40} color={colors.secondarytext} />
                 <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-                  {staffList.length === 0 ? "No active stylists yet" : "No matching stylists"}
+                  {t("manageStaff.noStaffFound") || "No Staff Members Found"}
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
-                  {staffList.length === 0
-                    ? `Invite registered clients to join ${salonName}. Once accepted, they will appear here.`
-                    : `No stylist found matching "${activeStaffSearch}".`}
+                  {activeStaffSearch
+                    ? `No staff matches "${activeStaffSearch}".`
+                    : "No staff barbers registered under your salon yet."}
                 </Text>
-
-                {staffList.length === 0 && (
-                  <TouchableOpacity
-                    activeOpacity={0.88}
-                    onPress={() => setActiveTab("invite")}
-                    style={[styles.primaryActionBtn, { backgroundColor: colors.primary, marginTop: 16 }]}
-                  >
-                    <Ionicons name="person-add" size={16} color="#1C1E1B" />
-                    <Text style={styles.primaryActionBtnText}>
-                      Go to Search & Invite Clients
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setActiveTab("invite")}
+                  style={[styles.emptyCTA, { backgroundColor: colors.primary }]}
+                >
+                  <Ionicons name="person-add" size={16} color={colors.onBrand} />
+                  <Text style={[styles.emptyCTAText, { color: colors.onBrand }]}>
+                    {t("manageStaff.inviteFirstStylist") || "Invite Your First Stylist"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.staffGrid}>
-                {filteredStaff.map((member) => (
-                  <TouchableOpacity
-                    key={member.id}
-                    activeOpacity={0.88}
-                    onPress={() => {
-                      setSelectedStaff(member);
-                      setStatusModalVisible(true);
-                    }}
-                    style={[
-                      styles.staffCard,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.surfacevariant,
-                      },
-                    ]}
-                  >
-                    <Image source={profilePic} style={styles.avatarImage} />
+              <View style={{ gap: 12 }}>
+                {filteredStaff.map((member) => {
+                  const statusColor = getStatusColor(member.status);
+                  const isSuspended = member.status === "Suspended";
 
-                    <View style={styles.staffInfo}>
-                      <View style={styles.nameRow}>
-                        <Text style={[styles.staffName, { color: colors.primarytext }]}>
-                          {member.name}
+                  return (
+                    <View
+                      key={member.id}
+                      style={[
+                        styles.staffCard,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: isSuspended ? "rgba(239, 68, 68, 0.4)" : colors.border,
+                        },
+                      ]}
+                    >
+                      {/* Avatar with Status Dot */}
+                      <View style={styles.staffAvatarWrap}>
+                        <Image source={profilePic} style={styles.staffAvatarImg} />
+                        <View
+                          style={[
+                            styles.avatarStatusDot,
+                            { backgroundColor: statusColor, borderColor: colors.surface },
+                          ]}
+                        />
+                      </View>
+
+                      {/* Info */}
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.nameStatusRow}>
+                          <Text
+                            style={[styles.staffNameText, { color: colors.primarytext }]}
+                            numberOfLines={1}
+                          >
+                            {member.name}
+                          </Text>
+
+                          <View
+                            style={[
+                              styles.statusBadge,
+                              {
+                                backgroundColor: isSuspended
+                                  ? "rgba(239, 68, 68, 0.12)"
+                                  : "rgba(34, 197, 94, 0.12)",
+                                borderColor: isSuspended
+                                  ? "rgba(239, 68, 68, 0.3)"
+                                  : "rgba(34, 197, 94, 0.3)",
+                              },
+                            ]}
+                          >
+                            <View style={[styles.statusBadgeDot, { backgroundColor: statusColor }]} />
+                            <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+                              {member.status}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <Text style={[styles.staffRoleText, { color: colors.secondarytext }]}>
+                          {member.role || "Salon Stylist"}
+                        </Text>
+                        {member.phone && (
+                          <Text style={[styles.staffPhoneText, { color: colors.secondarytext }]}>
+                            {member.phone}
+                          </Text>
+                        )}
+                      </View>
+
+                      {/* Action Triggers */}
+                      <View style={styles.staffActionsCol}>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            setSelectedStaff(member);
+                            setStatusModalVisible(true);
+                          }}
+                          style={[
+                            styles.actionIconBtn,
+                            { backgroundColor: colors.background, borderColor: colors.border },
+                          ]}
+                        >
+                          <Ionicons name="options-outline" size={16} color={colors.primary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => handleRemoveStaff(member)}
+                          style={[
+                            styles.actionIconBtn,
+                            {
+                              backgroundColor: "rgba(239, 68, 68, 0.1)",
+                              borderColor: "rgba(239, 68, 68, 0.25)",
+                            },
+                          ]}
+                        >
+                          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* TAB 2: INCOMING JOIN REQUESTS */}
+        {activeTab === "requests" && (
+          <View style={{ gap: 14 }}>
+            {joinRequests.length === 0 ? (
+              <View
+                style={[
+                  styles.emptyStateCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="people-outline" size={40} color={colors.secondarytext} />
+                <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>{t("manageStaff.noPendingJoinRequests")}</Text>
+                <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>{t("manageStaff.noPendingJoinRequestsDesc", { email: user?.email || "" })}</Text>
+              </View>
+            ) : (
+              joinRequests.map((req) => (
+                <View
+                  key={req.id}
+                  style={[
+                    styles.joinRequestCard,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <View style={styles.joinRequestHeader}>
+                    <View
+                      style={[
+                        styles.avatarWrap,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                      ]}
+                    >
+                      <Ionicons name="cut" size={18} color={colors.primary} />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={[styles.joinRequestName, { color: colors.primarytext }]}>
+                          {req.name}
                         </Text>
                         <View
                           style={[
-                            styles.statusBadge,
-                            { backgroundColor: `${getStatusColor(member.status)}20` },
+                            styles.roleBadge,
+                            { backgroundColor: colors.card, borderColor: colors.border },
                           ]}
                         >
-                          <View
-                            style={[
-                              styles.statusDot,
-                              { backgroundColor: getStatusColor(member.status) },
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.statusText,
-                              { color: getStatusColor(member.status) },
-                            ]}
-                          >
-                            {member.status === "Active"
-                              ? t("manageStaff.statusActive")
-                              : member.status === "On Break"
-                              ? t("manageStaff.statusBreak")
-                              : t("manageStaff.statusOffDuty")}
+                          <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
+                            {req.role || "Barber"}
                           </Text>
                         </View>
                       </View>
-
-                      <Text style={[styles.staffRole, { color: colors.secondarytext }]}>
-                        {member.role || "Salon Barber"}
+                      <Text style={[styles.joinRequestEmail, { color: colors.secondarytext }]}>
+                        {req.email || "No email provided"}
                       </Text>
+                      {req.phone ? (
+                        <Text style={[styles.joinRequestPhone, { color: colors.secondarytext }]}>
+                          {req.phone}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
 
-                      <View style={styles.metaRow}>
-                        {member.phone && (
-                          <View style={styles.metaItem}>
-                            <Ionicons
-                              name="call-outline"
-                              size={12}
-                              color={colors.secondarytext}
-                            />
-                            <Text style={[styles.metaText, { color: colors.secondarytext }]}>
-                              {member.phone}
-                            </Text>
-                          </View>
-                        )}
-                        <View style={styles.metaItem}>
-                          <Ionicons
-                            name="cut-outline"
-                            size={12}
-                            color={colors.secondarytext}
-                          />
-                          <Text style={[styles.metaText, { color: colors.secondarytext }]}>
-                            {salonName} Barber
+                  <View style={styles.joinRequestActions}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      disabled={isRespondingToRequest === req.id}
+                      onPress={() => handleRespondJoinRequest(req.id, "reject")}
+                      style={[
+                        styles.requestDeclineBtn,
+                        {
+                          borderColor: "rgba(239, 68, 68, 0.4)",
+                          backgroundColor: "rgba(239, 68, 68, 0.08)",
+                        },
+                      ]}
+                    >
+                      {isRespondingToRequest === req.id ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                      ) : (
+                        <>
+                          <Ionicons name="close-circle-outline" size={16} color="#EF4444" />
+                          <Text style={styles.requestDeclineText}>{t("manageStaff.decline")}</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      disabled={isRespondingToRequest === req.id}
+                      onPress={() => handleRespondJoinRequest(req.id, "accept")}
+                      style={[styles.requestAcceptBtn, { backgroundColor: colors.primary }]}
+                    >
+                      {isRespondingToRequest === req.id ? (
+                        <ActivityIndicator size="small" color={colors.onBrand} />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-circle" size={16} color={colors.onBrand} />
+                          <Text style={[styles.requestAcceptText, { color: colors.onBrand }]}>{t("manageStaff.acceptToFloor")}</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* TAB 3: SEARCH & INVITE */}
+        {activeTab === "invite" && (
+          <View style={{ gap: 14 }}>
+            {/* Step 1: Select Stylist */}
+            <View
+              style={[
+                styles.formCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
+              <View style={styles.formCardHeader}>
+                <Ionicons name="search-outline" size={18} color={colors.primary} />
+                <Text style={[styles.formCardTitle, { color: colors.primarytext }]}>
+                  {t("manageStaff.findRegisteredBarber") || "Find Registered Barber or Client"}
+                </Text>
+              </View>
+              <Text style={[styles.formCardSubtitle, { color: colors.secondarytext }]}>
+                {t("manageStaff.searchUserBaseDesc") || "Search our registered Trimly user base to send an official salon staff invitation."}
+              </Text>
+
+              <View
+                style={[
+                  styles.searchBox,
+                  { backgroundColor: colors.background, borderColor: colors.border, marginTop: 10 },
+                ]}
+              >
+                <Ionicons name="search" size={17} color={colors.secondarytext} />
+                <TextInput
+                  style={[styles.searchInput, { color: colors.primarytext }]}
+                  placeholder={t("manageStaff.searchInvitePlaceholder") || "Search by name, email, or phone..."}
+                  placeholderTextColor={colors.secondarytext}
+                  value={clientSearchQuery}
+                  onChangeText={handleSearchClients}
+                />
+              </View>
+
+              {/* Directory Results */}
+              {clientsDirectory.length > 0 && (
+                <View style={styles.directoryResultsList}>
+                  {clientsDirectory.slice(0, 5).map((client) => {
+                    const isSelected = selectedClient?.id === client.id;
+                    return (
+                      <TouchableOpacity
+                        key={client.id}
+                        activeOpacity={0.8}
+                        onPress={() => setSelectedClient(client)}
+                        style={[
+                          styles.directoryItem,
+                          {
+                            backgroundColor: isSelected
+                              ? "rgba(199, 243, 107, 0.12)"
+                              : colors.background,
+                            borderColor: isSelected ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <View style={styles.dirAvatarWrap}>
+                          <Image source={profilePic} style={styles.dirAvatarImg} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.dirClientName, { color: colors.primarytext }]}>
+                            {client.name}
+                          </Text>
+                          <Text style={[styles.dirClientEmail, { color: colors.secondarytext }]}>
+                            {client.email}
                           </Text>
                         </View>
-                      </View>
-                    </View>
+                        {isSelected && (
+                          <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
 
-                    <Ionicons
-                      name="ellipsis-vertical"
-                      size={18}
-                      color={colors.secondarytext}
-                    />
+            {/* Step 2: Assign Specialty Role */}
+            {selectedClient && (
+              <View
+                style={[
+                  styles.formCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.formCardHeader}>
+                  <Ionicons name="ribbon-outline" size={18} color={colors.primary} />
+                  <Text style={[styles.formCardTitle, { color: colors.primarytext }]}>
+                    Assign Staff Title for {selectedClient.name}
+                  </Text>
+                </View>
+
+                <View style={styles.rolesGrid}>
+                  {ROLES.map((role) => {
+                    const isSelected = staffRole === role.label;
+                    return (
+                      <TouchableOpacity
+                        key={role.label}
+                        activeOpacity={0.8}
+                        onPress={() => setStaffRole(role.label)}
+                        style={[
+                          styles.roleChip,
+                          {
+                            backgroundColor: isSelected ? colors.primary : colors.background,
+                            borderColor: isSelected ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={role.icon}
+                          size={15}
+                          color={isSelected ? colors.onBrand : colors.primary}
+                        />
+                        <Text
+                          style={[
+                            styles.roleChipText,
+                            { color: isSelected ? colors.onBrand : colors.primarytext },
+                          ]}
+                        >
+                          {role.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Actions: Send or Save as Draft */}
+                <View style={styles.inviteActionsRow}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={isInviting}
+                    onPress={() => handleSendInvite(true)}
+                    style={[
+                      styles.draftInviteBtn,
+                      { backgroundColor: colors.background, borderColor: colors.border },
+                    ]}
+                  >
+                    <Ionicons name="time-outline" size={16} color={colors.primarytext} />
+                    <Text style={[styles.draftInviteBtnText, { color: colors.primarytext }]}>
+                      {t("manageStaff.saveDraft") || "Save Draft"}
+                    </Text>
                   </TouchableOpacity>
-                ))}
+
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    disabled={isInviting}
+                    onPress={() => handleSendInvite(false)}
+                    style={[styles.sendInviteCTA, { backgroundColor: colors.primary }]}
+                  >
+                    {isInviting ? (
+                      <ActivityIndicator size="small" color={colors.onBrand} />
+                    ) : (
+                      <>
+                        <Ionicons name="paper-plane" size={16} color={colors.onBrand} />
+                        <Text style={[styles.sendInviteCTAText, { color: colors.onBrand }]}>
+                          Send Official Invite
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
@@ -950,100 +1024,53 @@ export default function ManageStaffScreen() {
         {activeTab === "pending" && (
           <View style={{ gap: 14 }}>
             {pendingInvites.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View
-                  style={[
-                    styles.emptyIconCircle,
-                    { backgroundColor: colors.surface, borderColor: colors.surfacevariant },
-                  ]}
-                >
-                  <Ionicons name="mail-outline" size={34} color={colors.secondarytext} />
-                </View>
+              <View
+                style={[
+                  styles.emptyStateCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="mail-open-outline" size={40} color={colors.secondarytext} />
                 <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-                  No pending invitations
+                  {t("manageStaff.noPendingInvites") || "No Pending Invites"}
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
-                  When you invite clients to become salon stylists, their pending invitation statuses will show here.
+                  {t("manageStaff.allStaffResolved") || "All sent staff invitations have been resolved or accepted."}
                 </Text>
-                <TouchableOpacity
-                  activeOpacity={0.88}
-                  onPress={() => setActiveTab("invite")}
-                  style={[styles.primaryActionBtn, { backgroundColor: colors.primary, marginTop: 16 }]}
-                >
-                  <Ionicons name="person-add" size={16} color="#1C1E1B" />
-                  <Text style={styles.primaryActionBtnText}>
-                    Invite a Client Now
-                  </Text>
-                </TouchableOpacity>
               </View>
             ) : (
               pendingInvites.map((inv) => (
                 <View
                   key={inv.id}
                   style={[
-                    styles.pendingInviteCard,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: "rgba(245, 158, 11, 0.4)",
-                    },
+                    styles.inviteCard,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
                   ]}
                 >
-                  <View style={styles.pendingInviteHeader}>
-                    <View
-                      style={[
-                        styles.pendingAvatarCircle,
-                        { backgroundColor: "rgba(245, 158, 11, 0.15)" },
-                      ]}
-                    >
-                      <Ionicons name="mail-unread" size={20} color="#F59E0B" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.pendingClientName, { color: colors.primarytext }]}>
-                        {inv.clientName}
-                      </Text>
-                      <Text style={[styles.pendingClientMeta, { color: colors.secondarytext }]}>
-                        {inv.clientEmail} {inv.clientPhone ? `• ${inv.clientPhone}` : ""}
-                      </Text>
-                    </View>
-                    <View style={styles.badgePendingPill}>
-                      <Text style={styles.badgePendingPillText}>Pending</Text>
-                    </View>
-                  </View>
-
-                  <View
-                    style={[
-                      styles.pendingInviteDetails,
-                      { backgroundColor: colors.background, borderColor: colors.surfacevariant },
-                    ]}
-                  >
-                    <View style={styles.detailRow}>
-                      <Text style={[styles.detailLabel, { color: colors.secondarytext }]}>
-                        Assigned Role:
-                      </Text>
-                      <Text style={[styles.detailValue, { color: colors.primary }]}>
-                        {inv.role || "Barber"}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={[styles.detailLabel, { color: colors.secondarytext }]}>
-                        Affiliation on Accept:
-                      </Text>
-                      <Text style={[styles.detailValue, { color: colors.primarytext }]}>
-                        {inv.salonName} Barber
-                      </Text>
-                    </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inviteClientName, { color: colors.primarytext }]}>
+                      {inv.clientName || inv.clientEmail}
+                    </Text>
+                    <Text style={[styles.inviteRoleText, { color: colors.secondarytext }]}>
+                      Role: {inv.role || "Stylist"}
+                    </Text>
+                    <Text style={[styles.inviteStatusBadgeText, { color: "#F59E0B" }]}>
+                      {t("manageStaff.pendingStylistAcceptance") || "Pending Stylist Acceptance"}
+                    </Text>
                   </View>
 
                   <TouchableOpacity
                     activeOpacity={0.8}
-                    onPress={() => handleCancelInvite(inv.id, inv.clientName)}
+                    onPress={() => handleCancelInvite(inv.id, inv.clientName || "Stylist")}
                     style={[
                       styles.revokeBtn,
-                      { borderColor: "rgba(239, 68, 68, 0.3)", backgroundColor: "rgba(239, 68, 68, 0.08)" },
+                      {
+                        backgroundColor: "rgba(239, 68, 68, 0.1)",
+                        borderColor: "rgba(239, 68, 68, 0.3)",
+                      },
                     ]}
                   >
-                    <Ionicons name="close-circle-outline" size={16} color="#EF4444" />
-                    <Text style={styles.revokeBtnText}>{t("manageStaff.revokeInvite")}</Text>
+                    <Text style={styles.revokeBtnText}>Revoke</Text>
                   </TouchableOpacity>
                 </View>
               ))
@@ -1051,117 +1078,68 @@ export default function ManageStaffScreen() {
           </View>
         )}
 
-        {/* TAB 4: STILL TO SEND (DRAFTS STORED IN DB) */}
+        {/* TAB 4: STILL TO SEND / DRAFTS */}
         {activeTab === "still_to_send" && (
           <View style={{ gap: 14 }}>
             {stillToSendInvites.length === 0 ? (
-              <View style={styles.emptyState}>
-                <View
-                  style={[
-                    styles.emptyIconCircle,
-                    { backgroundColor: colors.surface, borderColor: colors.surfacevariant },
-                  ]}
-                >
-                  <Ionicons name="document-text-outline" size={34} color={colors.secondarytext} />
-                </View>
+              <View
+                style={[
+                  styles.emptyStateCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons name="document-text-outline" size={40} color={colors.secondarytext} />
                 <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-                  No queued drafts
+                  No Saved Drafts
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
-                  When you prepare invitations to send later, they are safely stored in your database and appear here.
+                  {t("manageStaff.noUnissuedDrafts") || "You don't have any unissued draft invitations pending."}
                 </Text>
-                <TouchableOpacity
-                  activeOpacity={0.88}
-                  onPress={() => setActiveTab("invite")}
-                  style={[styles.primaryActionBtn, { backgroundColor: colors.primary, marginTop: 16 }]}
-                >
-                  <Ionicons name="person-add" size={16} color="#1C1E1B" />
-                  <Text style={styles.primaryActionBtnText}>
-                    Create an Invite Draft
-                  </Text>
-                </TouchableOpacity>
               </View>
             ) : (
-              stillToSendInvites.map((inv) => (
+              stillToSendInvites.map((draft) => (
                 <View
-                  key={inv.id}
+                  key={draft.id}
                   style={[
-                    styles.pendingInviteCard,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: "rgba(163, 179, 156, 0.4)",
-                    },
+                    styles.inviteCard,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
                   ]}
                 >
-                  <View style={styles.pendingInviteHeader}>
-                    <View
-                      style={[
-                        styles.pendingAvatarCircle,
-                        { backgroundColor: "rgba(163, 179, 156, 0.2)" },
-                      ]}
-                    >
-                      <Ionicons name="time-outline" size={20} color={colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.pendingClientName, { color: colors.primarytext }]}>
-                        {inv.clientName}
-                      </Text>
-                      <Text style={[styles.pendingClientMeta, { color: colors.secondarytext }]}>
-                        {inv.clientEmail} {inv.clientPhone ? `• ${inv.clientPhone}` : ""}
-                      </Text>
-                    </View>
-                    <View style={[styles.badgePendingPill, { backgroundColor: "rgba(163, 179, 156, 0.2)" }]}>
-                      <Text style={[styles.badgePendingPillText, { color: colors.primary }]}>Still to Send</Text>
-                    </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inviteClientName, { color: colors.primarytext }]}>
+                      {draft.clientName}
+                    </Text>
+                    <Text style={[styles.inviteRoleText, { color: colors.secondarytext }]}>
+                      Role: {draft.role || "Stylist"}
+                    </Text>
+                    <Text style={[styles.inviteStatusBadgeText, { color: colors.primary }]}>
+                      {t("manageStaff.draftStillToSend") || "Draft • Still to Send"}
+                    </Text>
                   </View>
 
-                  <View
-                    style={[
-                      styles.pendingInviteDetails,
-                      { backgroundColor: colors.background, borderColor: colors.surfacevariant },
-                    ]}
-                  >
-                    <View style={styles.detailRow}>
-                      <Text style={[styles.detailLabel, { color: colors.secondarytext }]}>
-                        Configured Role:
-                      </Text>
-                      <Text style={[styles.detailValue, { color: colors.primary }]}>
-                        {inv.role || "Barber"}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={[styles.detailLabel, { color: colors.secondarytext }]}>
-                        Status:
-                      </Text>
-                      <Text style={[styles.detailValue, { color: colors.primarytext }]}>
-                        Saved in Database (Draft)
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
                     <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={() => handleSendDraftNow(inv)}
+                      activeOpacity={0.8}
+                      onPress={() => handleDeleteDraft(draft)}
                       style={[
-                        styles.sendDraftNowBtn,
-                        { backgroundColor: colors.primary, flex: 1.3 },
+                        styles.revokeBtn,
+                        {
+                          backgroundColor: "rgba(239, 68, 68, 0.1)",
+                          borderColor: "rgba(239, 68, 68, 0.3)",
+                        },
                       ]}
                     >
-                      <Ionicons name="paper-plane" size={15} color="#1C1E1B" />
-                      <Text style={styles.sendDraftNowBtnText}>{t("manageStaff.sendOfficialInvite")}</Text>
+                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleDeleteDraft(inv)}
-                      style={[
-                        styles.revokeBtn,
-                        { flex: 1, borderColor: "rgba(239, 68, 68, 0.3)", backgroundColor: "rgba(239, 68, 68, 0.08)" },
-                      ]}
+                      activeOpacity={0.85}
+                      onPress={() => handleSendDraftNow(draft)}
+                      style={[styles.sendNowBtn, { backgroundColor: colors.primary }]}
                     >
-                      <Ionicons name="trash-outline" size={15} color="#EF4444" />
-                      <Text style={styles.revokeBtnText}>{t("manageStaff.deleteDraft")}</Text>
+                      <Text style={[styles.sendNowBtnText, { color: colors.onBrand }]}>
+                        Send Now
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1171,91 +1149,68 @@ export default function ManageStaffScreen() {
         )}
       </ScrollView>
 
-      {/* Staff Options Modal (Status toggle / Removal) */}
+      {/* STAFF STATUS MODAL (Active, Suspended, On Break, Off Duty) */}
       <CustomModal
         visible={statusModalVisible}
-        title={selectedStaff?.name || "Staff Member Options"}
         onClose={() => {
           setStatusModalVisible(false);
           setSelectedStaff(null);
         }}
+        title={selectedStaff?.name || "Staff Duty Status"}
+        description={t("manageStaff.floorStatusDesc") || "Select the operational floor status for this staff member."}
+        scrollable={false}
       >
         {selectedStaff && (
-          <View style={{ gap: 12, paddingTop: 4 }}>
-            <Text style={[styles.modalSubHeader, { color: colors.secondarytext }]}>
-              Current Role: <Text style={{ color: colors.primarytext, fontWeight: "700" }}>{selectedStaff.role}</Text>
-            </Text>
-
-            <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
-              {t("manageStaff.changeWorkStatus")}
-            </Text>
-
-            {(["Active", "On Break", "Off Duty"] as const).map((st) => {
+          <View style={styles.statusModalBody}>
+            {(["Active", "Suspended", "On Break", "Off Duty"] as const).map((st) => {
               const isCurrent = selectedStaff.status === st;
+              const col = getStatusColor(st);
               return (
                 <TouchableOpacity
                   key={st}
                   activeOpacity={0.8}
                   onPress={() => handleToggleStatus(selectedStaff, st)}
                   style={[
-                    styles.statusOptionRow,
+                    styles.statusModalOption,
                     {
-                      backgroundColor: isCurrent ? `${getStatusColor(st)}18` : colors.background,
-                      borderColor: isCurrent ? getStatusColor(st) : colors.surfacevariant,
+                      backgroundColor: isCurrent ? "rgba(199, 243, 107, 0.12)" : colors.background,
+                      borderColor: isCurrent ? colors.primary : colors.border,
                     },
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.statusDotLarge,
-                      { backgroundColor: getStatusColor(st) },
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.statusOptionText,
-                      { color: isCurrent ? getStatusColor(st) : colors.primarytext },
-                    ]}
-                  >
-                    {st === "Active"
-                      ? t("manageStaff.statusActive")
-                      : st === "On Break"
-                      ? t("manageStaff.statusBreak")
-                      : t("manageStaff.statusOffDuty")}
-                  </Text>
+                  <View style={[styles.statusOptionDot, { backgroundColor: col }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.statusOptionTitle, { color: colors.primarytext }]}>
+                      {st}
+                    </Text>
+                    <Text style={[styles.statusOptionDesc, { color: colors.secondarytext }]}>
+                      {st === "Active"
+                        ? "Stylist is taking bookings and active on chair."
+                        : st === "Suspended"
+                        ? "Temporarily paused from accepting bookings."
+                        : st === "On Break"
+                        ? "Midday pause or temporary meal break."
+                        : "Offline and not available for walk-ins."}
+                    </Text>
+                  </View>
                   {isCurrent && (
-                    <Ionicons name="checkmark" size={18} color={getStatusColor(st)} />
+                    <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
                   )}
                 </TouchableOpacity>
               );
             })}
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => handleRemoveStaff(selectedStaff)}
-              style={[
-                styles.deleteOptionBtn,
-                { backgroundColor: "rgba(239, 68, 68, 0.12)", borderColor: "rgba(239, 68, 68, 0.3)" },
-              ]}
-            >
-              <Ionicons name="trash-outline" size={18} color="#EF4444" />
-              <Text style={styles.deleteOptionBtnText}>
-                {t("manageStaff.removeFromSalonTeam")}
-              </Text>
-            </TouchableOpacity>
           </View>
         )}
       </CustomModal>
 
-      {/* In-App Page Tutorial Modal */}
+      {/* Tutorial Modal */}
       <PageTutorialModal
+        visible={tutorialVisible}
+        onClose={() => setTutorialVisible(false)}
         screenKey="manage_staff"
         title={MANAGE_STAFF_TUTORIAL.title}
         subtitle={MANAGE_STAFF_TUTORIAL.subtitle}
         steps={MANAGE_STAFF_TUTORIAL.steps}
-        visible={tutorialVisible}
-        onClose={() => setTutorialVisible(false)}
-        autoTrigger={true}
       />
     </SafeAreaView>
   );
@@ -1270,480 +1225,479 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
   },
-  headerBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: "center",
+  headerCircleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   headerTitleWrap: {
     flex: 1,
-    marginHorizontal: 12,
+    paddingHorizontal: 12,
   },
   headerTitle: {
     fontSize: 18,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
-    letterSpacing: -0.2,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11.5,
+    fontFamily: FontFamily.regular,
     marginTop: 2,
   },
   tabContainer: {
-    paddingHorizontal: 18,
-    paddingBottom: 12,
+    borderBottomWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
   },
   tabTrack: {
     flexDirection: "row",
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 4,
-    gap: 4,
+    gap: 8,
   },
   tabItem: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: 6,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  tabItemActive: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
   },
   tabText: {
-    fontSize: 12.5,
+    fontSize: 12,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
   scrollContent: {
     paddingHorizontal: 18,
+    paddingTop: 16,
     paddingBottom: 40,
+    gap: 14,
   },
-  infoCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-    padding: 14,
-    borderRadius: 16,
+  telemetryCard: {
+    borderRadius: 18,
     borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
   },
-  infoIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  infoTitle: {
-    fontSize: 13.5,
-    fontWeight: "700",
-    marginBottom: 3,
-  },
-  infoText: {
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  configureInviteCard: {
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    gap: 12,
-  },
-  selectedClientHeader: {
+  telemetryGrid: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
   },
-  selectedClientAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(163, 179, 156, 0.2)",
-    justifyContent: "center",
+  telemetryCell: {
+    flex: 1,
     alignItems: "center",
+    gap: 2,
   },
-  selectedClientAvatarText: {
-    fontSize: 18,
-    fontWeight: "800",
+  telemetryDivider: {
+    width: 1,
+    height: 28,
   },
-  selectedClientName: {
+  telemetryValue: {
     fontSize: 15,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
-  selectedClientMeta: {
-    fontSize: 12,
-    marginTop: 2,
+  telemetryLabel: {
+    fontSize: 10,
+    fontFamily: FontFamily.medium,
+    textAlign: "center",
   },
-  closeSelectedBtn: {
-    padding: 4,
-  },
-  sectionHeading: {
-    fontSize: 13.5,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  subSectionTitle: {
-    fontSize: 11.5,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-  },
-  rolesGrid: {
-    gap: 8,
-    marginTop: 6,
-  },
-  roleCard: {
+  searchBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    padding: 10,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-  },
-  roleCardTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  roleCardDesc: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  primaryActionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    height: 48,
-    borderRadius: 24,
-    marginTop: 4,
-  },
-  primaryActionBtnText: {
-    color: "#1C1E1B",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    height: 46,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 10,
+    paddingHorizontal: 12,
+    height: 44,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13.5,
+    fontSize: 13,
+    fontFamily: FontFamily.medium,
   },
-  clientCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-    borderRadius: 16,
+  emptyStateCard: {
+    padding: 36,
+    borderRadius: 18,
     borderWidth: 1,
-  },
-  clientAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
     alignItems: "center",
+    gap: 8,
   },
-  clientAvatarText: {
-    fontSize: 15,
+  emptyTitle: {
+    fontSize: 16,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
-  clientCardName: {
-    fontSize: 14,
-    fontWeight: "700",
+  emptySubtitle: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.regular,
+    textAlign: "center",
   },
-  clientCardEmail: {
-    fontSize: 11.5,
-  },
-  clientCardPhone: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  actionPill: {
+  emptyCTA: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 8,
   },
-  actionPillText: {
-    fontSize: 11.5,
+  emptyCTAText: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
-  },
-  badgeAlreadyStaff: {
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeAlreadyStaffText: {
-    color: "#10B981",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  badgePendingInvite: {
-    backgroundColor: "rgba(245, 158, 11, 0.18)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgePendingInviteText: {
-    color: "#F59E0B",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  staffGrid: {
-    gap: 12,
   },
   staffCard: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
+    padding: 12,
+    gap: 12,
   },
-  avatarImage: {
+  staffAvatarWrap: {
+    position: "relative",
+  },
+  staffAvatarImg: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    marginRight: 12,
   },
-  staffInfo: {
-    flex: 1,
+  avatarStatusDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
   },
-  nameRow: {
+  nameStatusRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 2,
+    gap: 6,
   },
-  staffName: {
+  staffNameText: {
     fontSize: 14.5,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
+    flex: 1,
   },
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  staffRole: {
-    fontSize: 12.5,
-    marginBottom: 4,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 11.5,
-  },
-  pendingInviteCard: {
-    padding: 14,
-    borderRadius: 18,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
     borderWidth: 1,
-    gap: 10,
   },
-  pendingInviteHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+  statusBadgeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
-  pendingAvatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  pendingClientName: {
-    fontSize: 14,
+  statusBadgeText: {
+    fontSize: 10,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
-  pendingClientMeta: {
-    fontSize: 11.5,
-    marginTop: 1,
+  staffRoleText: {
+    fontSize: 12,
+    fontFamily: FontFamily.medium,
+    marginTop: 2,
   },
-  badgePendingPill: {
-    backgroundColor: "rgba(245, 158, 11, 0.18)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgePendingPillText: {
-    color: "#F59E0B",
+  staffPhoneText: {
     fontSize: 11,
-    fontWeight: "700",
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
   },
-  pendingInviteDetails: {
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
+  staffActionsCol: {
     gap: 6,
   },
-  detailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  actionIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 9,
+    borderWidth: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
-  detailLabel: {
-    fontSize: 11.5,
+  formCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 8,
   },
-  detailValue: {
+  formCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  formCardTitle: {
+    fontSize: 14.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  formCardSubtitle: {
     fontSize: 12,
+    fontFamily: FontFamily.regular,
+    lineHeight: 16,
+  },
+  directoryResultsList: {
+    gap: 8,
+    marginTop: 8,
+  },
+  directoryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 10,
+  },
+  dirAvatarWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    overflow: "hidden",
+  },
+  dirAvatarImg: {
+    width: "100%",
+    height: "100%",
+  },
+  dirClientName: {
+    fontSize: 13,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  dirClientEmail: {
+    fontSize: 11,
+    fontFamily: FontFamily.regular,
+  },
+  rolesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  roleChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  roleChipText: {
+    fontSize: 12,
+    fontFamily: FontFamily.semibold,
+  },
+  inviteActionsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  draftInviteBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  draftInviteBtnText: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.semibold,
+    fontWeight: "600",
+  },
+  sendInviteCTA: {
+    flex: 1.5,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 44,
+    borderRadius: 12,
+  },
+  sendInviteCTAText: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  inviteCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  inviteClientName: {
+    fontSize: 14,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  inviteRoleText: {
+    fontSize: 12,
+    fontFamily: FontFamily.medium,
+    marginBottom: 2,
+  },
+  inviteStatusBadgeText: {
+    fontSize: 11,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
   revokeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    height: 36,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
   },
   revokeBtnText: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
     color: "#EF4444",
-    fontSize: 12,
+  },
+  sendNowBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  sendNowBtnText: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
-  secondaryActionBtn: {
+  statusModalBody: {
+    gap: 8,
+    paddingVertical: 8,
+  },
+  statusModalOption: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  secondaryActionBtnText: {
-    fontSize: 12.5,
-    fontWeight: "700",
-  },
-  sendDraftNowBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    height: 38,
-    borderRadius: 12,
-  },
-  sendDraftNowBtnText: {
-    color: "#1C1E1B",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  emptyBox: {
-    padding: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: "center",
-    gap: 6,
-  },
-  emptyBoxTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  emptyBoxSubtitle: {
-    fontSize: 12,
-    textAlign: "center",
-    lineHeight: 16,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 50,
-    paddingHorizontal: 20,
-  },
-  emptyIconCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  emptySubtitle: {
-    fontSize: 12.5,
-    textAlign: "center",
-    lineHeight: 17,
-  },
-  modalSubHeader: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  statusOptionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    gap: 10,
     padding: 12,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  statusDotLarge: {
+  statusOptionDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
   },
-  statusOptionText: {
-    flex: 1,
-    marginLeft: 10,
+  statusOptionTitle: {
     fontSize: 13.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  statusOptionDesc: {
+    fontSize: 11,
+    fontFamily: FontFamily.regular,
+  },
+  tabBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    marginLeft: 2,
+  },
+  tabBadgeText: {
+    fontSize: 10,
+    fontFamily: FontFamily.bold,
+    fontWeight: "800",
+  },
+  joinRequestCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  avatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  roleBadgeText: {
+    fontSize: 10.5,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
-  deleteOptionBtn: {
+  joinRequestHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  joinRequestName: {
+    fontSize: 14.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  joinRequestEmail: {
+    fontSize: 12,
+    fontFamily: FontFamily.regular,
+    marginTop: 2,
+  },
+  joinRequestPhone: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.regular,
+    marginTop: 1,
+  },
+  joinRequestActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 2,
+  },
+  requestDeclineBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 6,
+    gap: 6,
   },
-  deleteOptionBtnText: {
+  requestDeclineText: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.semiBold,
     color: "#EF4444",
-    fontSize: 13,
+    fontWeight: "600",
+  },
+  requestAcceptBtn: {
+    flex: 1.5,
+    height: 40,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  requestAcceptText: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.bold,
     fontWeight: "700",
   },
 });

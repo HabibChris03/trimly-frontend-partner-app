@@ -1,9 +1,10 @@
 import React, { useEffect } from "react";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import useColors from "@/hooks/usecolor";
+import TrimlyLogoLoader from "@/components/ui/TrimlyLogoLoader";
 
 import { getStoredActiveMode } from "@/services/api";
 
@@ -58,7 +59,7 @@ export default function Index() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ActivityIndicator size="large" color="#A3B39C" />
+      <TrimlyLogoLoader size="medium" />
     </View>
   );
 }

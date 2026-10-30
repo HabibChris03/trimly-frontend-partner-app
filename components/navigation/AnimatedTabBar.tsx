@@ -1,22 +1,20 @@
 import React from "react";
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Animated, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
 import { useTabBarVisibility } from "@/context/TabBarVisibilityContext";
 import useColors from "@/hooks/usecolor";
-
 import { useLanguage } from "@/context/LanguageContext";
 
 interface AnimatedTabBarProps {
   state: any;
   descriptors: any;
-  navigation: any;
+  navigation?: any;
+  emitter?: any;
+  navigateToTab?: (routeKey: string) => void;
   insets?: any;
+  /** Reference design is icon-only; labels are still exposed to screen readers. */
   showLabels?: boolean;
 }
 
@@ -24,15 +22,16 @@ export default function AnimatedTabBar({
   state,
   descriptors,
   navigation,
-  showLabels = true,
+  emitter,
+  navigateToTab,
 }: AnimatedTabBarProps) {
+  const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const { tabBarTranslateY, isTabBarVisible, showTabBar } =
     useTabBarVisibility();
 
-  // Filter out any hidden routes (only screens with a valid tabBarIcon and not hidden)
   const visibleRoutes = state.routes.filter((route: any) => {
     const { options } = descriptors[route.key];
     if (!options) return false;
@@ -41,7 +40,7 @@ export default function AnimatedTabBar({
     return true;
   });
 
-  const bottomInset = Math.max(16, insets.bottom + 4);
+  const bottomInset = Math.max(12, insets.bottom);
   const currentRouteName = state.routes[state.index]?.name;
 
   const getTranslatedLabel = (routeName: string, fallback: any) => {
@@ -67,10 +66,9 @@ export default function AnimatedTabBar({
       style={[
         styles.tabBarContainer,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.surfacevariant,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
           bottom: bottomInset,
-          height: showLabels ? 66 : 58,
           transform: [{ translateY: tabBarTranslateY }],
         },
       ]}
@@ -80,34 +78,60 @@ export default function AnimatedTabBar({
         const isFocused = currentRouteName === route.name;
 
         const onPress = () => {
-          showTabBar(); // Ensure navbar is visible when switching
-          const event = navigation.emit({
-            type: "tabPress",
-            target: route.key,
-            canPreventDefault: true,
-          });
+          showTabBar();
+          let isDefaultPrevented = false;
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
+          if (navigation?.emit) {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            isDefaultPrevented = !!event?.defaultPrevented;
+          } else if (emitter?.emit) {
+            const event = emitter.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            isDefaultPrevented = !!event?.defaultPrevented;
+          }
+
+          if (!isFocused && !isDefaultPrevented) {
+            try {
+              Haptics.selectionAsync();
+            } catch {}
+            if (typeof navigateToTab === "function") {
+              navigateToTab(route.key);
+            } else if (navigation?.navigate) {
+              navigation.navigate(route.name, route.params);
+            } else {
+              router.navigate(route.name as any);
+            }
           }
         };
 
         const onLongPress = () => {
-          navigation.emit({
-            type: "tabLongPress",
-            target: route.key,
-          });
+          if (navigation?.emit) {
+            navigation.emit({
+              type: "tabLongPress",
+              target: route.key,
+            });
+          } else if (emitter?.emit) {
+            emitter.emit({
+              type: "tabLongPress",
+              target: route.key,
+            });
+          }
         };
 
-        const activeColor = colors.primary;
-        const inactiveColor = colors.secondarytext;
-        const color = isFocused ? activeColor : inactiveColor;
+        const color = isFocused ? colors.brand : colors.secondaryText;
 
         const icon = options.tabBarIcon
           ? options.tabBarIcon({
               focused: isFocused,
               color,
-              size: showLabels ? 22 : 23,
+              size: 24,
             })
           : null;
 
@@ -123,39 +147,22 @@ export default function AnimatedTabBar({
         return (
           <TouchableOpacity
             key={route.key}
-            accessibilityRole="button"
+            accessibilityRole="tab"
             accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarButtonTestID}
+            accessibilityLabel={options.tabBarAccessibilityLabel || label}
+            testID={options.tabBarButtonTestID || `tab-${route.name}`}
             onPress={onPress}
             onLongPress={onLongPress}
             activeOpacity={0.75}
             style={styles.tabItem}
           >
+            <View style={styles.iconBox}>{icon}</View>
             <View
               style={[
-                styles.iconBox,
-                !showLabels && isFocused && {
-                  backgroundColor: "rgba(163, 179, 156, 0.16)",
-                },
+                styles.activeDot,
+                { backgroundColor: isFocused ? colors.brand : "transparent" },
               ]}
-            >
-              {icon}
-            </View>
-            {showLabels && typeof label === "string" && (
-              <Text
-                style={[
-                  styles.tabLabel,
-                  {
-                    color,
-                    fontWeight: isFocused ? "700" : "500",
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                {label}
-              </Text>
-            )}
+            />
           </TouchableOpacity>
         );
       })}
@@ -166,37 +173,37 @@ export default function AnimatedTabBar({
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: "absolute",
-    left: 20,
-    right: 20,
+    left: 16,
+    right: 16,
+    height: 64,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 32,
+    justifyContent: "space-around",
+    borderRadius: 24,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    elevation: 12,
+    paddingHorizontal: 8,
+    elevation: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
   },
   tabItem: {
     flex: 1,
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 2,
   },
   iconBox: {
-    width: 48,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },
-  tabLabel: {
-    fontSize: 10.5,
-    marginTop: 2,
-    letterSpacing: 0.2,
+  activeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 4,
   },
 });

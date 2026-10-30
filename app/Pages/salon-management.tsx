@@ -4,8 +4,9 @@ import { SALON_MANAGEMENT_TUTORIAL } from "@/constants/barberTutorials";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/context/ToastContext";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { barberService } from "@/services/barberService";
+import BarberLocationPickerModal from "@/components/map/BarberLocationPickerModal";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -34,8 +35,21 @@ interface StaffMember {
   status: "Active" | "Off Duty" | "On Break";
 }
 
+const AMENITIES_LIST = [
+  { id: "ac", label: "Air Conditioned", icon: "snow-outline" },
+  { id: "wifi", label: "Free Wi-Fi", icon: "wifi-outline" },
+  { id: "lounge", label: "VIP Waiting Lounge", icon: "cafe-outline" },
+  { id: "parking", label: "Free Parking", icon: "car-outline" },
+  { id: "drinks", label: "Complimentary Drinks", icon: "wine-outline" },
+  { id: "pos", label: "Card & MoMo Accepted", icon: "card-outline" },
+  { id: "tv", label: "Sports & Entertainment TV", icon: "tv-outline" },
+  { id: "kids", label: "Kid Friendly Stations", icon: "happy-outline" },
+];
+
+const PRESET_CHAIRS = [2, 4, 6, 8, 12];
+
 export default function SalonManagementScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { t } = useLanguage();
   const { user, updateUser } = useAuth();
@@ -44,31 +58,50 @@ export default function SalonManagementScreen() {
   const salonId = user?.id || 4;
 
   const [isSalon, setIsSalon] = useState<boolean>(
-    user ? user.role === "salon" : true
+    user ? user.role === "salon" || Number(user.capacity || user.working_chairs || 1) > 1 : true
   );
-  const [capacity, setCapacity] = useState(
-    String(user?.capacity || user?.working_chairs || "4")
+  const [capacity, setCapacity] = useState<number>(
+    Math.max(1, parseInt(String(user?.capacity || user?.working_chairs || "4"), 10) || 4)
   );
-  const [salonBio, setSalonBio] = useState(user?.about_us || (user as any)?.bio || "");
-  const [salonLogo, setSalonLogo] = useState<string | null>(user?.logo_url || null);
+  const [salonBio, setSalonBio] = useState(
+    user?.about_us || (user as any)?.bio || ""
+  );
+  const [salonLogo, setSalonLogo] = useState<string | null>(
+    user?.logo_url || null
+  );
+  const [address, setAddress] = useState<string>(
+    (user as any)?.address || "Boulevard de la Liberté, Akwa"
+  );
+  const [city, setCity] = useState<string>(
+    (user as any)?.city || "Douala, Cameroon"
+  );
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([
+    "ac",
+    "wifi",
+    "pos",
+    "lounge",
+  ]);
   const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
+  const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
+    user?.latitude && user?.longitude
+      ? { latitude: user.latitude, longitude: user.longitude }
+      : { latitude: 4.0511, longitude: 9.7679 }
+  );
+
+  const [mapPickerVisible, setMapPickerVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingStaff, setIsLoadingStaff] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
-
-  // New staff modal
-  const [addStaffModalVisible, setAddStaffModalVisible] = useState(false);
-  const [newStaffName, setNewStaffName] = useState("");
-  const [newStaffPhone, setNewStaffPhone] = useState("");
-  const [newStaffRole, setNewStaffRole] = useState("Senior Barber");
+  const [docModalVisible, setDocModalVisible] = useState(false);
 
   const fetchSalonData = useCallback(async () => {
     try {
       const capData = await barberService.getSalonCapacity(salonId);
       if (capData) {
-        setCapacity(String(capData.capacity || capData.working_chairs || 4));
+        const chairs = Math.max(1, parseInt(String(capData.capacity || capData.working_chairs || 4), 10) || 4);
+        setCapacity(chairs);
         setIsSalon(capData.is_salon);
       }
     } catch {
@@ -98,6 +131,7 @@ export default function SalonManagementScreen() {
     setRefreshing(true);
     await Promise.all([fetchSalonData(), fetchStaff()]);
     setRefreshing(false);
+    showToast("Salon profile synced.", "info");
   }, [fetchSalonData, fetchStaff]);
 
   const handlePickLogo = async () => {
@@ -111,12 +145,12 @@ export default function SalonManagementScreen() {
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.85,
     });
 
     if (!result.canceled && result.assets[0]) {
       setSalonLogo(result.assets[0].uri);
-      showToast("Salon logo selected.", "success");
+      showToast("Salon logo updated from gallery.", "success");
     }
   };
 
@@ -130,12 +164,12 @@ export default function SalonManagementScreen() {
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.85,
     });
 
     if (!result.canceled && result.assets[0]) {
       setSalonLogo(result.assets[0].uri);
-      showToast("Shop photo captured.", "success");
+      showToast("Shop photo captured and updated.", "success");
     }
   };
 
@@ -155,10 +189,22 @@ export default function SalonManagementScreen() {
     }
   };
 
-  const handleSaveCapacity = async () => {
+  const toggleAmenity = (id: string) => {
+    if (selectedAmenities.includes(id)) {
+      setSelectedAmenities(selectedAmenities.filter((a) => a !== id));
+    } else {
+      setSelectedAmenities([...selectedAmenities, id]);
+    }
+  };
+
+  const handleStepChairs = (delta: number) => {
+    setCapacity((prev) => Math.max(1, prev + delta));
+  };
+
+  const handleSaveAll = async () => {
     setIsSaving(true);
     try {
-      const capNumber = Math.max(1, parseInt(capacity, 10) || 1);
+      const capNumber = Math.max(1, capacity);
       await barberService.updateSalonCapacity(salonId, {
         bio: salonBio,
         is_salon: isSalon,
@@ -167,6 +213,9 @@ export default function SalonManagementScreen() {
       await barberService.updateProfileDetails({
         about_us: salonBio,
         logo_url: salonLogo,
+        city: city,
+        latitude: coordinates?.latitude,
+        longitude: coordinates?.longitude,
       });
       if (updateUser) {
         updateUser({
@@ -174,77 +223,87 @@ export default function SalonManagementScreen() {
           working_chairs: capNumber,
           about_us: salonBio,
           logo_url: salonLogo,
-        });
+          city: city,
+        } as any);
       }
-      showToast("Salon working chairs & capacity saved to database.", "success");
-    } catch {
-      showToast("Settings updated locally.", "info");
+      showToast("Salon configuration & capacity saved successfully.", "success");
+      router.back();
+    } catch (err: any) {
+      showToast(err?.message || "Configuration updated locally.", "info");
+      if (updateUser) {
+        updateUser({
+          capacity: capacity,
+          working_chairs: capacity,
+          about_us: salonBio,
+          logo_url: salonLogo,
+          city: city,
+        } as any);
+      }
+      router.back();
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleAddStaff = () => {
-    if (!newStaffName.trim()) {
-      showToast("Please enter a staff member name.", "error");
-      return;
-    }
+  const salonTitle = user?.name || "Enterprise Grooming Salon";
+  const userInitials =
+    salonTitle
+      .trim()
+      .split(" ")
+      .filter(Boolean)
+      .map((w: string) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "EG";
 
-    const newStaff: StaffMember = {
-      id: Date.now(),
-      name: newStaffName.trim(),
-      role: newStaffRole,
-      phone: newStaffPhone.trim() || "+237 670 00 00 00",
-      status: "Active",
-    };
-
-    setStaffList([...staffList, newStaff]);
-    setNewStaffName("");
-    setNewStaffPhone("");
-    setAddStaffModalVisible(false);
-    showToast(`Added ${newStaff.name} to salon team.`, "success");
-  };
+  const activeStaffCount = staffList.filter((s) => s.status === "Active").length;
 
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "left", "right"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Executive Clean Header */}
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.back()}
-          style={styles.headerBtn}
+          style={[styles.headerBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={20} color={colors.primaryText} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-          {t("salonManagement.title")}
-        </Text>
+        <View style={{ flex: 1, paddingHorizontal: 4 }}>
+          <Text style={[styles.headerTitle, { color: colors.primaryText }]} numberOfLines={1}>
+            Salon Management
+          </Text>
+          <Text style={[styles.headerSub, { color: colors.secondaryText }]}>
+            {t("salonManagement.capacityProfile") || "Capacity, credentials & studio profile"}
+          </Text>
+        </View>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={styles.headerRightActions}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setTutorialVisible(true)}
-            style={[styles.headerBtn, { width: 34, height: 34, borderRadius: 17 }]}
+            style={[styles.headerBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
-            <Ionicons name="help-circle-outline" size={20} color={colors.primary} />
+            <Ionicons name="help-circle-outline" size={19} color={colors.brand} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleSaveCapacity}
-            style={styles.headerSaveBtn}
+            activeOpacity={0.88}
+            disabled={isSaving}
+            onPress={handleSaveAll}
+            style={[styles.headerSaveBtn, { backgroundColor: colors.brand }]}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#A3B39C" />
+              <ActivityIndicator size="small" color={colors.onBrand} />
             ) : (
-              <Text style={[styles.headerSaveBtnText, { color: colors.primary }]}>
-                {t("common.save")}
+              <Text style={[styles.headerSaveBtnText, { color: colors.onBrand }]}>
+                {t("common.save") || "Save"}
               </Text>
             )}
           </TouchableOpacity>
@@ -258,295 +317,534 @@ export default function SalonManagementScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#A3B39C"
-            colors={["#A3B39C"]}
+            tintColor={colors.brand}
+            colors={[colors.brand]}
           />
         }
       >
-        {/* Salon Logo & Banner Section */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
-            },
-          ]}
-        >
-          <Text style={[styles.cardTitle, { color: colors.primarytext }]}>
-            {t("salonManagement.brandingTitle")}
-          </Text>
-          <Text style={[styles.cardSubtitle, { color: colors.secondarytext }]}>
-            {t("salonManagement.brandingSub")}
-          </Text>
-
-          <View style={styles.logoRow}>
-            {salonLogo ? (
-              <Image source={{ uri: salonLogo }} style={styles.logoPreview} />
-            ) : (
-              <View
-                style={[
-                  styles.logoPlaceholder,
-                  { backgroundColor: colors.background, borderColor: colors.surfacevariant },
-                ]}
-              >
-                <Ionicons name="business-outline" size={32} color={colors.secondarytext} />
+        {/* Salon Branding & Identity Hero */}
+        <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.heroTopRow}>
+            <View style={styles.logoWrapper}>
+              {salonLogo ? (
+                <Image source={{ uri: salonLogo }} style={styles.logoImage} />
+              ) : (
+                <View style={[styles.logoMonogramWrap, { backgroundColor: colors.brand }]}>
+                  <Text style={[styles.logoMonogramText, { color: colors.onBrand }]}>
+                    {userInitials}
+                  </Text>
+                </View>
+              )}
+              <View style={[styles.verifiedBadge, { backgroundColor: "#22C55E" }]}>
+                <Ionicons name="checkmark" size={11} color="#171918" />
               </View>
-            )}
-
-            <View style={styles.logoActions}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handlePickLogo}
-                style={[styles.pickerBtn, { backgroundColor: colors.surfacevariant }]}
-              >
-                <Ionicons name="image-outline" size={16} color="#FFFFFF" />
-                <Text style={styles.pickerBtnText}>{t("manageServices.chooseFromGallery")}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleTakeLogoPhoto}
-                style={[styles.pickerBtn, { backgroundColor: colors.surfacevariant }]}
-              >
-                <Ionicons name="camera-outline" size={16} color="#FFFFFF" />
-                <Text style={styles.pickerBtnText}>{t("common.camera")}</Text>
-              </TouchableOpacity>
             </View>
+
+            <View style={{ flex: 1 }}>
+              <View style={styles.nameRow}>
+                <Text style={[styles.salonName, { color: colors.primaryText }]} numberOfLines={1}>
+                  {salonTitle}
+                </Text>
+              </View>
+              <Text style={[styles.salonLocationText, { color: colors.secondaryText }]} numberOfLines={1}>
+                {address} • {city}
+              </Text>
+
+              <View style={styles.statusPillsStrip}>
+                <View style={[styles.statusBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: "rgba(199, 243, 107, 0.3)" }]}>
+                  <Ionicons name="business" size={11} color={colors.brand} />
+                  <Text style={[styles.statusBadgeText, { color: colors.brand }]}>
+                    {isSalon ? "Licensed Salon" : "Solo Studio"}
+                  </Text>
+                </View>
+
+                <View style={[styles.statusBadge, { backgroundColor: "rgba(34, 197, 94, 0.12)", borderColor: "rgba(34, 197, 94, 0.3)" }]}>
+                  <Ionicons name="shield-checkmark" size={11} color="#22C55E" />
+                  <Text style={[styles.statusBadgeText, { color: "#22C55E" }]}>
+                    Verified Studio
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          <View style={[styles.cardDivider, { backgroundColor: colors.border }]} />
+
+          {/* Quick Photo Actions */}
+          <View style={styles.photoActionsRow}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handlePickLogo}
+              style={[styles.photoActionBtn, { backgroundColor: colors.elevated, borderColor: colors.border }]}
+            >
+              <Ionicons name="image-outline" size={15} color={colors.brand} />
+              <Text style={[styles.photoActionBtnText, { color: colors.primaryText }]}>
+                Upload Logo
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleTakeLogoPhoto}
+              style={[styles.photoActionBtn, { backgroundColor: colors.elevated, borderColor: colors.border }]}
+            >
+              <Ionicons name="camera-outline" size={15} color={colors.brand} />
+              <Text style={[styles.photoActionBtnText, { color: colors.primaryText }]}>
+                Take Photo
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Capacity & Salon Configuration */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
-            },
-          ]}
-        >
-          <Text style={[styles.cardTitle, { color: colors.primarytext }]}>
-            {t("salonManagement.workingChairs")}
-          </Text>
-
-          <View style={styles.toggleRow}>
+        {/* Section 1: Working Chairs & Studio Capacity */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
+              <Ionicons name="cut" size={16} color={colors.brand} />
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>
-                {t("salonManagement.multiChairLabel")}
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
+                Working Chairs & Capacity
               </Text>
-              <Text style={[styles.fieldHint, { color: colors.secondarytext }]}>
-                {t("salonManagement.multiChairSub")}
+              <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
+                Determines how many simultaneous clients can book slots
+              </Text>
+            </View>
+          </View>
+
+          {/* Studio Mode Toggle (Solo Studio vs Multi-Chair Salon) */}
+          <View style={[styles.modeToggleCard, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text style={[styles.modeToggleTitle, { color: colors.primaryText }]}>
+                Multi-Chair Enterprise Mode
+              </Text>
+              <Text style={[styles.modeToggleSub, { color: colors.secondaryText }]}>
+                {t("salonManagement.enableMultipleBarbers") || "Enable if your shop has multiple staff barbers working simultaneously"}
               </Text>
             </View>
             <Switch
               value={isSalon}
               onValueChange={setIsSalon}
-              trackColor={{ false: colors.surfacevariant, true: "#A3B39C" }}
-              thumbColor={isSalon ? "#FFFFFF" : "#888888"}
+              trackColor={{ false: colors.border, true: colors.brand }}
+              thumbColor={colors.onBrand}
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>
-              {t("salonManagement.chairsCountLabel")}
+          {/* Interactive Chairs Stepper */}
+          <View style={styles.stepperContainer}>
+            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
+              {t("salonManagement.activeStylingChairs") || "Active Styling Chairs"}
             </Text>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
-                  backgroundColor: colors.background,
-                  borderColor: colors.surfacevariant,
-                  color: colors.primarytext,
-                },
-              ]}
-              value={capacity}
-              onChangeText={setCapacity}
-              keyboardType="numeric"
-              placeholder="e.g. 5"
-              placeholderTextColor={colors.inputPlaceholder}
-            />
+
+            <View style={[styles.stepperBox, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleStepChairs(-1)}
+                disabled={capacity <= 1}
+                style={[
+                  styles.stepperBtn,
+                  { backgroundColor: colors.card, opacity: capacity <= 1 ? 0.4 : 1 },
+                ]}
+              >
+                <Ionicons name="remove" size={20} color={colors.primaryText} />
+              </TouchableOpacity>
+
+              <View style={styles.stepperValueCol}>
+                <Text style={[styles.stepperValueText, { color: colors.brand }]}>
+                  {capacity}
+                </Text>
+                <Text style={[styles.stepperSubText, { color: colors.secondaryText }]}>
+                  {capacity === 1 ? "Station" : "Simultaneous Stations"}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleStepChairs(1)}
+                style={[styles.stepperBtn, { backgroundColor: colors.card }]}
+              >
+                <Ionicons name="add" size={20} color={colors.brand} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Preset Pills */}
+            <View style={styles.presetsRow}>
+              {PRESET_CHAIRS.map((count) => {
+                const isSelected = capacity === count;
+                return (
+                  <TouchableOpacity
+                    key={count}
+                    activeOpacity={0.8}
+                    onPress={() => setCapacity(count)}
+                    style={[
+                      styles.presetPill,
+                      {
+                        backgroundColor: isSelected ? colors.brand : colors.elevated,
+                        borderColor: isSelected ? colors.brand : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.presetPillText,
+                        {
+                          color: isSelected ? colors.onBrand : colors.primaryText,
+                          fontWeight: isSelected ? "900" : "600",
+                        },
+                      ]}
+                    >
+                      {count} Chairs
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
+          {/* Salon Bio / Story */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>
-              {t("salonManagement.descriptionLabel")}
+            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
+              Salon Bio & Client Welcome Story
             </Text>
             <TextInput
               style={[
                 styles.textArea,
                 {
-                  backgroundColor: colors.background,
-                  borderColor: colors.surfacevariant,
-                  color: colors.primarytext,
+                  backgroundColor: colors.elevated,
+                  borderColor: colors.border,
+                  color: colors.primaryText,
                 },
               ]}
               value={salonBio}
               onChangeText={setSalonBio}
               multiline
               numberOfLines={3}
-              placeholder={t("salonManagement.descriptionPlaceholder")}
+              placeholder={t("salonManagement.aboutPlaceholder") || "Tell clients about your master barbers, hygiene standards, and shop atmosphere..."}
               placeholderTextColor={colors.inputPlaceholder}
             />
           </View>
         </View>
 
-        {/* Business License / Document Verification */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
-            },
-          ]}
-        >
-          <Text style={[styles.cardTitle, { color: colors.primarytext }]}>
-            {t("salonManagement.licensesTitle")}
-          </Text>
-          <Text style={[styles.cardSubtitle, { color: colors.secondarytext }]}>
-            {t("salonManagement.licensesSub")}
-          </Text>
+        {/* Section 2: Studio Location & Map Coordinates */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
+              <Ionicons name="location" size={16} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
+                {t("salonManagement.locationAddress") || "Location & Physical Address"}
+              </Text>
+              <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
+                {t("salonManagement.displayedDirections") || "Displayed to clients on booking maps and directions"}
+              </Text>
+            </View>
+          </View>
+
+          {/* Street Address */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
+              {t("salonManagement.streetAddressQuarter") || "Street Address & Quarter"}
+            </Text>
+            <View style={[styles.inputBox, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
+              <Ionicons name="business-outline" size={17} color={colors.secondaryText} />
+              <TextInput
+                style={[styles.inputField, { color: colors.primaryText }]}
+                value={address}
+                onChangeText={setAddress}
+                placeholder="e.g. Boulevard de la Liberté, Akwa"
+                placeholderTextColor={colors.inputPlaceholder}
+              />
+            </View>
+          </View>
+
+          {/* City */}
+          <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
+              City & Region
+            </Text>
+            <View style={[styles.inputBox, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
+              <Ionicons name="navigate-outline" size={17} color={colors.secondaryText} />
+              <TextInput
+                style={[styles.inputField, { color: colors.primaryText }]}
+                value={city}
+                onChangeText={setCity}
+                placeholder="e.g. Douala, Cameroon"
+                placeholderTextColor={colors.inputPlaceholder}
+              />
+            </View>
+          </View>
+
+          {/* Interactive Map Pinpoint Trigger */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setMapPickerVisible(true)}
+            style={[styles.mapTriggerCard, { backgroundColor: colors.elevated, borderColor: colors.border }]}
+          >
+            <View style={[styles.mapTriggerIconWrap, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
+              <Ionicons name="map" size={18} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.mapTriggerHeading, { color: colors.primaryText }]}>
+                Set Live GPS Map Pinpoint
+              </Text>
+              <Text style={[styles.mapTriggerCoords, { color: colors.secondaryText }]}>
+                {coordinates
+                  ? `GPS: ${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
+                  : "Tap to pinpoint exact shop location"}
+              </Text>
+            </View>
+            <View style={[styles.editCoordBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Ionicons name="location" size={13} color={colors.brand} />
+              <Text style={[styles.editCoordText, { color: colors.brand }]}>Adjust</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Section 3: Studio Amenities & Experience */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
+              <Ionicons name="sparkles" size={16} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
+                Studio Amenities & Perks
+              </Text>
+              <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
+                Highlighted on your public client shop card
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.amenitiesWrap}>
+            {AMENITIES_LIST.map((item) => {
+              const isSelected = selectedAmenities.includes(item.id);
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  activeOpacity={0.8}
+                  onPress={() => toggleAmenity(item.id)}
+                  style={[
+                    styles.amenityChip,
+                    {
+                      backgroundColor: isSelected ? "rgba(199, 243, 107, 0.12)" : colors.elevated,
+                      borderColor: isSelected ? colors.brand : colors.border,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={item.icon as any}
+                    size={15}
+                    color={isSelected ? colors.brand : colors.secondaryText}
+                  />
+                  <Text
+                    style={[
+                      styles.amenityChipText,
+                      {
+                        color: isSelected ? colors.brand : colors.primaryText,
+                        fontWeight: isSelected ? "800" : "500",
+                      },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Section 4: Trade License & Verification Document */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
+              <Ionicons name="shield-checkmark" size={16} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
+                Business License & Compliance
+              </Text>
+              <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
+                {t("salonManagement.tradeLicenseDesc") || "Trade license or health certificate for enterprise verification"}
+              </Text>
+            </View>
+          </View>
 
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handlePickDocument}
             style={[
-              styles.documentDropzone,
+              styles.docDropzone,
               {
-                borderColor: uploadedDocName ? "#A3B39C" : colors.surfacevariant,
-                backgroundColor: colors.background,
+                backgroundColor: uploadedDocName ? "rgba(199, 243, 107, 0.08)" : colors.elevated,
+                borderColor: uploadedDocName ? colors.brand : colors.border,
               },
             ]}
           >
-            <Ionicons
-              name={uploadedDocName ? "checkmark-circle-outline" : "document-text-outline"}
-              size={32}
-              color={uploadedDocName ? "#A3B39C" : colors.secondarytext}
-            />
-            <Text style={[styles.docNameText, { color: colors.primarytext }]}>
-              {uploadedDocName ? uploadedDocName : "Tap to Select Document (PDF/Image)"}
-            </Text>
-            <Text style={[styles.docSubText, { color: colors.secondarytext }]}>
-              {uploadedDocName ? "Document attached successfully" : "Trade license, hygiene certificate, ID"}
-            </Text>
+            <View
+              style={[
+                styles.docIconWrap,
+                {
+                  backgroundColor: uploadedDocName ? colors.brand : colors.card,
+                },
+              ]}
+            >
+              <Ionicons
+                name={uploadedDocName ? "checkmark-circle" : "document-text"}
+                size={22}
+                color={uploadedDocName ? colors.onBrand : colors.secondaryText}
+              />
+            </View>
+
+            <View style={{ alignItems: "center", gap: 3 }}>
+              <Text style={[styles.docMainText, { color: colors.primaryText }]}>
+                {uploadedDocName || "Tap to Select Document (PDF / Image)"}
+              </Text>
+              <Text style={[styles.docSubText, { color: colors.secondaryText }]}>
+                {uploadedDocName
+                  ? "Attached & ready to submit with salon details"
+                  : "Tax registration, trade license, or barber council certificate"}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
 
-        {/* Salon Staff Members */}
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
-            },
-          ]}
-        >
-          <View style={styles.staffHeaderRow}>
-            <View>
-              <Text style={[styles.cardTitle, { color: colors.primarytext }]}>
-                {t("salonManagement.teamStaff")}
+        {/* Section 5: Staff & Chair Roster Summary */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.cardHeaderRow}>
+            <View style={[styles.sectionIconBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
+              <Ionicons name="people" size={16} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
+                {t("salonManagement.staffTeamRoster") || "Staff Team Roster"}
               </Text>
-              <Text style={[styles.cardSubtitle, { color: colors.secondarytext }]}>
-                {t("salonManagement.activeStaff")}
+              <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
+                {staffList.length} registered stylists ({activeStaffCount} currently active)
               </Text>
             </View>
 
             <TouchableOpacity
               activeOpacity={0.85}
-              onPress={() => setAddStaffModalVisible(true)}
-              style={[styles.addStaffBtn, { backgroundColor: "#A3B39C" }]}
+              onPress={() => router.push("/Pages/manage-staff")}
+              style={[styles.manageRosterBtn, { backgroundColor: colors.brand }]}
             >
-              <Ionicons name="add" size={18} color="#1C1E1B" />
-              <Text style={styles.addStaffBtnText}>{t("salonManagement.inviteBarber")}</Text>
+              <Text style={[styles.manageRosterBtnText, { color: colors.onBrand }]}>
+                {t("salonManagement.manageStaff") || "Manage Staff"}
+              </Text>
+              <Ionicons name="arrow-forward" size={13} color={colors.onBrand} />
             </TouchableOpacity>
           </View>
 
           {isLoadingStaff ? (
-            <ActivityIndicator style={{ paddingVertical: 20 }} color="#A3B39C" />
+            <ActivityIndicator style={{ paddingVertical: 14 }} color={colors.brand} />
+          ) : staffList.length === 0 ? (
+            <View style={[styles.emptyRosterBox, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
+              <Ionicons name="person-add-outline" size={20} color={colors.secondaryText} />
+              <Text style={[styles.emptyRosterText, { color: colors.secondaryText }]}>
+                {t("salonManagement.noStaffInvited") || "No staff members invited yet. Tap Manage Staff to invite stylists."}
+              </Text>
+            </View>
           ) : (
-            <View style={styles.staffList}>
-              {staffList.map((member) => (
+            <View style={styles.staffSummaryList}>
+              {staffList.slice(0, 3).map((member) => (
                 <View
                   key={member.id}
-                  style={[
-                    styles.staffRow,
-                    {
-                      backgroundColor: colors.background,
-                      borderColor: colors.surfacevariant,
-                    },
-                  ]}
+                  style={[styles.staffSnippetRow, { backgroundColor: colors.elevated, borderColor: colors.border }]}
                 >
-                  <View style={styles.staffAvatar}>
-                    <Ionicons name="person" size={18} color="#FFFFFF" />
+                  <View style={[styles.staffSnippetAvatar, { backgroundColor: colors.card }]}>
+                    <Ionicons name="person" size={15} color={colors.brand} />
                   </View>
-
-                  <View style={styles.staffInfo}>
-                    <Text style={[styles.staffName, { color: colors.primarytext }]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.staffSnippetName, { color: colors.primaryText }]}>
                       {member.name}
                     </Text>
-                    <Text style={[styles.staffRole, { color: colors.secondarytext }]}>
-                      {member.role} • {member.phone}
+                    <Text style={[styles.staffSnippetRole, { color: colors.secondaryText }]}>
+                      {member.role}
                     </Text>
                   </View>
-
                   <View
                     style={[
-                      styles.statusPill,
+                      styles.staffSnippetStatus,
                       {
                         backgroundColor:
                           member.status === "Active"
-                            ? "rgba(16, 185, 129, 0.15)"
-                            : "rgba(156, 163, 175, 0.15)",
+                            ? "rgba(34, 197, 94, 0.15)"
+                            : member.status === "On Break"
+                            ? "rgba(245, 158, 11, 0.15)"
+                            : "rgba(107, 114, 128, 0.15)",
                       },
                     ]}
                   >
                     <Text
                       style={[
-                        styles.statusPillText,
+                        styles.staffSnippetStatusText,
                         {
-                          color: member.status === "Active" ? "#10B981" : "#9CA3AF",
+                          color:
+                            member.status === "Active"
+                              ? "#22C55E"
+                              : member.status === "On Break"
+                              ? "#F59E0B"
+                              : "#9CA3AF",
                         },
                       ]}
                     >
-                      {member.status === "Active"
-                        ? t("manageStaff.statusActive")
-                        : member.status === "On Break"
-                        ? t("manageStaff.statusBreak")
-                        : t("manageStaff.statusOffDuty")}
+                      {member.status}
                     </Text>
                   </View>
                 </View>
               ))}
+              {staffList.length > 3 && (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => router.push("/Pages/manage-staff")}
+                  style={styles.moreStaffLink}
+                >
+                  <Text style={[styles.moreStaffText, { color: colors.brand }]}>
+                    + {staffList.length - 3} more staff members in roster
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
 
-        {/* Save Bottom Button */}
+        {/* Primary Save Button */}
         <TouchableOpacity
           activeOpacity={0.88}
-          onPress={handleSaveCapacity}
-          style={[styles.saveAllBtn, { backgroundColor: "#A3B39C" }]}
+          disabled={isSaving}
+          onPress={handleSaveAll}
+          style={[styles.saveAllBtn, { backgroundColor: colors.brand, opacity: isSaving ? 0.75 : 1 }]}
         >
-          <Text style={styles.saveAllBtnText}>{t("salonManagement.saveAllChanges")}</Text>
+          {isSaving ? (
+            <ActivityIndicator size="small" color={colors.onBrand} />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle" size={19} color={colors.onBrand} />
+              <Text style={[styles.saveAllBtnText, { color: colors.onBrand }]}>
+                {t("salonManagement.saveSalonConfig") || "Save Salon Configuration"}
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Add Staff Custom Modal */}
-      <CustomModal
-        visible={addStaffModalVisible}
-        onClose={() => setAddStaffModalVisible(false)}
-        title={t("salonManagement.inviteModalTitle")}
-        description={t("salonManagement.inviteModalSub")}
-        icon="person-add-outline"
-        primaryText={t("salonManagement.sendInvite")}
-        onPrimary={handleAddStaff}
-        secondaryText={t("common.cancel")}
-        onSecondary={() => setAddStaffModalVisible(false)}
+      {/* Map Location Picker Modal */}
+      <BarberLocationPickerModal
+        visible={mapPickerVisible}
+        onClose={() => setMapPickerVisible(false)}
+        initialLatitude={coordinates?.latitude}
+        initialLongitude={coordinates?.longitude}
+        initialCity={city}
+        onConfirmLocation={(loc) => {
+          setCoordinates({ latitude: loc.latitude, longitude: loc.longitude });
+          if (loc.city) setCity(loc.city);
+          showToast(`Location coordinates saved: ${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`, "success");
+        }}
       />
 
-      {/* In-App Page Tutorial Modal */}
+      {/* Page Tutorial Modal */}
       <PageTutorialModal
         screenKey="salon_management"
         title={SALON_MANAGEMENT_TUTORIAL.title}
@@ -554,7 +852,6 @@ export default function SalonManagementScreen() {
         steps={SALON_MANAGEMENT_TUTORIAL.steps}
         visible={tutorialVisible}
         onClose={() => setTutorialVisible(false)}
-        autoTrigger={true}
       />
     </SafeAreaView>
   );
@@ -568,158 +865,272 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   headerBtn: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    justifyContent: "center",
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
     fontSize: 17,
-    fontWeight: "700",
+    fontWeight: "900",
+    letterSpacing: -0.3,
+  },
+  headerSub: {
+    fontSize: 11.5,
+    marginTop: 1,
+    fontWeight: "500",
+  },
+  headerRightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   headerSaveBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerSaveBtnText: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "900",
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 40,
-    gap: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 60,
+    gap: 14,
   },
-  card: {
+  heroCard: {
     borderRadius: 20,
     borderWidth: 1,
     padding: 18,
-    gap: 12,
   },
-  cardTitle: {
-    fontSize: 16,
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  logoWrapper: {
+    position: "relative",
+  },
+  logoImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: "#C7F36B",
+  },
+  logoMonogramWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#C7F36B",
+  },
+  logoMonogramText: {
+    fontSize: 26,
+    fontWeight: "900",
+  },
+  verifiedBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#171918",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  salonName: {
+    fontSize: 18,
+    fontWeight: "900",
+    letterSpacing: -0.3,
+  },
+  salonLocationText: {
+    fontSize: 12.5,
+    marginTop: 2,
+    fontWeight: "500",
+  },
+  statusPillsStrip: {
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 8,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 7,
+    borderWidth: 1,
+  },
+  statusBadgeText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+  },
+  cardDivider: {
+    height: 1,
+    marginVertical: 14,
+  },
+  photoActionsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  photoActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  photoActionBtnText: {
+    fontSize: 12,
     fontWeight: "700",
   },
-  cardSubtitle: {
-    fontSize: 12.5,
-    marginTop: -4,
-  },
-  logoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginTop: 4,
-  },
-  logoPreview: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-  },
-  logoPlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  sectionCard: {
+    borderRadius: 20,
     borderWidth: 1,
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
+    padding: 18,
+    gap: 14,
   },
-  logoActions: {
-    flex: 1,
-    gap: 8,
-  },
-  pickerBtn: {
+  cardHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 12,
+    gap: 12,
   },
-  pickerBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12.5,
-    fontWeight: "600",
+  sectionIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  toggleRow: {
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  sectionSub: {
+    fontSize: 11.5,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  modeToggleCard: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
-  fieldLabel: {
+  modeToggleTitle: {
     fontSize: 13.5,
-    fontWeight: "600",
-    marginBottom: 4,
+    fontWeight: "700",
   },
-  fieldHint: {
+  modeToggleSub: {
+    fontSize: 11.5,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  stepperContainer: {
+    gap: 8,
+  },
+  inputLabel: {
     fontSize: 12,
+    fontWeight: "700",
+  },
+  stepperBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  stepperBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepperValueCol: {
+    alignItems: "center",
+  },
+  stepperValueText: {
+    fontSize: 32,
+    fontWeight: "900",
+  },
+  stepperSubText: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    marginTop: -2,
+  },
+  presetsRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  presetPill: {
+    flex: 1,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  presetPillText: {
+    fontSize: 11,
   },
   inputGroup: {
     gap: 6,
   },
-  textInput: {
-    height: 46,
-    borderRadius: 12,
+  inputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 48,
+    borderRadius: 13,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 14,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  inputField: {
+    flex: 1,
+    fontSize: 13.5,
+    fontWeight: "600",
   },
   textArea: {
     minHeight: 80,
-    borderRadius: 12,
+    borderRadius: 13,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 14,
-    textAlignVertical: "top",
-  },
-  documentDropzone: {
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    padding: 20,
-    alignItems: "center",
-    gap: 6,
-  },
-  docNameText: {
     fontSize: 13.5,
-    fontWeight: "600",
-    marginTop: 4,
+    textAlignVertical: "top",
+    lineHeight: 19,
   },
-  docSubText: {
-    fontSize: 12,
-  },
-  staffHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  addStaffBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-  },
-  addStaffBtnText: {
-    color: "#1C1E1B",
-    fontSize: 12.5,
-    fontWeight: "700",
-  },
-  staffList: {
-    gap: 10,
-    marginTop: 4,
-  },
-  staffRow: {
+  mapTriggerCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
@@ -727,44 +1138,157 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 12,
   },
-  staffAvatar: {
+  mapTriggerIconWrap: {
     width: 38,
     height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    justifyContent: "center",
+    borderRadius: 11,
     alignItems: "center",
+    justifyContent: "center",
   },
-  staffInfo: {
-    flex: 1,
-  },
-  staffName: {
-    fontSize: 14,
+  mapTriggerHeading: {
+    fontSize: 13.5,
     fontWeight: "700",
   },
-  staffRole: {
-    fontSize: 12,
+  mapTriggerCoords: {
+    fontSize: 11.5,
     marginTop: 2,
   },
-  statusPill: {
-    paddingHorizontal: 10,
+  editCoordBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
     paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  editCoordText: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  amenitiesWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  amenityChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  amenityChipText: {
+    fontSize: 12,
+  },
+  docDropzone: {
+    padding: 18,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    alignItems: "center",
+    gap: 10,
+  },
+  docIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  docMainText: {
+    fontSize: 13,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  docSubText: {
+    fontSize: 11.5,
+    textAlign: "center",
+    maxWidth: 260,
+    lineHeight: 16,
+  },
+  manageRosterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 10,
   },
-  statusPillText: {
+  manageRosterBtnText: {
     fontSize: 11.5,
+    fontWeight: "800",
+  },
+  emptyRosterBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 13,
+    borderWidth: 1,
+  },
+  emptyRosterText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  staffSummaryList: {
+    gap: 8,
+  },
+  staffSnippetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  staffSnippetAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  staffSnippetName: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  staffSnippetRole: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  staffSnippetStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  staffSnippetStatusText: {
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  moreStaffLink: {
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  moreStaffText: {
+    fontSize: 12,
     fontWeight: "700",
   },
   saveAllBtn: {
-    height: 52,
-    borderRadius: 16,
-    justifyContent: "center",
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
+    justifyContent: "center",
+    gap: 8,
+    height: 50,
+    borderRadius: 14,
+    marginTop: 4,
+    marginBottom: 20,
   },
   saveAllBtnText: {
-    color: "#1C1E1B",
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "900",
   },
 });

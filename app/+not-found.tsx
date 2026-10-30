@@ -23,23 +23,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 20,
-    backgroundColor: "#0F100E",
+    backgroundColor: "#171918",
   },
   title: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: "#F5F5F2",
   },
   link: {
     marginTop: 15,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: "#A3B39C",
+    backgroundColor: "#C7F36B",
     borderRadius: 24,
   },
   linkText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#1C1E1B",
+    fontWeight: "800",
+    color: "#171918",
   },
 });

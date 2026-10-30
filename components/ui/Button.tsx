@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  ActivityIndicator,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import {
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/theme/useTheme";
+import { TrimlyLogoLoader } from "./TrimlyLogoLoader";
 
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -37,7 +37,7 @@ export function Button({
   onPress,
   ...props
 }: ButtonProps) {
-  const { colors, radius, spacing, typography } = useTheme();
+  const { colors, spacing, typography } = useTheme();
 
   const handlePress = (e: any) => {
     if (disabled || loading) return;
@@ -51,12 +51,16 @@ export function Button({
     switch (variant) {
       case "primary":
         return {
-          container: { backgroundColor: colors.primary },
-          text: { color: "#FFFFFF" },
+          container: { backgroundColor: colors.brand },
+          text: { color: colors.onBrand },
         };
       case "secondary":
         return {
-          container: { backgroundColor: colors.secondarySurface },
+          container: {
+            backgroundColor: colors.secondarySurface,
+            borderWidth: 1,
+            borderColor: colors.border,
+          },
           text: { color: colors.primaryText },
         };
       case "outline":
@@ -71,12 +75,16 @@ export function Button({
       case "ghost":
         return {
           container: { backgroundColor: "transparent" },
-          text: { color: colors.primary },
+          text: { color: colors.brand },
         };
       case "destructive":
         return {
-          container: { backgroundColor: colors.error },
-          text: { color: "#FFFFFF" },
+          container: {
+            backgroundColor: colors.errorSoft,
+            borderWidth: 1,
+            borderColor: colors.error,
+          },
+          text: { color: colors.error },
         };
     }
   };
@@ -118,7 +126,7 @@ export function Button({
       style={[
         styles.base,
         {
-          borderRadius: radius["2xl"],
+          borderRadius: 14,
           height: sStyle.height,
           paddingHorizontal: sStyle.paddingHorizontal,
           width: fullWidth ? "100%" : undefined,
@@ -130,9 +138,8 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === "primary" || variant === "destructive" ? "#FFFFFF" : colors.primary}
+        <TrimlyLogoLoader
+          size={sStyle.iconSize ? Math.max(sStyle.iconSize, 22) : 22}
         />
       ) : (
         <View style={styles.contentRow}>
@@ -150,7 +157,7 @@ export function Button({
               {
                 color: vStyle.text.color,
                 fontSize: sStyle.fontSize,
-                fontFamily: typography.fontFamily.semiBold,
+                fontFamily: typography.fontFamily.bold,
               },
             ]}
           >

@@ -38,9 +38,14 @@ function normalizeUser(data: any): UserRead | null {
     longitude: raw.longitude || null,
     parent_salon_id: raw.parent_salon_id || null,
     parent_salon_name: raw.parent_salon_name || null,
+    parent_salon_phone: raw.parent_salon_phone || null,
     staff_title: raw.staff_title || null,
     staff_status: raw.staff_status || "Active",
     is_sub_barber: Boolean(raw.is_sub_barber || raw.parent_salon_id || raw.staff_title),
+    is_manager: Boolean(raw.is_manager),
+    is_lead: Boolean(raw.is_lead),
+    has_admin_rights: raw.has_admin_rights !== undefined ? Boolean(raw.has_admin_rights) : (raw.role === "salon"),
+    account_status: raw.account_status || "active",
     created_at: raw.created_at,
   };
 }
@@ -139,10 +144,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(res.access_token);
         await setAuthToken(res.access_token);
         const freshUser = await authService.getMe().catch(() => null);
-        setUser(normalizeUser(freshUser) || normalizeUser(res.user) || parsedNewUser);
+        const baseParsed = normalizeUser(freshUser) || normalizeUser(res.user) || parsedNewUser;
+        if (data.is_sub_barber && baseParsed) {
+          baseParsed.is_sub_barber = true;
+          baseParsed.parent_salon_id = data.parent_salon_id || baseParsed.parent_salon_id || 4;
+          baseParsed.staff_title = data.staff_title || "Staff Barber";
+        }
+        setUser(baseParsed);
         websocketService.connect();
         notificationService.registerForPushNotificationsAsync().catch(() => null);
       } catch (loginErr) {
+        if (data.is_sub_barber && parsedNewUser) {
+          parsedNewUser.is_sub_barber = true;
+          parsedNewUser.parent_salon_id = data.parent_salon_id || parsedNewUser.parent_salon_id || 4;
+          parsedNewUser.staff_title = data.staff_title || "Staff Barber";
+        }
         setUser(parsedNewUser);
       }
       return parsedNewUser || (newUser as UserRead);

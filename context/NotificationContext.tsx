@@ -33,12 +33,75 @@ interface NotificationContextType {
   refreshNotifications: () => Promise<void>;
 }
 
+import { useToast } from "@/context/ToastContext";
+
+export function normalizePartnerRoute(rawRoute?: string | null, type?: string | null): string {
+  if (!rawRoute || typeof rawRoute !== "string") {
+    if (type === "earnings") return "/(barbers)/earnings";
+    if (type === "review") return "/Pages/reviews";
+    if (type === "staff_invite") return "/Pages/notifications";
+    return "/(barbers)/bookings";
+  }
+
+  let route = rawRoute.trim();
+  if (route.startsWith("trimly://")) {
+    route = route.replace("trimly://", "/");
+  }
+  if (!route.startsWith("/")) {
+    route = "/" + route;
+  }
+
+  // Handle booking routes with IDs: /bookings/123 or /booking/123 -> /Pages/booking-detail?bookingId=123
+  const bookingMatch = route.match(/\/bookings?\/(\d+)/i);
+  if (bookingMatch) {
+    return `/Pages/booking-detail?bookingId=${bookingMatch[1]}`;
+  }
+
+  // Handle client tab route if passed mistakenly to partner
+  if (route.startsWith("/(tabs)/booking") || route === "/(tabs)/booking" || route === "/bookings") {
+    return "/(barbers)/bookings";
+  }
+
+  if (route.includes("accept-salon-invite")) {
+    return "/Pages/notifications";
+  }
+  if (route.includes("review")) {
+    return "/Pages/reviews";
+  }
+  if (route.includes("earnings")) {
+    return "/(barbers)/earnings";
+  }
+  if (route.includes("availability")) {
+    return "/Pages/availability";
+  }
+  if (route.includes("services")) {
+    return "/Pages/manage-services";
+  }
+  if (route.includes("staff")) {
+    return "/Pages/manage-staff";
+  }
+  if (route.includes("chat") || route.includes("support")) {
+    return "/Pages/support-chat";
+  }
+
+  if (
+    route.startsWith("/Pages/") ||
+    route.startsWith("/(barbers)") ||
+    route.startsWith("/(sub-barber)")
+  ) {
+    return route;
+  }
+
+  return "/(barbers)/bookings";
+}
+
 const NotificationContext = createContext<NotificationContextType | undefined>(
   undefined
 );
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const { showToast } = useToast();
 
   const refreshNotifications = useCallback(async () => {
     try {
@@ -55,10 +118,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
             read: !!n.read || !!n.is_read,
             type: (n.type as any) || "system",
-            iconBg: isInvite ? "rgba(59, 130, 246, 0.25)" : "rgba(163, 179, 156, 0.2)",
+            iconBg: isInvite ? "rgba(59, 130, 246, 0.25)" : "rgba(138, 158, 131, 0.2)",
             iconName: isInvite ? "people" : "notifications-outline",
             section: "Today",
-            actionRoute: n.action_route || "/(barbers)/bookings",
+            actionRoute: normalizePartnerRoute(n.action_route, n.type),
             roleTarget: "all",
           };
         });
@@ -125,13 +188,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           createdAt: Date.now(),
           read: false,
           type: ((data?.type as any) || "system"),
-          iconBg: isInvite ? "rgba(59, 130, 246, 0.25)" : "rgba(163, 179, 156, 0.2)",
+          iconBg: isInvite ? "rgba(59, 130, 246, 0.25)" : "rgba(138, 158, 131, 0.2)",
           iconName: isInvite ? "people" : "notifications-outline",
           section: "Today",
-          actionRoute: (data?.actionRoute as string) || (data?.action_route as string) || "/(barbers)/bookings",
+          actionRoute: normalizePartnerRoute(
+            (data?.actionRoute as string) || (data?.action_route as string),
+            data?.type as any
+          ),
           roleTarget: "all",
         };
         setNotifications((prev) => [incomingItem, ...prev]);
+
+        // Present heads-up in-app toast
+        if (title || body) {
+          showToast({
+            title: title || "Trimly Alert",
+            message: body || "",
+            type: "info",
+            duration: 4000,
+          });
+        }
       });
     } catch {
       // Foreground notification listener not available
@@ -142,7 +218,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     try {
       responseSubscription = Notifications.addNotificationResponseReceivedListener((response: any) => {
         const data = response?.notification?.request?.content?.data;
-        const targetRoute = data?.actionRoute || data?.action_route || "/(barbers)/bookings";
+        const targetRoute = normalizePartnerRoute(
+          (data?.actionRoute as string) || (data?.action_route as string),
+          data?.type as any
+        );
         if (targetRoute) {
           try {
             router.push(targetRoute as any);
@@ -156,13 +235,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       Notifications.getLastNotificationResponseAsync?.().then((resp: any) => {
         if (resp) {
           const data = resp?.notification?.request?.content?.data;
-          const targetRoute = data?.actionRoute || data?.action_route;
+          const targetRoute = normalizePartnerRoute(
+            (data?.actionRoute as string) || (data?.action_route as string),
+            data?.type as any
+          );
           if (targetRoute) {
-            try {
-              router.push(targetRoute as any);
-            } catch {
-              // Fallback
-            }
+            setTimeout(() => {
+              try {
+                router.push(targetRoute as any);
+              } catch {
+                // Fallback
+              }
+            }, 700);
           }
         }
       }).catch(() => null);
@@ -180,13 +264,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           createdAt: Date.now(),
           read: false,
           type: (incoming.type as any) || "system",
-          iconBg: "rgba(163, 179, 156, 0.2)",
+          iconBg: "rgba(138, 158, 131, 0.2)",
           iconName: "notifications-outline",
           section: "Today",
-          actionRoute: incoming.action_route || "/(barbers)/bookings",
+          actionRoute: normalizePartnerRoute(incoming.action_route, incoming.type),
           roleTarget: "all",
         };
         setNotifications((prev) => [newNotif, ...prev]);
+
+        // Present heads-up in-app toast
+        showToast({
+          title: newNotif.title,
+          message: newNotif.description,
+          type: "info",
+          duration: 4000,
+        });
+
         // Also present a local alert on screen
         notificationService.presentLocalNotification(
           newNotif.title,
@@ -205,7 +298,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         responseSubscription.remove();
       }
     };
-  }, [refreshNotifications]);
+  }, [refreshNotifications, showToast]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -218,7 +311,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       createdAt: Date.now(),
       read: false,
       type: item.type || "system",
-      iconBg: item.iconBg || "rgba(163, 179, 156, 0.2)",
+      iconBg: item.iconBg || "rgba(138, 158, 131, 0.2)",
       iconName: item.iconName || "notifications-outline",
       section: "Today",
       actionRoute: item.actionRoute,

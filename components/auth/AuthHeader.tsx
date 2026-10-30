@@ -1,6 +1,7 @@
 import useColors from "@/hooks/usecolor";
+import { BrandPhotos } from "@/theme/colors";
 import React from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, ImageBackground, StyleSheet, Text, View } from "react-native";
 
 const appLogo = require("@/assets/images/logo.png");
 
@@ -11,48 +12,50 @@ interface AuthHeaderProps {
 
 export default function AuthHeader({
   title = "Welcome Back",
-  subtitle = "Step into your best look yet",
+  subtitle = "Manage your chairs, team, and bookings",
 }: AuthHeaderProps) {
   const colors = useColors();
 
   return (
     <View style={styles.headerContainer}>
-      <View style={styles.shapesWrapper}>
-        <View
-          style={[
-            styles.peachCircle,
-            { backgroundColor: colors.secondary, opacity: 0.3 },
-          ]}
-        />
-        <View
-          style={[
-            styles.sageBlob,
-            { backgroundColor: colors.surfacevariant, opacity: 0.45 },
-          ]}
-        />
-      </View>
-      <View
+      <ImageBackground
+        source={{ uri: BrandPhotos.authHero }}
         style={[
-          styles.iconBadge,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.surfacevariant,
-            borderWidth: 1,
-          },
+          styles.heroBanner,
+          { backgroundColor: colors.card, borderColor: colors.border },
         ]}
+        imageStyle={styles.heroImage}
       >
-        <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
-      </View>
+        <View style={styles.heroOverlay}>
+          <View
+            style={[
+              styles.iconBadge,
+              {
+                backgroundColor: "rgba(23, 25, 24, 0.85)",
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Image
+              source={appLogo}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <View style={styles.brandTag}>
+            <Text style={styles.brandTitle}>TRIMLY PARTNER</Text>
+            <View
+              style={[styles.brandDot, { backgroundColor: colors.brand }]}
+            />
+          </View>
+        </View>
+      </ImageBackground>
 
-      <Text style={[styles.brandTitle, { color: colors.primarytext }]}>
-        Trimly
-      </Text>
-
-      <Text style={[styles.mainTitle, { color: colors.primarytext }]}>
+      <Text style={[styles.mainTitle, { color: colors.primaryText }]}>
         {title}
       </Text>
       {subtitle ? (
-        <Text style={[styles.subtitle, { color: colors.secondarytext }]}>
+        <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
           {subtitle}
         </Text>
       ) : null}
@@ -62,73 +65,75 @@ export default function AuthHeader({
 
 const styles = StyleSheet.create({
   headerContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 12,
-    paddingBottom: 22,
-    position: "relative",
+    width: "100%",
+    alignItems: "flex-start",
+    paddingTop: 4,
+    paddingBottom: 20,
   },
-  shapesWrapper: {
-    position: "absolute",
-    top: -6,
-    width: 260,
-    height: 140,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: -1,
+  heroBanner: {
+    width: "100%",
+    height: 136,
+    borderRadius: 18,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 18,
   },
-  peachCircle: {
-    position: "absolute",
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    left: 20,
-    top: 5,
-    opacity: 0.65,
+  heroImage: {
+    borderRadius: 17,
   },
-  sageBlob: {
-    position: "absolute",
-    width: 140,
-    height: 130,
-    borderRadius: 65,
-    right: 15,
-    top: 8,
-    opacity: 0.7,
+  heroOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(23, 25, 24, 0.56)",
+    padding: 16,
+    justifyContent: "space-between",
+    flexDirection: "row",
+    alignItems: "flex-end",
   },
   iconBadge: {
-    width: 74,
-    height: 74,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    marginBottom: 10,
-    overflow: "hidden",
-  },
-  logoImage: {
     width: 52,
     height: 52,
     borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  logoImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
+  brandTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(23, 25, 24, 0.82)",
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
   },
   brandTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-    marginBottom: 18,
+    color: "#F5F5F2",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.3,
+  },
+  brandDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   mainTitle: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: "700",
     letterSpacing: -0.3,
-    textAlign: "center",
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: "400",
-    marginTop: 6,
-    textAlign: "center",
+    marginTop: 5,
+    lineHeight: 20,
   },
 });

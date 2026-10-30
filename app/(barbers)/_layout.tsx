@@ -34,9 +34,9 @@ export default function BarberTabLayout() {
           title: "Dashboard",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={22}
+              size={23}
               name={focused ? "grid" : "grid-outline"}
-              color={color}
+              color={typeof color === "string" ? color : undefined}
             />
           ),
         }}
@@ -47,9 +47,9 @@ export default function BarberTabLayout() {
           title: "Schedule",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={22}
+              size={23}
               name={focused ? "calendar" : "calendar-outline"}
-              color={color}
+              color={typeof color === "string" ? color : undefined}
             />
           ),
         }}
@@ -60,9 +60,9 @@ export default function BarberTabLayout() {
           title: "Earnings",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={22}
+              size={23}
               name={focused ? "stats-chart" : "stats-chart-outline"}
-              color={color}
+              color={typeof color === "string" ? color : undefined}
             />
           ),
         }}
@@ -73,9 +73,9 @@ export default function BarberTabLayout() {
           title: "Profile",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={22}
+              size={23}
               name={focused ? "person" : "person-outline"}
-              color={color}
+              color={typeof color === "string" ? color : undefined}
             />
           ),
         }}

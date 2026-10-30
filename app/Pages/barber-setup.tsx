@@ -89,10 +89,13 @@ const TIME_OPTIONS = [
   "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"
 ];
 
+import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function BarberSetupScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
+  const { t } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -112,10 +115,9 @@ export default function BarberSetupScreen() {
   });
   const [mapPickerVisible, setMapPickerVisible] = useState(false);
 
-  // Step 2: Services (Custom pricing entered by barber)
+  // Step 2: Services (Every salon must have at least 1 service, default 1000 frs)
   const [services, setServices] = useState<ServicePrice[]>([
-    { name: "Signature Skin Fade", price: "" },
-    { name: "Beard Sculpt & Shape", price: "" },
+    { name: "Signature Skin Fade", price: "1000" },
   ]);
 
   const [catalogPickerValue, setCatalogPickerValue] = useState("");
@@ -241,6 +243,29 @@ export default function BarberSetupScreen() {
   };
 
   const handleNext = async () => {
+    if (currentStep === 1) {
+      if (!shopName.trim()) {
+        showToast("Please enter your salon or shop name.", "error");
+        return;
+      }
+    }
+
+    if (currentStep === 2) {
+      const validServices = services.filter((s) => s.name.trim().length > 0);
+      if (validServices.length === 0) {
+        showToast("At least 1 service must be set for your salon.", "error");
+        return;
+      }
+      const invalid = validServices.some((s) => {
+        const p = parseFloat(s.price.replace(/[^0-9.]/g, ""));
+        return isNaN(p) || p < 1000;
+      });
+      if (invalid) {
+        showToast("All services must have a valid price of at least 1,000 CFA.", "error");
+        return;
+      }
+    }
+
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -264,11 +289,11 @@ export default function BarberSetupScreen() {
           }).catch(() => null);
         }
 
-        // Register custom services with CFA prices
+        // Register custom services with CFA prices (min 1000 CFA)
         for (const srv of services) {
-          const priceNum = parseFloat(srv.price) || 25000;
+          const priceNum = Math.max(1000, parseFloat(srv.price.replace(/[^0-9.]/g, "")) || 1000);
           await barberService.addService({
-            name: srv.name,
+            name: srv.name.trim(),
             category: "Haircuts & Styling",
             duration_minutes: 45,
             price: priceNum,
@@ -312,7 +337,7 @@ export default function BarberSetupScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       edges={["top", "left", "right"]}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -321,7 +346,7 @@ export default function BarberSetupScreen() {
           onPress={handleBack}
           style={styles.headerBtn}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={22} color={colors.primarytext} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
@@ -341,7 +366,7 @@ export default function BarberSetupScreen() {
         <View
           style={[
             styles.progressBarFill,
-            { width: `${(currentStep / 4) * 100}%`, backgroundColor: "#A3B39C" },
+            { width: `${(currentStep / 4) * 100}%`, backgroundColor: colors.primary },
           ]}
         />
       </View>
@@ -380,7 +405,7 @@ export default function BarberSetupScreen() {
 
             <SelectOrAddInput
               label="Primary Specialty / Tagline"
-              placeholder="Select or add your specialty..."
+              placeholder={t("barberSetup.selectSpecialtyPlaceholder") || "Select or add your specialty..."}
               value={tagline}
               onChangeValue={setTagline}
               options={KNOWN_TAGLINES}
@@ -410,7 +435,7 @@ export default function BarberSetupScreen() {
 
             <SelectOrAddInput
               label="City & Neighborhood"
-              placeholder="Select or add your shop location..."
+              placeholder={t("barberSetup.selectLocationPlaceholder") || "Select or add your shop location..."}
               value={location}
               onChangeValue={setLocation}
               options={KNOWN_LOCATIONS}
@@ -459,12 +484,12 @@ export default function BarberSetupScreen() {
             {/* Dropdown Catalog Selector */}
             <SelectOrAddInput
               label="Add Service to Salon Menu"
-              placeholder="Pick a service or type a custom one..."
+              placeholder={t("barberSetup.pickServicePlaceholder") || "Pick a service or type a custom one..."}
               value={catalogPickerValue}
               onChangeValue={(val) => {
                 if (val && !services.some((s) => s.name.toLowerCase() === val.toLowerCase())) {
-                  setServices([...services, { name: val, price: "" }]);
-                  showToast(`Added "${val}". Set your price below.`, "success");
+                  setServices([...services, { name: val, price: "1000" }]);
+                  showToast(`Added "${val}" with default 1,000 CFA.`, "success");
                 } else if (val) {
                   showToast(`"${val}" is already on your menu.`, "info");
                 }
@@ -509,7 +534,7 @@ export default function BarberSetupScreen() {
                     style={[styles.priceInput, { color: colors.primary }]}
                     value={srv.price}
                     onChangeText={(val) => updateServicePrice(idx, val)}
-                    placeholder="Set Price"
+                    placeholder="1000"
                     placeholderTextColor={colors.inputPlaceholder}
                     keyboardType="numeric"
                   />
@@ -518,13 +543,17 @@ export default function BarberSetupScreen() {
                   >
                     CFA
                   </Text>
-                  {services.length > 1 && (
+                  {services.length > 1 ? (
                     <TouchableOpacity
                       onPress={() => setServices(services.filter((_, i) => i !== idx))}
                       style={{ marginLeft: 8, padding: 4 }}
                     >
                       <Ionicons name="trash-outline" size={18} color="#EF4444" />
                     </TouchableOpacity>
+                  ) : (
+                    <View style={{ marginLeft: 8, padding: 4 }}>
+                      <Ionicons name="lock-closed-outline" size={16} color={colors.secondarytext} />
+                    </View>
                   )}
                 </View>
               </View>
@@ -562,7 +591,7 @@ export default function BarberSetupScreen() {
                 onPress={() => applyBulkHours("08:30", "20:00")}
                 style={[styles.applyBulkBtn, { backgroundColor: colors.primary }]}
               >
-                <Text style={[styles.applyBulkBtnText, { color: colors.background }]}>
+                <Text style={[styles.applyBulkBtnText, { color: "#FFFFFF" }]}>
                   Apply to All
                 </Text>
               </TouchableOpacity>
@@ -601,7 +630,7 @@ export default function BarberSetupScreen() {
                     onValueChange={() => toggleDay(idx)}
                     trackColor={{
                       false: colors.surfacevariant,
-                      true: "#A3B39C",
+                      true: colors.primary,
                     }}
                     thumbColor="#FFFFFF"
                   />
@@ -686,7 +715,7 @@ export default function BarberSetupScreen() {
                   <Image source={{ uri: avatarUri }} style={styles.avatarPreviewImage} />
                 ) : (
                   <>
-                    <Ionicons name="camera-outline" size={38} color="#A3B39C" />
+                    <Ionicons name="camera-outline" size={38} color={colors.primary} />
                     <Text
                       style={[styles.uploadPrompt, { color: colors.secondarytext }]}
                     >
@@ -746,7 +775,7 @@ export default function BarberSetupScreen() {
                   },
                 ]}
               >
-                <Ionicons name="add" size={24} color="#A3B39C" />
+                <Ionicons name="add" size={24} color={colors.primary} />
                 <Text style={{ fontSize: 10, color: colors.secondarytext, marginTop: 2 }}>
                   Add Cut
                 </Text>
@@ -769,19 +798,19 @@ export default function BarberSetupScreen() {
                 styles.docUploadBox,
                 {
                   backgroundColor: colors.surface,
-                  borderColor: uploadedDocName ? "#A3B39C" : colors.surfacevariant,
+                  borderColor: uploadedDocName ? colors.primary : colors.surfacevariant,
                 },
               ]}
             >
               <Ionicons
                 name={uploadedDocName ? "checkmark-circle" : "document-attach-outline"}
                 size={24}
-                color={uploadedDocName ? "#A3B39C" : colors.secondarytext}
+                color={uploadedDocName ? colors.primary : colors.secondarytext}
               />
               <Text
                 style={[
                   styles.docUploadText,
-                  { color: uploadedDocName ? "#A3B39C" : colors.primarytext },
+                  { color: uploadedDocName ? colors.primary : colors.primarytext },
                 ]}
                 numberOfLines={1}
               >
@@ -798,11 +827,11 @@ export default function BarberSetupScreen() {
           onPress={handleNext}
           style={[
             styles.nextBtn,
-            { backgroundColor: "#A3B39C", opacity: isSubmitting ? 0.75 : 1 },
+            { backgroundColor: colors.primary, opacity: isSubmitting ? 0.75 : 1 },
           ]}
         >
           {isSubmitting ? (
-            <ActivityIndicator size="small" color="#1C1E1B" />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
               <Text style={styles.nextBtnText}>
@@ -811,7 +840,7 @@ export default function BarberSetupScreen() {
               <Ionicons
                 name="arrow-forward"
                 size={18}
-                color="#1C1E1B"
+                color="#FFFFFF"
                 style={{ marginLeft: 6 }}
               />
             </>
@@ -1115,7 +1144,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   nextBtnText: {
-    color: "#1C1E1B",
+    color: "#FFFFFF",
     fontSize: 15.5,
     fontWeight: "700",
   },
@@ -1132,7 +1161,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(163, 179, 156, 0.15)",
+    backgroundColor: "rgba(138, 158, 131, 0.15)",
     alignItems: "center",
     justifyContent: "center",
   },

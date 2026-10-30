@@ -20,7 +20,7 @@ export function Chip({
   count,
   style,
 }: ChipProps) {
-  const { colors, radius, spacing, typography, shadows } = useTheme();
+  const { colors, radius, spacing, typography } = useTheme();
 
   return (
     <TouchableOpacity
@@ -29,21 +29,20 @@ export function Chip({
       style={[
         styles.container,
         {
-          backgroundColor: selected ? colors.primary : colors.card,
+          backgroundColor: selected ? colors.brand : colors.card,
           borderRadius: radius.full,
-          borderColor: selected ? colors.primary : colors.border,
+          borderColor: selected ? colors.brand : colors.border,
           paddingHorizontal: spacing.lg,
           paddingVertical: spacing.sm,
         },
-        !selected && shadows.subtle,
         style,
       ]}
     >
       {icon && (
         <Ionicons
           name={icon}
-          size={16}
-          color={selected ? "#FFFFFF" : colors.primaryText}
+          size={15}
+          color={selected ? colors.onBrand : colors.secondaryText}
           style={{ marginRight: spacing.xs + 2 }}
         />
       )}
@@ -51,7 +50,7 @@ export function Chip({
         style={[
           styles.text,
           {
-            color: selected ? "#FFFFFF" : colors.primaryText,
+            color: selected ? colors.onBrand : colors.primaryText,
             fontFamily: selected
               ? typography.fontFamily.bold
               : typography.fontFamily.medium,
@@ -65,7 +64,7 @@ export function Chip({
           style={[
             styles.count,
             {
-              color: selected ? "rgba(255,255,255,0.85)" : colors.secondaryText,
+              color: selected ? colors.onBrand : colors.secondaryText,
               fontFamily: typography.fontFamily.semiBold,
               marginLeft: spacing.xs,
             },

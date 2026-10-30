@@ -10,6 +10,7 @@ export interface ScreenHeaderProps {
   showBack?: boolean;
   onBack?: () => void;
   rightAction?: React.ReactNode;
+  align?: "center" | "left";
   style?: ViewStyle;
 }
 
@@ -19,80 +20,84 @@ export function ScreenHeader({
   showBack = true,
   onBack,
   rightAction,
+  align = "center",
   style,
 }: ScreenHeaderProps) {
   const router = useRouter();
-  const { colors, spacing, typography, radius } = useTheme();
+  const { colors, typography, sizes, radius } = useTheme();
 
   const handleBack = () => {
     if (onBack) {
       onBack();
-    } else {
+    } else if (router.canGoBack()) {
       router.back();
+    } else {
+      router.replace("/(barbers)" as any);
     }
   };
 
+  const side = sizes.iconButton;
+
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-          borderBottomColor: colors.border,
-        },
-        style,
-      ]}
-    >
-      <View style={styles.leftRow}>
+    <View style={[styles.container, style]}>
+      <View style={[styles.side, { minWidth: side }]}>
         {showBack && (
           <TouchableOpacity
             activeOpacity={0.75}
             onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            testID="header-back-button"
             style={[
               styles.backButton,
               {
-                backgroundColor: colors.secondarySurface,
+                width: side,
+                height: side,
                 borderRadius: radius.full,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
               },
             ]}
           >
-            <Ionicons name="arrow-back" size={20} color={colors.primaryText} />
+            <Ionicons name="chevron-back" size={20} color={colors.primaryText} />
           </TouchableOpacity>
         )}
-        <View style={{ marginLeft: showBack ? spacing.sm : 0 }}>
-          {title && (
-            <Text
-              style={[
-                styles.title,
-                {
-                  color: colors.primaryText,
-                  fontFamily: typography.fontFamily.bold,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-          )}
-          {subtitle && (
-            <Text
-              style={[
-                styles.subtitle,
-                {
-                  color: colors.secondaryText,
-                  fontFamily: typography.fontFamily.regular,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {subtitle}
-            </Text>
-          )}
-        </View>
       </View>
 
-      {rightAction && <View style={styles.rightAction}>{rightAction}</View>}
+      <View
+        style={[
+          styles.titleWrap,
+          align === "center" ? styles.titleCenter : styles.titleLeft,
+        ]}
+      >
+        {!!title && (
+          <Text
+            style={[
+              styles.title,
+              { color: colors.primaryText, fontFamily: typography.fontFamily.bold },
+            ]}
+            numberOfLines={1}
+            accessibilityRole="header"
+          >
+            {title}
+          </Text>
+        )}
+        {!!subtitle && (
+          <Text
+            style={[
+              styles.subtitle,
+              { color: colors.secondaryText, fontFamily: typography.fontFamily.medium },
+            ]}
+            numberOfLines={1}
+          >
+            {subtitle}
+          </Text>
+        )}
+      </View>
+
+      <View style={[styles.side, styles.sideRight, { minWidth: side }]}>
+        {rightAction}
+      </View>
     </View>
   );
 }
@@ -101,30 +106,40 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     width: "100%",
+    minHeight: 56,
+    paddingHorizontal: 16,
   },
-  leftRow: {
+  side: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1,
+  },
+  sideRight: {
+    justifyContent: "flex-end",
+    gap: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+  },
+  titleWrap: {
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  titleCenter: {
+    alignItems: "center",
+  },
+  titleLeft: {
+    alignItems: "flex-start",
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     letterSpacing: -0.2,
   },
   subtitle: {
     fontSize: 12,
-  },
-  rightAction: {
-    flexDirection: "row",
-    alignItems: "center",
+    marginTop: 1,
   },
 });
 

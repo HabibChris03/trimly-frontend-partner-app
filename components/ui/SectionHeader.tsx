@@ -58,7 +58,7 @@ export function SectionHeader({
             style={[
               styles.actionText,
               {
-                color: colors.primary,
+                color: colors.accent,
                 fontFamily: typography.fontFamily.semiBold,
               },
             ]}
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   title: {
-    fontSize: 20,
+    fontSize: 19,
     letterSpacing: -0.2,
   },
   subtitle: {

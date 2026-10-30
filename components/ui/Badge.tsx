@@ -16,15 +16,15 @@ export function Badge({ label, variant = "brand", style }: BadgeProps) {
   const getColors = () => {
     switch (variant) {
       case "brand":
-        return { bg: "rgba(163, 179, 156, 0.18)", text: colors.accent };
+        return { bg: colors.brandSoft, text: colors.accent };
       case "success":
-        return { bg: "rgba(46, 139, 87, 0.14)", text: colors.success };
+        return { bg: colors.successSoft, text: colors.success };
       case "warning":
-        return { bg: "rgba(245, 158, 11, 0.14)", text: colors.warning };
+        return { bg: colors.warningSoft, text: colors.warning };
       case "error":
-        return { bg: "rgba(220, 38, 38, 0.14)", text: colors.error };
+        return { bg: colors.errorSoft, text: colors.error };
       case "info":
-        return { bg: "rgba(59, 130, 246, 0.14)", text: colors.info };
+        return { bg: colors.infoSoft, text: colors.info };
       case "neutral":
         return { bg: colors.secondarySurface, text: colors.secondaryText };
     }

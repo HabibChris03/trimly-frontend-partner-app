@@ -9,6 +9,14 @@ export interface UserCreateInput {
   latitude?: number | null;
   longitude?: number | null;
   parent_salon_id?: number | null;
+  invite_code?: string | null;
+  is_sub_barber?: boolean | null;
+  staff_title?: string | null;
+  signup_type?: "salon_manager" | "salon_manager_lead" | "solo_barber" | "salon_barber" | null;
+  linked_email?: string | null;
+  is_manager?: boolean | null;
+  is_lead?: boolean | null;
+  has_admin_rights?: boolean | null;
 }
 
 export interface UserRead {
@@ -26,9 +34,14 @@ export interface UserRead {
   longitude?: number | null;
   parent_salon_id?: number | null;
   parent_salon_name?: string | null;
+  parent_salon_phone?: string | null;
   staff_title?: string | null;
   staff_status?: string | null;
   is_sub_barber?: boolean;
+  is_manager?: boolean;
+  is_lead?: boolean;
+  has_admin_rights?: boolean;
+  account_status?: "active" | "pending_barber_approval" | "pending_salon_approval" | "rejected" | string;
   created_at?: string;
 }
 
@@ -128,6 +141,17 @@ export const authService = {
   },
 
   /**
+   * Change current user password securely.
+   * Endpoint: POST /api/v1/auth/change-password
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ status: string; message: string }> {
+    return apiRequest<{ status: string; message: string }>("/api/v1/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  },
+
+  /**
    * Accept salon invite and set real staff password.
    * Endpoint: POST /api/v1/auth/accept-invite
    */
@@ -197,5 +221,33 @@ export const authService = {
     }
     await setAuthToken(null);
     await setActiveMode(null);
+  },
+
+  /**
+   * Validate that an email belongs to an existing registered barber/hairdresser.
+   */
+  async validateBarberEmail(email: string): Promise<{ valid: boolean; message?: string; barber?: any }> {
+    try {
+      const res = await apiRequest<any>(`/api/v1/auth/validate-barber-email?email=${encodeURIComponent(email)}`, {
+        method: "GET",
+      });
+      return res;
+    } catch (e: any) {
+      return { valid: false, message: e?.message || "Validation failed" };
+    }
+  },
+
+  /**
+   * Validate that an email belongs to an existing registered salon.
+   */
+  async validateSalonEmail(email: string): Promise<{ valid: boolean; message?: string; salon?: any }> {
+    try {
+      const res = await apiRequest<any>(`/api/v1/auth/validate-salon-email?email=${encodeURIComponent(email)}`, {
+        method: "GET",
+      });
+      return res;
+    } catch (e: any) {
+      return { valid: false, message: e?.message || "Validation failed" };
+    }
   },
 };

@@ -29,6 +29,7 @@ import { LanguageProvider } from "@/context/LanguageContext";
 import { LocationProvider } from "@/context/LocationContext";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useOTAUpdates } from "@/hooks/useOTAUpdates";
+import { BarberSuspensionModal } from "@/components/barber/BarberSuspensionModal";
 
 export const unstable_settings = {
   anchor: "index",
@@ -48,11 +49,11 @@ function RootNavigator() {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      text: "#121212",
-      background: "#FAFBF8",
+      text: "#171918",
+      background: "#F5F5F2",
       card: "#FFFFFF",
-      border: "#E5E9E2",
-      primary: "#A3B39C",
+      border: "#383D38",
+      primary: "#C7F36B",
     },
   };
 
@@ -60,17 +61,17 @@ function RootNavigator() {
     ...DarkTheme,
     colors: {
       ...DarkTheme.colors,
-      text: "#FFFFFF",
-      background: "#121212",
-      card: "#1E1E1E",
-      border: "#333333",
-      primary: "#A3B39C",
+      text: "#F5F5F2",
+      background: "#171918",
+      card: "#252926",
+      border: "#383D38",
+      primary: "#C7F36B",
     },
   };
 
   return (
     <NavThemeProvider value={isDark ? customDarkTheme : customLightTheme}>
-      <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="Pages/language-selection" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -83,15 +84,18 @@ function RootNavigator() {
         <Stack.Screen name="Pages/help-support" options={{ headerShown: false }} />
         <Stack.Screen name="Pages/notifications" options={{ headerShown: false }} />
         <Stack.Screen name="Pages/gallery" options={{ headerShown: false }} />
-        <Stack.Screen name="Pages/portfolio-gallery" options={{ headerShown: false }} />
+        <Stack.Screen name="Pages/portfolio" options={{ headerShown: false }} />
+        <Stack.Screen name="Pages/availability" options={{ headerShown: false }} />
         <Stack.Screen name="Pages/manage-services" options={{ headerShown: false }} />
         <Stack.Screen name="Pages/manage-staff" options={{ headerShown: false }} />
         <Stack.Screen name="Pages/salon-management" options={{ headerShown: false }} />
+        <Stack.Screen name="Pages/reviews" options={{ headerShown: false }} />
         <Stack.Screen
           name="modal"
           options={{ presentation: "modal", title: "Modal" }}
         />
       </Stack>
+      <BarberSuspensionModal />
       <StatusBar style={isDark ? "light" : "dark"} />
     </NavThemeProvider>
   );
@@ -127,12 +131,12 @@ export default function RootLayout() {
       <View
         style={{
           flex: 1,
-          backgroundColor: "#1C1E1B",
+          backgroundColor: "#171918",
           justifyContent: "center",
           alignItems: "center",
         }}
       >
-        <ActivityIndicator size="large" color="#A3B39C" />
+        <ActivityIndicator size="large" color="#C7F36B" />
       </View>
     );
   }

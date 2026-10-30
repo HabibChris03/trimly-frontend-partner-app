@@ -42,7 +42,7 @@ export const notificationService = {
           name: "Trimly Notifications",
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#A3B39C",
+          lightColor: "#C7F36B",
           sound: "default",
           enableVibrate: true,
           showBadge: true,
@@ -118,7 +118,7 @@ export const notificationService = {
    */
   async scheduleDelayedPhoneNotification(
     seconds: number = 5,
-    title: string = "Trimly VIP Grooming 💈",
+    title: string = "Trimly VIP Grooming",
     body: string = "Your appointment with Elias Vance is confirmed for today at 4:30 PM!"
   ): Promise<string> {
     try {
@@ -127,7 +127,7 @@ export const notificationService = {
           name: "Trimly Notifications",
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#A3B39C",
+          lightColor: "#C7F36B",
           sound: "default",
         });
       }
@@ -174,7 +174,7 @@ export const notificationService = {
           name: "Trimly Notifications",
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#A3B39C",
+          lightColor: "#C7F36B",
           sound: "default",
         });
       }
@@ -184,7 +184,7 @@ export const notificationService = {
       // 1. Immediate OS phone notification
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "Appointment Booked! 💈",
+          title: "Appointment Booked!",
           body: `Your ${serviceName} with ${barberName} is confirmed for ${timeString}. You will receive a reminder before your shaving time!`,
           sound: "default",
           priority: Notifications.AndroidNotificationPriority.MAX,
@@ -209,7 +209,7 @@ export const notificationService = {
           if (secondsUntil > 5) {
             await Notifications.scheduleNotificationAsync({
               content: {
-                title: "Shaving Time Reminder ✂️💈",
+                title: "Shaving Time Reminder",
                 body: `Your appointment with ${barberName} for ${serviceName} is coming up at ${timeString}. Time to get ready!`,
                 sound: "default",
                 priority: Notifications.AndroidNotificationPriority.MAX,

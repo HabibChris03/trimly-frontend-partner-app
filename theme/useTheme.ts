@@ -3,23 +3,24 @@ import { spacing } from "./spacing";
 import { radius } from "./radius";
 import { typography } from "./typography";
 import { shadows } from "./shadows";
-import { lightColors, darkColors, ColorTokens } from "./colors";
+import { sizes } from "./sizes";
+import { darkColors, ColorTokens } from "./colors";
 
 export function useTheme() {
   const context = useBaseTheme();
-  const isDark = context.isDark;
-  const colors: ColorTokens = isDark ? darkColors : lightColors;
+  const colors: ColorTokens = context?.colors ?? darkColors;
 
   return {
-    isDark,
-    themeMode: context.themeMode,
-    setThemeMode: context.setThemeMode,
-    toggleTheme: context.toggleTheme,
+    isDark: context ? context.isDark : true,
+    themeMode: context ? context.themeMode : "dark",
+    setThemeMode: context ? context.setThemeMode : () => {},
+    toggleTheme: context ? context.toggleTheme : () => {},
     colors,
     spacing,
     radius,
     typography,
     shadows,
+    sizes,
   };
 }
 

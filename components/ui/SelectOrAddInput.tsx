@@ -1,4 +1,5 @@
-﻿import React, { useState } from "react";
+import { useLanguage } from "@/context/LanguageContext";
+import React, { useState } from "react";
 import {
   Modal,
   ScrollView,
@@ -34,6 +35,7 @@ export function SelectOrAddInput({
   customPlaceholder = "Type custom value...",
   helperText,
 }: SelectOrAddInputProps) {
+  const { t } = useLanguage();
   const colors = useColors();
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -63,7 +65,7 @@ export function SelectOrAddInput({
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, { color: colors.secondarytext }]}>
+      <Text style={[styles.label, { color: colors.secondaryText }]}>
         {label}
       </Text>
 
@@ -73,25 +75,25 @@ export function SelectOrAddInput({
         style={[
           styles.inputButton,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.surfacevariant,
+            backgroundColor: colors.card,
+            borderColor: colors.border,
           },
         ]}
       >
         <Text
           style={[
             styles.valueText,
-            { color: value ? colors.primarytext : colors.inputPlaceholder },
+            { color: value ? colors.primaryText : colors.inputPlaceholder },
           ]}
           numberOfLines={1}
         >
           {value || placeholder}
         </Text>
-        <Ionicons name={iconName} size={18} color={colors.secondarytext} />
+        <Ionicons name={iconName} size={18} color={colors.secondaryText} />
       </TouchableOpacity>
 
       {helperText && (
-        <Text style={[styles.helperText, { color: colors.secondarytext }]}>
+        <Text style={[styles.helperText, { color: colors.secondaryText }]}>
           {helperText}
         </Text>
       )}
@@ -103,16 +105,16 @@ export function SelectOrAddInput({
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
           <View
             style={[
               styles.modalContent,
-              { backgroundColor: colors.surface, borderColor: colors.surfacevariant },
+              { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
             {/* Modal Header */}
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.primarytext }]}>
+              <Text style={[styles.modalTitle, { color: colors.primaryText }]}>
                 {label}
               </Text>
               <TouchableOpacity
@@ -120,9 +122,15 @@ export function SelectOrAddInput({
                   setModalVisible(false);
                   setIsAddingCustom(false);
                 }}
-                style={styles.closeBtn}
+                style={[
+                  styles.closeBtn,
+                  {
+                    backgroundColor: colors.secondarySurface,
+                    borderColor: colors.border,
+                  },
+                ]}
               >
-                <Ionicons name="close" size={20} color={colors.secondarytext} />
+                <Ionicons name="close" size={18} color={colors.secondaryText} />
               </TouchableOpacity>
             </View>
 
@@ -130,13 +138,13 @@ export function SelectOrAddInput({
             <View
               style={[
                 styles.searchBox,
-                { backgroundColor: colors.background, borderColor: colors.surfacevariant },
+                { backgroundColor: colors.background, borderColor: colors.border },
               ]}
             >
-              <Ionicons name="search-outline" size={16} color={colors.secondarytext} />
+              <Ionicons name="search-outline" size={16} color={colors.secondaryText} />
               <TextInput
-                style={[styles.searchInput, { color: colors.primarytext }]}
-                placeholder="Search options..."
+                style={[styles.searchInput, { color: colors.primaryText }]}
+                placeholder={t("common.searchOptions") || "Search options..."}
                 placeholderTextColor={colors.inputPlaceholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -144,7 +152,7 @@ export function SelectOrAddInput({
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery("")}>
-                  <Ionicons name="close-circle" size={16} color={colors.secondarytext} />
+                  <Ionicons name="close-circle" size={16} color={colors.secondaryText} />
                 </TouchableOpacity>
               )}
             </View>
@@ -152,7 +160,7 @@ export function SelectOrAddInput({
             {/* Custom Entry View */}
             {isAddingCustom ? (
               <View style={styles.customAddWrap}>
-                <Text style={[styles.customAddTitle, { color: colors.primarytext }]}>
+                <Text style={[styles.customAddTitle, { color: colors.primaryText }]}>
                   Add Custom Option
                 </Text>
                 <TextInput
@@ -160,8 +168,8 @@ export function SelectOrAddInput({
                     styles.customInput,
                     {
                       backgroundColor: colors.background,
-                      borderColor: colors.primary,
-                      color: colors.primarytext,
+                      borderColor: colors.brand,
+                      color: colors.primaryText,
                     },
                   ]}
                   placeholder={customPlaceholder}
@@ -172,17 +180,25 @@ export function SelectOrAddInput({
                 />
                 <View style={styles.customBtnRow}>
                   <TouchableOpacity
-                    style={[styles.cancelBtn, { borderColor: colors.surfacevariant }]}
+                    style={[
+                      styles.cancelBtn,
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: colors.secondarySurface,
+                      },
+                    ]}
                     onPress={() => setIsAddingCustom(false)}
                   >
-                    <Text style={{ color: colors.secondarytext, fontSize: 13 }}>Cancel</Text>
+                    <Text style={{ color: colors.primaryText, fontSize: 13, fontWeight: "600" }}>
+                      {t("common.cancel") || "Cancel"}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.confirmBtn, { backgroundColor: colors.primary }]}
+                    style={[styles.confirmBtn, { backgroundColor: colors.brand }]}
                     onPress={handleAddCustom}
                   >
-                    <Text style={{ color: "#1C1E1B", fontWeight: "700", fontSize: 13 }}>
-                      Use Custom
+                    <Text style={{ color: colors.onBrand, fontWeight: "700", fontSize: 13 }}>
+                      {t("common.useCustom") || "Use Custom"}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -204,9 +220,9 @@ export function SelectOrAddInput({
                       style={[
                         styles.optionItem,
                         {
-                          borderBottomColor: colors.surfacevariant,
+                          borderBottomColor: colors.border,
                           backgroundColor: isSelected
-                            ? "rgba(163, 179, 156, 0.15)"
+                            ? colors.brandSoft
                             : "transparent",
                         },
                       ]}
@@ -215,7 +231,7 @@ export function SelectOrAddInput({
                         style={[
                           styles.optionText,
                           {
-                            color: isSelected ? colors.primary : colors.primarytext,
+                            color: isSelected ? colors.accent : colors.primaryText,
                             fontWeight: isSelected ? "700" : "500",
                           },
                         ]}
@@ -223,7 +239,7 @@ export function SelectOrAddInput({
                         {option}
                       </Text>
                       {isSelected && (
-                        <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                        <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
                       )}
                     </TouchableOpacity>
                   );
@@ -231,7 +247,7 @@ export function SelectOrAddInput({
 
                 {filteredOptions.length === 0 && (
                   <View style={styles.emptyWrap}>
-                    <Text style={[styles.emptyText, { color: colors.secondarytext }]}>
+                    <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
                       No matching option found.
                     </Text>
                   </View>
@@ -248,13 +264,13 @@ export function SelectOrAddInput({
                     style={[
                       styles.addCustomBtn,
                       {
-                        backgroundColor: "rgba(163, 179, 156, 0.12)",
-                        borderColor: colors.primary,
+                        backgroundColor: colors.brandSoft,
+                        borderColor: colors.brandBorder,
                       },
                     ]}
                   >
-                    <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-                    <Text style={[styles.addCustomBtnText, { color: colors.primary }]}>
+                    <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
+                    <Text style={[styles.addCustomBtnText, { color: colors.accent }]}>
                       {searchQuery
                         ? `Add "${searchQuery}" as custom`
                         : "+ Add custom option"}
@@ -276,7 +292,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    fontWeight: "500",
+    fontWeight: "600",
     marginBottom: 6,
   },
   inputButton: {
@@ -300,7 +316,6 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.65)",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
@@ -324,7 +339,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   closeBtn: {
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchBox: {
     flexDirection: "row",
@@ -349,9 +369,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    borderBottomWidth: 0.5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderBottomWidth: 1,
   },
   optionText: {
     fontSize: 14,
@@ -402,13 +422,13 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
     borderWidth: 1,
   },
   confirmBtn: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 9,
+    borderRadius: 10,
   },
 });

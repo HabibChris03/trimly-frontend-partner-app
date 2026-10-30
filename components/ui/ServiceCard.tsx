@@ -24,7 +24,7 @@ export function ServiceCard({
   onBook,
   style,
 }: ServiceCardProps) {
-  const { colors, radius, spacing, typography, shadows } = useTheme();
+  const { colors, radius, spacing, typography } = useTheme();
 
   return (
     <TouchableOpacity
@@ -33,17 +33,16 @@ export function ServiceCard({
       style={[
         styles.card,
         {
-          backgroundColor: selected ? colors.secondarySurface : colors.card,
-          borderRadius: radius.lg,
-          borderColor: selected ? colors.primary : colors.border,
-          borderWidth: selected ? 1.8 : 1,
-          padding: spacing.md + 2,
+          backgroundColor: selected ? colors.brandSoft : colors.card,
+          borderRadius: 16,
+          borderColor: selected ? colors.brand : colors.border,
+          borderWidth: selected ? 1.5 : 1,
+          padding: spacing.lg,
         },
-        shadows.subtle,
         style,
       ]}
     >
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, paddingRight: spacing.sm }}>
         <Text
           style={[
             styles.name,
@@ -81,13 +80,13 @@ export function ServiceCard({
           style={[
             styles.price,
             {
-              color: colors.primary,
+              color: colors.brand,
               fontFamily: typography.fontFamily.bold,
               marginRight: spacing.sm,
             },
           ]}
         >
-          XAF {price.toLocaleString()}
+          {price.toLocaleString()} XAF
         </Text>
 
         {onBook && !onSelect && (
@@ -95,12 +94,12 @@ export function ServiceCard({
             style={[
               styles.bookBtn,
               {
-                backgroundColor: colors.primary,
+                backgroundColor: colors.brand,
                 borderRadius: radius.full,
               },
             ]}
           >
-            <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+            <Ionicons name="chevron-forward" size={16} color={colors.onBrand} />
           </View>
         )}
 
@@ -109,13 +108,13 @@ export function ServiceCard({
             style={[
               styles.checkCircle,
               {
-                backgroundColor: selected ? colors.primary : "transparent",
-                borderColor: selected ? colors.primary : colors.border,
+                backgroundColor: selected ? colors.brand : "transparent",
+                borderColor: selected ? colors.brand : colors.border,
                 borderRadius: radius.full,
               },
             ]}
           >
-            {selected && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+            {selected && <Ionicons name="checkmark" size={14} color={colors.onBrand} />}
           </View>
         )}
       </View>
@@ -138,7 +137,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   duration: {
-    fontSize: 12,
+    fontSize: 12.5,
   },
   rightAction: {
     flexDirection: "row",
@@ -148,8 +147,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   bookBtn: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     alignItems: "center",
     justifyContent: "center",
   },

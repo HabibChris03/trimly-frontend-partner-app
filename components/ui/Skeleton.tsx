@@ -9,9 +9,6 @@ interface SkeletonProps {
   style?: ViewStyle | ViewStyle[];
 }
 
-/**
- * Base pulsing skeleton block
- */
 export function Skeleton({
   width = "100%",
   height = 16,
@@ -19,18 +16,18 @@ export function Skeleton({
   style,
 }: SkeletonProps) {
   const colors = useColors();
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const opacity = useRef(new Animated.Value(0.32)).current;
 
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
-          toValue: 0.75,
+          toValue: 0.72,
           duration: 800,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
-          toValue: 0.3,
+          toValue: 0.32,
           duration: 800,
           useNativeDriver: true,
         }),
@@ -47,7 +44,7 @@ export function Skeleton({
           width,
           height,
           borderRadius,
-          backgroundColor: colors.surfacevariant || "#383D33",
+          backgroundColor: colors.secondarySurface || "#2E332F",
           opacity,
         },
         style,
@@ -56,38 +53,37 @@ export function Skeleton({
   );
 }
 
-/**
- * Skeleton for Barber Cards (Home Feed, Explore & Saved Barbers)
- */
-export function BarberCardSkeleton() {
+export function BarberCardSkeleton({ compact = false }: { compact?: boolean }) {
   const colors = useColors();
   return (
     <View
       style={[
         styles.barberCardSkeleton,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.surfacevariant,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
         },
       ]}
     >
-      <Skeleton width={52} height={52} borderRadius={16} />
-      <View style={styles.cardInfoCol}>
-        <Skeleton width="65%" height={16} borderRadius={6} style={{ marginBottom: 6 }} />
-        <Skeleton width="85%" height={12} borderRadius={4} style={{ marginBottom: 8 }} />
-        <View style={styles.rowGap}>
-          <Skeleton width={45} height={12} borderRadius={4} />
-          <Skeleton width={55} height={12} borderRadius={4} />
+      <Skeleton
+        width="100%"
+        height={compact ? 132 : 158}
+        borderRadius={13}
+        style={{ marginBottom: 10 }}
+      />
+      <Skeleton width="68%" height={15} borderRadius={5} style={{ marginBottom: 6 }} />
+      <Skeleton width="82%" height={12} borderRadius={4} style={{ marginBottom: 6 }} />
+      <Skeleton width="44%" height={12} borderRadius={4} style={{ marginBottom: 12 }} />
+      <View style={styles.ctaRow}>
+        <Skeleton width={38} height={38} borderRadius={10} />
+        <View style={{ flex: 1 }}>
+          <Skeleton width="100%" height={38} borderRadius={10} />
         </View>
       </View>
-      <Skeleton width={64} height={34} borderRadius={12} />
     </View>
   );
 }
 
-/**
- * Skeleton for Appointment Cards (Client Bookings & Barber Schedule)
- */
 export function AppointmentCardSkeleton() {
   const colors = useColors();
   return (
@@ -95,27 +91,24 @@ export function AppointmentCardSkeleton() {
       style={[
         styles.appointmentCardSkeleton,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.surfacevariant,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
         },
       ]}
     >
-      <Skeleton width={4} height="100%" borderRadius={2} style={{ marginRight: 12 }} />
+      <Skeleton width={48} height={48} borderRadius={24} style={{ marginRight: 12 }} />
       <View style={{ flex: 1 }}>
         <View style={[styles.spaceBetweenRow, { marginBottom: 8 }]}>
-          <Skeleton width={70} height={14} borderRadius={4} />
-          <Skeleton width={65} height={14} borderRadius={6} />
+          <Skeleton width="55%" height={15} borderRadius={4} />
+          <Skeleton width={68} height={20} borderRadius={10} />
         </View>
-        <Skeleton width="75%" height={16} borderRadius={6} style={{ marginBottom: 6 }} />
-        <Skeleton width="50%" height={12} borderRadius={4} />
+        <Skeleton width="72%" height={13} borderRadius={4} style={{ marginBottom: 8 }} />
+        <Skeleton width="48%" height={12} borderRadius={4} />
       </View>
     </View>
   );
 }
 
-/**
- * Skeleton for Dashboard Metrics
- */
 export function DashboardMetricsSkeleton() {
   const colors = useColors();
   return (
@@ -124,8 +117,8 @@ export function DashboardMetricsSkeleton() {
         style={[
           styles.metricCardSkeleton,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.surfacevariant,
+            backgroundColor: colors.card,
+            borderColor: colors.border,
           },
         ]}
       >
@@ -137,8 +130,8 @@ export function DashboardMetricsSkeleton() {
         style={[
           styles.metricCardSkeleton,
           {
-            backgroundColor: colors.surface,
-            borderColor: colors.surfacevariant,
+            backgroundColor: colors.card,
+            borderColor: colors.border,
           },
         ]}
       >
@@ -150,9 +143,6 @@ export function DashboardMetricsSkeleton() {
   );
 }
 
-/**
- * Skeleton for Style Grid (Search Results)
- */
 export function StyleCardSkeleton({ cardWidth }: { cardWidth?: number }) {
   const colors = useColors();
   return (
@@ -161,47 +151,37 @@ export function StyleCardSkeleton({ cardWidth }: { cardWidth?: number }) {
         styles.styleCardSkeleton,
         {
           width: cardWidth || 160,
-          backgroundColor: colors.surface,
-          borderColor: colors.surfacevariant,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
         },
       ]}
     >
-      <Skeleton width="100%" height={130} borderRadius={16} style={{ marginBottom: 10 }} />
-      <Skeleton width="80%" height={15} borderRadius={4} style={{ marginBottom: 6 }} />
-      <Skeleton width="60%" height={12} borderRadius={4} style={{ marginBottom: 10 }} />
-      <View style={styles.spaceBetweenRow}>
-        <Skeleton width={50} height={14} borderRadius={4} />
-        <Skeleton width={32} height={32} borderRadius={10} />
-      </View>
+      <Skeleton width="100%" height={150} borderRadius={13} style={{ marginBottom: 10 }} />
+      <Skeleton width="80%" height={14} borderRadius={4} style={{ marginBottom: 6 }} />
+      <Skeleton width="55%" height={12} borderRadius={4} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   barberCardSkeleton: {
+    padding: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  ctaRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  cardInfoCol: {
-    flex: 1,
-    marginLeft: 14,
-  },
-  rowGap: {
-    flexDirection: "row",
     gap: 8,
   },
   appointmentCardSkeleton: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
+    padding: 16,
     borderRadius: 18,
     borderWidth: 1,
     marginBottom: 12,
-    height: 90,
   },
   spaceBetweenRow: {
     flexDirection: "row",
@@ -216,13 +196,13 @@ const styles = StyleSheet.create({
   metricCardSkeleton: {
     flex: 1,
     padding: 16,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
     height: 105,
   },
   styleCardSkeleton: {
-    padding: 12,
-    borderRadius: 20,
+    padding: 10,
+    borderRadius: 18,
     borderWidth: 1,
     marginBottom: 14,
   },

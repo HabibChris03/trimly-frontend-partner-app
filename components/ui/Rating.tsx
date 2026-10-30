@@ -14,7 +14,6 @@ export interface RatingProps {
 
 export function Rating({
   rating,
-  max = 5,
   reviewCount,
   showScore = true,
   size = 14,
@@ -24,7 +23,7 @@ export function Rating({
 
   return (
     <View style={[styles.container, style]}>
-      <Ionicons name="star" size={size} color="#F59E0B" />
+      <Ionicons name="star" size={size} color={colors.star} />
       {showScore && (
         <Text
           style={[

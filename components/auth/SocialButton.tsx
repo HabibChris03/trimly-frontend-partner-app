@@ -29,19 +29,19 @@ export default function SocialButton({
       style={[
         styles.button,
         {
-          backgroundColor: colors.surface,
-          borderColor: colors.surfacevariant,
+          backgroundColor: colors.card,
+          borderColor: colors.border,
         },
       ]}
     >
       <View style={styles.iconContainer}>
         {isGoogle ? (
-          <Ionicons name="logo-google" size={20} color={colors.primarytext} />
+          <Ionicons name="logo-google" size={19} color={colors.primaryText} />
         ) : (
-          <Ionicons name="logo-apple" size={22} color={colors.primarytext} />
+          <Ionicons name="logo-apple" size={21} color={colors.primaryText} />
         )}
       </View>
-      <Text style={[styles.text, { color: colors.primarytext }]}>
+      <Text style={[styles.text, { color: colors.primaryText }]}>
         {displayTitle}
       </Text>
     </TouchableOpacity>
@@ -53,16 +53,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 28,
-    borderWidth: 1.2,
-    height: 45,
+    borderRadius: 13,
+    borderWidth: 1,
+    height: 50,
     width: "100%",
     marginBottom: 12,
     paddingHorizontal: 16,
-    elevation: 1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
   },
   iconContainer: {
     marginRight: 10,
@@ -70,7 +66,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   text: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: "600",
     letterSpacing: 0.1,
   },

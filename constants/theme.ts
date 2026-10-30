@@ -1,24 +1,24 @@
 import React from 'react';
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#171918';
+const tintColorDark = '#C7F36B';
 
 export const Colors = {
   light: {
-    text: '#4B5563',
-    background: '#fff',
+    text: '#171918',
+    background: '#F5F5F2',
     tint: tintColorLight,
-    icon: '#6B7280',
-    tabIconDefault: '#6B7280',
+    icon: '#5E645D',
+    tabIconDefault: '#5E645D',
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#F5F5F2',
+    background: '#171918',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#A6ACA5',
+    tabIconDefault: '#A6ACA5',
     tabIconSelected: tintColorDark,
   },
 };
@@ -43,6 +43,16 @@ export const FONT_FAMILIES = {
   semiBold: 'PlusJakartaSans_600SemiBold',
   bold: 'PlusJakartaSans_700Bold',
   extraBold: 'PlusJakartaSans_800ExtraBold',
+};
+
+export const FontFamily = {
+  regular: FONT_FAMILIES.regular,
+  medium: FONT_FAMILIES.medium,
+  semibold: FONT_FAMILIES.semiBold,
+  semiBold: FONT_FAMILIES.semiBold,
+  bold: FONT_FAMILIES.bold,
+  extrabold: FONT_FAMILIES.extraBold,
+  extraBold: FONT_FAMILIES.extraBold,
 };
 
 export function getFontFamilyForWeight(weight?: string | number): string {

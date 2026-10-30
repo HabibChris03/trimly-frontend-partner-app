@@ -1,5 +1,5 @@
 import { useTheme } from "@/context/ThemeContext";
-import { lightColors, ColorTokens } from "@/theme/colors";
+import { darkColors, ColorTokens } from "@/theme/colors";
 
 export default function useColors(): ColorTokens {
   try {
@@ -10,7 +10,7 @@ export default function useColors(): ColorTokens {
   } catch {
     // Fallback if outside provider
   }
-  return lightColors;
+  return darkColors;
 }
 
 export type { ColorTokens as ColorPalette };

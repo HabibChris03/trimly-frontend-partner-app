@@ -33,7 +33,7 @@ export function BookingCard({
   onReview,
   style,
 }: BookingCardProps) {
-  const { colors, radius, spacing, typography, shadows } = useTheme();
+  const { colors, radius, spacing, typography } = useTheme();
 
   const getBadgeVariant = () => {
     switch (status) {
@@ -58,12 +58,11 @@ export function BookingCard({
         styles.card,
         {
           backgroundColor: colors.card,
-          borderRadius: radius.xl,
+          borderRadius: 18,
           borderColor: colors.border,
           borderWidth: 1,
           padding: spacing.lg,
         },
-        shadows.card,
         style,
       ]}
     >
@@ -107,7 +106,7 @@ export function BookingCard({
         <View style={styles.timeRow}>
           <Ionicons
             name="calendar-outline"
-            size={16}
+            size={15}
             color={colors.secondaryText}
           />
           <Text
@@ -127,12 +126,12 @@ export function BookingCard({
           style={[
             styles.price,
             {
-              color: colors.primary,
+              color: colors.brand,
               fontFamily: typography.fontFamily.bold,
             },
           ]}
         >
-          XAF {price.toLocaleString()}
+          {price.toLocaleString()} XAF
         </Text>
       </View>
 
@@ -147,6 +146,8 @@ export function BookingCard({
                 {
                   backgroundColor: colors.secondarySurface,
                   borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: colors.border,
                 },
               ]}
             >
@@ -171,8 +172,10 @@ export function BookingCard({
               style={[
                 styles.actionBtn,
                 {
-                  backgroundColor: "rgba(220, 38, 38, 0.08)",
+                  backgroundColor: colors.errorSoft,
                   borderRadius: radius.md,
+                  borderWidth: 1,
+                  borderColor: "rgba(239, 68, 68, 0.3)",
                   marginLeft: spacing.sm,
                 },
               ]}
@@ -198,7 +201,7 @@ export function BookingCard({
               style={[
                 styles.actionBtn,
                 {
-                  backgroundColor: colors.primary,
+                  backgroundColor: colors.brand,
                   borderRadius: radius.md,
                 },
               ]}
@@ -207,8 +210,8 @@ export function BookingCard({
                 style={[
                   styles.actionText,
                   {
-                    color: "#FFFFFF",
-                    fontFamily: typography.fontFamily.semiBold,
+                    color: colors.onBrand,
+                    fontFamily: typography.fontFamily.bold,
                   },
                 ]}
               >
@@ -224,7 +227,7 @@ export function BookingCard({
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   topRow: {
     flexDirection: "row",
@@ -260,7 +263,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   actionBtn: {
-    paddingVertical: 8,
+    paddingVertical: 9,
     paddingHorizontal: 16,
   },
   actionText: {

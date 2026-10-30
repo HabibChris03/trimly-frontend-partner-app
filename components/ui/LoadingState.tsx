@@ -1,18 +1,20 @@
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
 import { useTheme } from "@/theme/useTheme";
+import { TrimlyLogoLoader, TrimlyLogoLoaderSize } from "./TrimlyLogoLoader";
 
 export interface LoadingStateProps {
   message?: string;
   style?: ViewStyle;
+  size?: TrimlyLogoLoaderSize;
 }
 
-export function LoadingState({ message, style }: LoadingStateProps) {
+export function LoadingState({ message, style, size = "medium" }: LoadingStateProps) {
   const { colors, spacing, typography } = useTheme();
 
   return (
     <View style={[styles.container, { padding: spacing.xl }, style]}>
-      <ActivityIndicator size="large" color={colors.primary} />
+      <TrimlyLogoLoader size={size} />
       {message && (
         <Text
           style={[

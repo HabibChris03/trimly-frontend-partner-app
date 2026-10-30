@@ -2,7 +2,7 @@ import InputField from "@/components/auth/InputField";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useToast } from "@/context/ToastContext";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
 import { setActiveMode } from "@/services/api";
 import { authService } from "@/services/authService";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,7 +22,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ForgotPasswordScreen() {
-  const colors = useColors();
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const { t } = useLanguage();
   const { showToast } = useToast();
@@ -82,14 +83,18 @@ export default function ForgotPasswordScreen() {
 
     try {
       const res = await authService.forgotPassword(cleanEmail);
-      showToast(res?.message || "Verification code sent to your email.", "success");
+      showToast(
+        res?.message || "Verification code sent to your email.",
+        "success"
+      );
       setStep("verify");
       setResendCooldown(60);
     } catch (err: any) {
       const raw = err?.message || "";
-      const msg = raw && !raw.includes("status") && !raw.includes("500")
-        ? raw
-        : "Could not send verification code. Please try again shortly.";
+      const msg =
+        raw && !raw.includes("status") && !raw.includes("500")
+          ? raw
+          : "Could not send verification code. Please try again shortly.";
       showToast(msg, "error");
       setErrors({ email: msg });
     } finally {
@@ -110,13 +115,17 @@ export default function ForgotPasswordScreen() {
     setIsSubmitting(true);
     try {
       const res = await authService.forgotPassword(cleanEmail);
-      showToast(res?.message || "A new verification code has been sent to your email.", "success");
+      showToast(
+        res?.message || "A new verification code has been sent to your email.",
+        "success"
+      );
       setResendCooldown(60);
     } catch (err: any) {
       const raw = err?.message || "";
-      const msg = raw && !raw.includes("status") && !raw.includes("500")
-        ? raw
-        : "Failed to resend verification code. Please try again.";
+      const msg =
+        raw && !raw.includes("status") && !raw.includes("500")
+          ? raw
+          : "Failed to resend verification code. Please try again.";
       showToast(msg, "error");
     } finally {
       setIsSubmitting(false);
@@ -125,7 +134,11 @@ export default function ForgotPasswordScreen() {
 
   // Step 2: Validate code, reset password, and auto-login
   const handleResetAndLogin = async () => {
-    const newErrors: { code?: string; newPassword?: string; confirmPassword?: string } = {};
+    const newErrors: {
+      code?: string;
+      newPassword?: string;
+      confirmPassword?: string;
+    } = {};
     const cleanCode = resetCode.trim();
     const cleanEmail = email.trim().toLowerCase();
 
@@ -161,7 +174,7 @@ export default function ForgotPasswordScreen() {
       // 2. Automatically log the user in immediately
       try {
         const res = await login(cleanEmail, newPassword);
-        showToast("Password reset successfully! Welcome back.", "success");
+        showToast("Password reset successfully. Welcome back.", "success");
 
         const actualRole = (res?.user?.role || "").toLowerCase();
         const hasParentSalon = Boolean(
@@ -170,12 +183,19 @@ export default function ForgotPasswordScreen() {
 
         if (actualRole === "client") {
           logout();
-          showToast("Password reset! This is a client account — please log in via the Trimly Client app.", "info");
+          showToast(
+            "Password reset. This is a client account — please log in via the Trimly Client app.",
+            "info"
+          );
           router.replace("/(auth)/login");
           return;
         }
 
-        if (actualRole === "barber" || actualRole === "salon" || actualRole === "hairdresser") {
+        if (
+          actualRole === "barber" ||
+          actualRole === "salon" ||
+          actualRole === "hairdresser"
+        ) {
           if (hasParentSalon) {
             await setActiveMode("sub-barber");
             router.replace("/(sub-barber)/bookings" as any);
@@ -188,20 +208,32 @@ export default function ForgotPasswordScreen() {
           router.replace("/(auth)/login");
         }
       } catch {
-        // In case auto-login fails, redirect gracefully to login
-        showToast("Password reset! Please sign in with your new password.", "success");
+        showToast(
+          "Password reset. Please sign in with your new password.",
+          "success"
+        );
         router.replace("/(auth)/login");
       }
     } catch (err: any) {
       const raw = err?.message || "";
-      let msg = "Invalid verification code or reset failed. Please check and try again.";
+      let msg =
+        "Invalid verification code or reset failed. Please check and try again.";
       if (raw.toLowerCase().includes("expired")) {
         msg = "Verification code has expired. Please request a new code.";
-      } else if (raw.toLowerCase().includes("invalid") || raw.toLowerCase().includes("code")) {
-        msg = "Invalid verification code. Please check your email and try again.";
+      } else if (
+        raw.toLowerCase().includes("invalid") ||
+        raw.toLowerCase().includes("code")
+      ) {
+        msg =
+          "Invalid verification code. Please check your email and try again.";
       } else if (raw.toLowerCase().includes("password")) {
         msg = raw;
-      } else if (raw && !raw.includes("status") && !raw.includes("500") && !raw.includes("error")) {
+      } else if (
+        raw &&
+        !raw.includes("status") &&
+        !raw.includes("500") &&
+        !raw.includes("error")
+      ) {
         msg = raw;
       }
       showToast(msg, "error");
@@ -216,6 +248,7 @@ export default function ForgotPasswordScreen() {
       style={[styles.safeArea, { backgroundColor: colors.background }]}
       edges={["top", "left", "right", "bottom"]}
     >
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -238,14 +271,18 @@ export default function ForgotPasswordScreen() {
               style={[
                 styles.backButton,
                 {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.inputBorder || colors.surfacevariant,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
                 },
               ]}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
-              <Ionicons name="arrow-back" size={20} color={colors.primarytext} />
+              <Ionicons
+                name="chevron-back"
+                size={22}
+                color={colors.primaryText}
+              />
             </TouchableOpacity>
           </View>
 
@@ -254,26 +291,28 @@ export default function ForgotPasswordScreen() {
             style={[
               styles.iconCircle,
               {
-                backgroundColor: colors.surface,
-                borderColor: colors.inputBorder || colors.surfacevariant,
+                backgroundColor: colors.card,
+                borderColor: colors.border,
               },
             ]}
           >
             <Ionicons
-              name={step === "email" ? "key-outline" : "shield-checkmark-outline"}
-              size={36}
-              color={colors.primary}
+              name={
+                step === "email" ? "key-outline" : "shield-checkmark-outline"
+              }
+              size={34}
+              color={colors.brand}
             />
           </View>
 
           {/* Screen Title & Subtitle */}
           <View style={styles.headerTextContainer}>
-            <Text style={[styles.mainTitle, { color: colors.primarytext }]}>
+            <Text style={[styles.mainTitle, { color: colors.primaryText }]}>
               {step === "email"
                 ? t("auth.resetPasswordTitle") || "Reset Password"
                 : t("auth.verifyCodeTitle") || "Enter Verification Code"}
             </Text>
-            <Text style={[styles.subtitle, { color: colors.secondarytext }]}>
+            <Text style={[styles.subtitle, { color: colors.secondaryText }]}>
               {step === "email"
                 ? t("auth.resetPasswordSubtitle") ||
                   "Enter your email to receive a 6-digit verification code"
@@ -285,16 +324,16 @@ export default function ForgotPasswordScreen() {
           {/* Form Container */}
           <View style={styles.formContainer}>
             {step === "email" ? (
-              /* STEP 1: EMAIL REQUEST */
               <>
                 <InputField
                   label={t("auth.emailPlaceholder") || "Email address"}
                   iconName="mail-outline"
-                  placeholder="user@example.com"
+                  placeholder="partner@example.com"
                   value={email}
                   onChangeText={(val) => {
                     setEmail(val);
-                    if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+                    if (errors.email)
+                      setErrors((prev) => ({ ...prev, email: undefined }));
                   }}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -305,34 +344,47 @@ export default function ForgotPasswordScreen() {
                   activeOpacity={0.85}
                   disabled={isSubmitting}
                   onPress={handleRequestCode}
-                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  style={[
+                    styles.actionButton,
+                    {
+                      backgroundColor: colors.brand,
+                      opacity: isSubmitting ? 0.7 : 1,
+                    },
+                  ]}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator color={colors.background} />
+                    <ActivityIndicator color={colors.onBrand} />
                   ) : (
-                    <Text style={[styles.actionButtonText, { color: colors.background }]}>
+                    <Text
+                      style={[
+                        styles.actionButtonText,
+                        { color: colors.onBrand },
+                      ]}
+                    >
                       {t("auth.sendCodeBtn") || "Send Verification Code"}
                     </Text>
                   )}
                 </TouchableOpacity>
               </>
             ) : (
-              /* STEP 2: VERIFICATION CODE & NEW PASSWORD */
               <>
                 {/* Email badge chip with edit option */}
                 <View
                   style={[
                     styles.emailBadge,
                     {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.inputBorder || colors.surfacevariant,
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
                     },
                   ]}
                 >
                   <View style={styles.emailBadgeContent}>
-                    <Ionicons name="mail" size={16} color={colors.primary} />
+                    <Ionicons name="mail" size={16} color={colors.brand} />
                     <Text
-                      style={[styles.emailBadgeText, { color: colors.primarytext }]}
+                      style={[
+                        styles.emailBadgeText,
+                        { color: colors.primaryText },
+                      ]}
                       numberOfLines={1}
                     >
                       {email}
@@ -342,13 +394,14 @@ export default function ForgotPasswordScreen() {
                     onPress={() => setStep("email")}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Text style={[styles.changeEmailText, { color: colors.primary }]}>
+                    <Text
+                      style={[styles.changeEmailText, { color: colors.brand }]}
+                    >
                       Change
                     </Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* 6-Digit Code */}
                 <InputField
                   label="Verification Code"
                   iconName="key-outline"
@@ -356,14 +409,14 @@ export default function ForgotPasswordScreen() {
                   value={resetCode}
                   onChangeText={(val) => {
                     setResetCode(val);
-                    if (errors.code) setErrors((prev) => ({ ...prev, code: undefined }));
+                    if (errors.code)
+                      setErrors((prev) => ({ ...prev, code: undefined }));
                   }}
                   keyboardType="number-pad"
                   autoCapitalize="none"
                   error={errors.code}
                 />
 
-                {/* New Password */}
                 <InputField
                   label={t("auth.newPasswordPlaceholder") || "New password"}
                   iconName="lock-closed-outline"
@@ -372,35 +425,47 @@ export default function ForgotPasswordScreen() {
                   onChangeText={(val) => {
                     setNewPassword(val);
                     if (errors.newPassword)
-                      setErrors((prev) => ({ ...prev, newPassword: undefined }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        newPassword: undefined,
+                      }));
                   }}
                   secureTextEntry
                   autoCapitalize="none"
                   error={errors.newPassword}
                 />
 
-                {/* Confirm New Password */}
                 <InputField
-                  label={t("auth.confirmPasswordPlaceholder") || "Confirm new password"}
+                  label={
+                    t("auth.confirmPasswordPlaceholder") ||
+                    "Confirm new password"
+                  }
                   iconName="lock-closed-outline"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChangeText={(val) => {
                     setConfirmPassword(val);
                     if (errors.confirmPassword)
-                      setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        confirmPassword: undefined,
+                      }));
                   }}
                   secureTextEntry
                   autoCapitalize="none"
                   error={errors.confirmPassword}
                 />
 
-                {/* Resend Code Section */}
                 <View style={styles.resendContainer}>
                   {resendCooldown > 0 ? (
-                    <Text style={[styles.resendCooldownText, { color: colors.secondarytext }]}>
+                    <Text
+                      style={[
+                        styles.resendCooldownText,
+                        { color: colors.secondaryText },
+                      ]}
+                    >
                       Resend code in{" "}
-                      <Text style={{ fontWeight: "700", color: colors.primary }}>
+                      <Text style={{ fontWeight: "700", color: colors.brand }}>
                         {resendCooldown}s
                       </Text>
                     </Text>
@@ -411,9 +476,16 @@ export default function ForgotPasswordScreen() {
                       style={styles.resendButton}
                       activeOpacity={0.7}
                     >
-                      <Text style={[styles.resendText, { color: colors.secondarytext }]}>
+                      <Text
+                        style={[
+                          styles.resendText,
+                          { color: colors.secondaryText },
+                        ]}
+                      >
                         Didn't receive the code?{" "}
-                        <Text style={{ fontWeight: "700", color: colors.primary }}>
+                        <Text
+                          style={{ fontWeight: "700", color: colors.brand }}
+                        >
                           Resend Code
                         </Text>
                       </Text>
@@ -421,17 +493,27 @@ export default function ForgotPasswordScreen() {
                   )}
                 </View>
 
-                {/* Submit Reset & Auto-Login Button */}
                 <TouchableOpacity
                   activeOpacity={0.85}
                   disabled={isSubmitting}
                   onPress={handleResetAndLogin}
-                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  style={[
+                    styles.actionButton,
+                    {
+                      backgroundColor: colors.brand,
+                      opacity: isSubmitting ? 0.7 : 1,
+                    },
+                  ]}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator color={colors.background} />
+                    <ActivityIndicator color={colors.onBrand} />
                   ) : (
-                    <Text style={[styles.actionButtonText, { color: colors.background }]}>
+                    <Text
+                      style={[
+                        styles.actionButtonText,
+                        { color: colors.onBrand },
+                      ]}
+                    >
                       {t("auth.changePasswordBtn") || "Reset & Sign In"}
                     </Text>
                   )}
@@ -441,14 +523,16 @@ export default function ForgotPasswordScreen() {
 
             {/* Bottom Footer Link */}
             <View style={styles.footerRow}>
-              <Text style={[styles.footerPrompt, { color: colors.secondarytext }]}>
+              <Text
+                style={[styles.footerPrompt, { color: colors.secondaryText }]}
+              >
                 {t("auth.alreadyHaveAccount") || "Already have an account?"}{" "}
               </Text>
               <TouchableOpacity
                 onPress={() => router.push("/(auth)/login")}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={[styles.footerLink, { color: colors.primary }]}>
+                <Text style={[styles.footerLink, { color: colors.brand }]}>
                   {t("auth.signInBtn") || "Sign In"}
                 </Text>
               </TouchableOpacity>
@@ -469,8 +553,8 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 36,
     alignItems: "center",
   },
@@ -483,7 +567,7 @@ const styles = StyleSheet.create({
   backButton: {
     width: 42,
     height: 42,
-    borderRadius: 21,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -491,7 +575,7 @@ const styles = StyleSheet.create({
   iconCircle: {
     width: 72,
     height: 72,
-    borderRadius: 36,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 18,
@@ -504,7 +588,7 @@ const styles = StyleSheet.create({
   },
   mainTitle: {
     fontSize: 24,
-    fontWeight: "800",
+    fontWeight: "700",
     textAlign: "center",
   },
   subtitle: {
@@ -522,7 +606,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 13,
     borderWidth: 1,
     marginBottom: 16,
   },
@@ -557,20 +641,16 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     width: "100%",
-    height: 54,
-    borderRadius: 28,
+    height: 52,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,
-    elevation: 3,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
   },
   actionButtonText: {
     fontSize: 16,
     fontWeight: "700",
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
   footerRow: {
     flexDirection: "row",

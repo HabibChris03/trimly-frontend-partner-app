@@ -1,3 +1,4 @@
+import { useLanguage } from "@/context/LanguageContext";
 import useColors from "@/hooks/usecolor";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
@@ -52,6 +53,7 @@ export default function SpecialtiesDropdown({
   onChangeValue,
   onDropdownToggle,
 }: SpecialtiesDropdownProps) {
+  const { t } = useLanguage();
   const colors = useColors();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,7 +69,9 @@ export default function SpecialtiesDropdown({
     : [];
 
   // Combine default options with any user-added custom options
-  const allOptions = Array.from(new Set([...DEFAULT_BARBER_SPECIALTIES, ...customList, ...selectedItems]));
+  const allOptions = Array.from(
+    new Set([...DEFAULT_BARBER_SPECIALTIES, ...customList, ...selectedItems])
+  );
 
   // Filter options by search query
   const filteredOptions = allOptions.filter((opt) =>
@@ -105,19 +109,21 @@ export default function SpecialtiesDropdown({
     const trimmed = customInput.trim();
     if (!trimmed) return;
 
-    // Check if not already in custom list
     if (!allOptions.some((opt) => opt.toLowerCase() === trimmed.toLowerCase())) {
       setCustomList((prev) => [...prev, trimmed]);
     }
 
-    // Select the newly added custom item
-    if (!selectedItems.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+    if (
+      !selectedItems.some((s) => s.toLowerCase() === trimmed.toLowerCase())
+    ) {
       const updated = [...selectedItems, trimmed];
       onChangeValue(updated.join(", "));
     }
 
     setCustomInput("");
   };
+
+  const hasCustomText = Boolean(customInput.trim());
 
   return (
     <View style={styles.wrapper}>
@@ -130,14 +136,14 @@ export default function SpecialtiesDropdown({
               style={[
                 styles.chip,
                 {
-                  backgroundColor: "rgba(95, 122, 97, 0.14)",
-                  borderColor: colors.primary,
+                  backgroundColor: colors.brandSoft,
+                  borderColor: colors.brandBorder,
                 },
               ]}
             >
-              <Ionicons name="cut-outline" size={13} color={colors.primary} />
+              <Ionicons name="cut-outline" size={13} color={colors.brand} />
               <Text
-                style={[styles.chipText, { color: colors.primarytext }]}
+                style={[styles.chipText, { color: colors.primaryText }]}
                 numberOfLines={1}
               >
                 {item}
@@ -150,7 +156,7 @@ export default function SpecialtiesDropdown({
                 <Ionicons
                   name="close-circle"
                   size={15}
-                  color={colors.secondarytext}
+                  color={colors.secondaryText}
                 />
               </TouchableOpacity>
             </View>
@@ -165,32 +171,32 @@ export default function SpecialtiesDropdown({
         style={[
           styles.triggerBtn,
           {
-            backgroundColor: colors.surface,
-            borderColor: isOpen ? colors.primary : colors.surfacevariant,
+            backgroundColor: colors.card,
+            borderColor: isOpen ? colors.brand : colors.border,
           },
         ]}
       >
         <View style={styles.triggerLeft}>
           <Ionicons
             name={isOpen ? "list" : "sparkles-outline"}
-            size={16}
-            color={colors.primary}
+            size={17}
+            color={colors.brand}
           />
           <Text
-            style={[styles.triggerText, { color: colors.primarytext }]}
+            style={[styles.triggerText, { color: colors.primaryText }]}
             numberOfLines={1}
           >
             {isOpen
               ? "Hide specialties menu"
               : selectedItems.length > 0
-              ? `Select more specialties (${selectedItems.length} selected)`
-              : "Select from specialties dropdown"}
+                ? `Select more specialties (${selectedItems.length} selected)`
+                : "Select from specialties dropdown"}
           </Text>
         </View>
         <Ionicons
           name={isOpen ? "chevron-up" : "chevron-down"}
           size={18}
-          color={colors.secondarytext}
+          color={colors.secondaryText}
         />
       </TouchableOpacity>
 
@@ -200,8 +206,8 @@ export default function SpecialtiesDropdown({
           style={[
             styles.dropdownBox,
             {
-              backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
+              backgroundColor: colors.card,
+              borderColor: colors.border,
             },
           ]}
         >
@@ -211,18 +217,18 @@ export default function SpecialtiesDropdown({
               styles.searchBar,
               {
                 backgroundColor: colors.background,
-                borderColor: colors.surfacevariant,
+                borderColor: colors.border,
               },
             ]}
           >
             <Ionicons
               name="search-outline"
-              size={15}
-              color={colors.secondarytext}
+              size={16}
+              color={colors.secondaryText}
             />
             <TextInput
-              style={[styles.searchInput, { color: colors.primarytext }]}
-              placeholder="Search specialties..."
+              style={[styles.searchInput, { color: colors.primaryText }]}
+              placeholder={t("common.searchSpecialties") || "Search specialties..."}
               placeholderTextColor={colors.inputPlaceholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -237,7 +243,7 @@ export default function SpecialtiesDropdown({
                 <Ionicons
                   name="close-circle"
                   size={16}
-                  color={colors.secondarytext}
+                  color={colors.secondaryText}
                 />
               </TouchableOpacity>
             )}
@@ -245,7 +251,7 @@ export default function SpecialtiesDropdown({
 
           {/* Quick Guidance */}
           <Text
-            style={[styles.dropdownSubtext, { color: colors.secondarytext }]}
+            style={[styles.dropdownSubtext, { color: colors.secondaryText }]}
           >
             Tap a specialty to add or remove:
           </Text>
@@ -259,32 +265,30 @@ export default function SpecialtiesDropdown({
               return (
                 <TouchableOpacity
                   key={opt}
-                  activeOpacity={0.75}
+                  activeOpacity={0.78}
                   onPress={() => handleToggleItem(opt)}
                   style={[
                     styles.optionPill,
                     {
                       backgroundColor: isSelected
-                        ? "rgba(95, 122, 97, 0.16)"
+                        ? colors.brand
                         : colors.background,
-                      borderColor: isSelected
-                        ? colors.primary
-                        : colors.surfacevariant,
+                      borderColor: isSelected ? colors.brand : colors.border,
                     },
                   ]}
                 >
                   <Ionicons
-                    name={isSelected ? "checkmark-circle" : "add-outline"}
-                    size={15}
-                    color={isSelected ? colors.primary : colors.secondarytext}
+                    name={isSelected ? "checkmark" : "add-outline"}
+                    size={14}
+                    color={isSelected ? colors.onBrand : colors.secondaryText}
                   />
                   <Text
                     style={[
                       styles.optionPillText,
                       {
                         color: isSelected
-                          ? colors.primary
-                          : colors.primarytext,
+                          ? colors.onBrand
+                          : colors.primaryText,
                         fontWeight: isSelected ? "700" : "500",
                       },
                     ]}
@@ -297,8 +301,8 @@ export default function SpecialtiesDropdown({
           </View>
 
           {filteredOptions.length === 0 && (
-            <Text style={[styles.emptyText, { color: colors.secondarytext }]}>
-              No matching preset found. Add it below!
+            <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
+              No matching preset found. Add it below.
             </Text>
           )}
 
@@ -306,11 +310,14 @@ export default function SpecialtiesDropdown({
           <View
             style={[
               styles.customSection,
-              { borderTopColor: colors.surfacevariant },
+              { borderTopColor: colors.border },
             ]}
           >
             <Text
-              style={[styles.customSectionTitle, { color: colors.secondarytext }]}
+              style={[
+                styles.customSectionTitle,
+                { color: colors.secondaryText },
+              ]}
             >
               Add your own specialty
             </Text>
@@ -320,8 +327,8 @@ export default function SpecialtiesDropdown({
                   styles.customTextInput,
                   {
                     backgroundColor: colors.background,
-                    borderColor: colors.surfacevariant,
-                    color: colors.primarytext,
+                    borderColor: colors.border,
+                    color: colors.primaryText,
                   },
                 ]}
                 placeholder="e.g. Afro Burst Fade, Beard Spa..."
@@ -334,28 +341,28 @@ export default function SpecialtiesDropdown({
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={handleAddCustom}
-                disabled={!customInput.trim()}
+                disabled={!hasCustomText}
                 style={[
                   styles.addCustomBtn,
                   {
-                    backgroundColor: customInput.trim()
-                      ? colors.primary
-                      : colors.surfacevariant,
+                    backgroundColor: hasCustomText
+                      ? colors.brand
+                      : colors.secondarySurface,
+                    borderColor: hasCustomText ? colors.brand : colors.border,
+                    borderWidth: 1,
                   },
                 ]}
               >
                 <Ionicons
                   name="add"
                   size={16}
-                  color={customInput.trim() ? "#FFFFFF" : colors.secondarytext}
+                  color={hasCustomText ? colors.onBrand : colors.mutedText}
                 />
                 <Text
                   style={[
                     styles.addCustomBtnText,
                     {
-                      color: customInput.trim()
-                        ? "#FFFFFF"
-                        : colors.secondarytext,
+                      color: hasCustomText ? colors.onBrand : colors.mutedText,
                     },
                   ]}
                 >
@@ -367,18 +374,21 @@ export default function SpecialtiesDropdown({
 
           {/* Close Dropdown Bar */}
           <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setIsOpen(false)}
+            activeOpacity={0.75}
+            onPress={() => {
+              setIsOpen(false);
+              if (onDropdownToggle) onDropdownToggle(false);
+            }}
             style={[
               styles.doneButton,
               {
                 backgroundColor: colors.background,
-                borderColor: colors.surfacevariant,
+                borderColor: colors.brandBorder,
               },
             ]}
           >
-            <Ionicons name="checkmark" size={15} color={colors.primary} />
-            <Text style={[styles.doneButtonText, { color: colors.primary }]}>
+            <Ionicons name="checkmark" size={15} color={colors.brand} />
+            <Text style={[styles.doneButtonText, { color: colors.brand }]}>
               Done Selecting
             </Text>
           </TouchableOpacity>
@@ -391,7 +401,7 @@ export default function SpecialtiesDropdown({
 const styles = StyleSheet.create({
   wrapper: {
     width: "100%",
-    marginTop: -8,
+    marginTop: -6,
     marginBottom: 16,
   },
   chipsContainer: {
@@ -404,8 +414,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    paddingVertical: 6,
+    borderRadius: 10,
     borderWidth: 1,
     gap: 5,
   },
@@ -420,10 +430,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    height: 42,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: 13,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
   },
   triggerLeft: {
     flexDirection: "row",
@@ -438,23 +448,23 @@ const styles = StyleSheet.create({
   },
   dropdownBox: {
     marginTop: 8,
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    padding: 12,
+    padding: 14,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    height: 38,
-    borderRadius: 10,
+    height: 42,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     gap: 8,
     marginBottom: 10,
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 13.5,
     height: "100%",
     paddingVertical: 0,
   },
@@ -466,15 +476,15 @@ const styles = StyleSheet.create({
   optionsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 7,
     marginBottom: 12,
   },
   optionPill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 11,
     borderWidth: 1,
     gap: 5,
   },
@@ -488,9 +498,9 @@ const styles = StyleSheet.create({
   },
   customSection: {
     borderTopWidth: 1,
-    paddingTop: 10,
+    paddingTop: 12,
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   customSectionTitle: {
     fontSize: 12,
@@ -505,37 +515,37 @@ const styles = StyleSheet.create({
   },
   customTextInput: {
     flex: 1,
-    height: 40,
-    borderRadius: 10,
+    height: 44,
+    borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 12,
-    fontSize: 13,
+    fontSize: 13.5,
   },
   addCustomBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 40,
+    height: 44,
     paddingHorizontal: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     gap: 4,
   },
   addCustomBtnText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   doneButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 36,
-    borderRadius: 10,
+    height: 40,
+    borderRadius: 12,
     borderWidth: 1,
-    marginTop: 6,
+    marginTop: 4,
     gap: 6,
   },
   doneButtonText: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });

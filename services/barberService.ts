@@ -71,6 +71,8 @@ export interface PortfolioItemUpload {
   media_type: "image" | "video" | string;
   hairstyle_or_service_name: string;
   linked_service_id?: number | null;
+  price?: number;
+  category?: string;
 }
 
 export interface ProfileUpdateInput {
@@ -81,6 +83,7 @@ export interface ProfileUpdateInput {
   city?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  parent_salon_id?: number | null;
 }
 
 export interface BarberCapacityUpdate {
@@ -239,6 +242,19 @@ export const barberService = {
       } catch {
         // Handled below
       }
+    }
+
+    if (!sharedBarberServices[barberId] || sharedBarberServices[barberId].length === 0) {
+      sharedBarberServices[barberId] = [
+        {
+          id: `def_sv_${barberId}`,
+          name: "Signature Salon Haircut",
+          category: "Haircuts & Styling",
+          duration_minutes: 45,
+          price: 1000,
+          is_extra: false,
+        },
+      ];
     }
 
     return sharedBarberServices[barberId] || [];
@@ -1048,12 +1064,12 @@ export const barberService = {
   },
 
   /**
-   * Update staff member status (Active, Off Duty, On Break).
+   * Update staff member status (Active, Off Duty, On Break, Suspended).
    */
   async updateStaffStatus(
     salonId: number,
     staffId: number,
-    status: "Active" | "Off Duty" | "On Break"
+    status: "Active" | "Off Duty" | "On Break" | "Suspended" | string
   ): Promise<any> {
     try {
       await apiRequest(`/api/v1/barbers/${salonId}/staff/${staffId}/status`, {
@@ -1137,12 +1153,115 @@ export const barberService = {
   },
 
   /**
+   * Look up a salon by its Salon ID to verify identity before linking.
+   */
+  async getSalonById(salonId: number): Promise<{ id: number; name: string; city?: string; logo_url?: string } | null> {
+    try {
+      const profile = await this.getBarberProfile(salonId);
+      if (profile && (profile.id || profile.user_id)) {
+        return {
+          id: profile.id || profile.user_id || salonId,
+          name: profile.name || profile.business_name || `Salon #${salonId}`,
+          city: profile.city || profile.address || "Douala, Cameroon",
+          logo_url: profile.logo_url || profile.avatar_url,
+        };
+      }
+    } catch {
+      // Fallback
+    }
+    return null;
+  },
+
+  /**
+   * Connect or link current barber/hairdresser to a salon by Salon ID.
+   */
+  async linkToSalon(salonId: number): Promise<any> {
+    try {
+      const res = await this.acceptSalonInvite(salonId);
+      return res;
+    } catch {
+      // Also update profile details with parent_salon_id
+      return await this.updateProfileDetails({ parent_salon_id: salonId });
+    }
+  },
+
+  /**
+   * Unlink from current salon to become an independent barber.
+   */
+  async unlinkFromSalon(): Promise<any> {
+    return await this.updateProfileDetails({ parent_salon_id: 0 });
+  },
+
+  /**
    * Toggle auto-confirmation of new booking requests.
    */
   async toggleAutoConfirm(autoConfirm: boolean): Promise<any> {
     return await apiRequest("/api/v1/barbers/auto-confirm", {
       method: "PATCH",
       body: JSON.stringify({ auto_confirm: autoConfirm }),
+    });
+  },
+
+  /**
+   * List incoming join requests from stylists wishing to join this salon.
+   */
+  async getSalonJoinRequests(salonId: number): Promise<any[]> {
+    try {
+      const res = await apiRequest<any>(`/api/v1/barbers/${salonId}/join-requests`, { method: "GET" });
+      return res?.join_requests || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Salon Manager accepts or rejects a stylist's join request.
+   */
+  async respondToJoinRequest(salonId: number, requestId: number, action: "accept" | "reject", reason?: string): Promise<any> {
+    return await apiRequest(`/api/v1/barbers/${salonId}/join-requests/${requestId}/respond`, {
+      method: "POST",
+      body: JSON.stringify({ action, reason }),
+    });
+  },
+
+  /**
+   * Fetch all pending invitations addressed to the current logged-in barber.
+   */
+  async getMyInvitations(): Promise<any[]> {
+    try {
+      const res = await apiRequest<any>("/api/v1/barbers/my-invitations", { method: "GET" });
+      return res?.invites || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Barber accepts or declines a Salon Manager's invitation.
+   */
+  async respondToManagerInvite(salonId: number, action: "accept" | "decline"): Promise<any> {
+    return await apiRequest("/api/v1/barbers/respond-manager-invite", {
+      method: "POST",
+      body: JSON.stringify({ salon_id: salonId, action }),
+    });
+  },
+
+  /**
+   * Convert account to Solo Barber/Hairdresser (e.g. after a rejection).
+   */
+  async switchToSoloBarber(): Promise<any> {
+    return await apiRequest("/api/v1/barbers/switch-to-solo", {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Retry submitting a join request to a new salon.
+   */
+  async retrySalonRequest(salonEmail: string): Promise<any> {
+    return await apiRequest("/api/v1/barbers/retry-salon-request", {
+      method: "POST",
+      body: JSON.stringify({ salon_email: salonEmail }),
     });
   },
 };

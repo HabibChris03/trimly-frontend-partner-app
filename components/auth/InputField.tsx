@@ -47,25 +47,23 @@ export default function InputField({
 
   return (
     <View style={styles.container}>
-      {/* Label Row */}
       <View style={styles.labelRow}>
-        <Text style={[styles.label, { color: colors.primarytext }]}>
+        <Text style={[styles.label, { color: colors.primaryText }]}>
           {label}
         </Text>
         {rightLabelAction}
       </View>
 
-      {/* Input Box */}
       <View
         style={[
           styles.inputWrapper,
           {
-            backgroundColor: colors.surface,
+            backgroundColor: colors.card,
             borderColor: error
               ? colors.error
               : isFocused
-                ? colors.primary
-                : colors.surfacevariant,
+                ? colors.brand
+                : colors.border,
           },
         ]}
       >
@@ -73,14 +71,14 @@ export default function InputField({
           <View style={styles.iconContainer}>
             <Ionicons
               name={iconName}
-              size={20}
-              color={isFocused ? colors.primary : colors.secondarytext}
+              size={19}
+              color={isFocused ? colors.brand : colors.secondaryText}
             />
           </View>
         ) : null}
 
         <TextInput
-          style={[styles.input, { color: colors.primarytext }]}
+          style={[styles.input, { color: colors.primaryText }]}
           placeholder={placeholder}
           placeholderTextColor={colors.inputPlaceholder}
           value={value}
@@ -101,8 +99,8 @@ export default function InputField({
           >
             <Ionicons
               name={isPasswordVisible ? "eye-off-outline" : "eye-outline"}
-              size={20}
-              color={colors.secondarytext}
+              size={19}
+              color={colors.secondaryText}
             />
           </TouchableOpacity>
         ) : null}
@@ -117,31 +115,27 @@ export default function InputField({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 15,
     width: "100%",
   },
   labelRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 7,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "600",
     letterSpacing: 0.1,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
-    borderWidth: 1.2,
-    height: 45,
+    borderRadius: 13,
+    borderWidth: 1,
+    height: 50,
     paddingHorizontal: 14,
-    elevation: 1,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
   },
   iconContainer: {
     marginRight: 10,
@@ -160,7 +154,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 5,
     marginLeft: 2,
     fontWeight: "500",
   },

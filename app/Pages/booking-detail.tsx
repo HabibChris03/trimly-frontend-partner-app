@@ -1,222 +1,302 @@
-import { useToast } from "@/context/ToastContext";
+import { CustomModal } from "@/components/ui/CustomModal";
 import { useLanguage } from "@/context/LanguageContext";
-import useColors from "@/hooks/usecolor";
+import { useTheme } from "@/context/ThemeContext";
+import { useToast } from "@/context/ToastContext";
+import { bookingService, BookingReceipt } from "@/services/bookingService";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
+  ActivityIndicator,
   Dimensions,
   Image,
-  ImageSourcePropType,
+  Linking,
+  Modal,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useThemeImages } from "@/hooks/useThemeImages";
 
-interface BarberOption {
-  id: string;
-  name: string;
-  specialty: string;
-  rating: number;
-  image: ImageSourcePropType;
-  avatar: ImageSourcePropType;
-}
+const { width, height } = Dimensions.get("window");
 
-interface ServiceItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  duration: number;
-}
-
-const AVAILABLE_SERVICES: ServiceItem[] = [
-  {
-    id: "sc1",
-    name: "Skin Fade & Edge Up",
-    description: "Precision clipper cut with razor finish",
-    price: 15000,
-    duration: 45,
-  },
-  {
-    id: "sc2",
-    name: "Beard Sculpt & Oil Treatment",
-    description: "Beard shaping, hot towel & nourishing oil",
-    price: 10000,
-    duration: 30,
-  },
-  {
-    id: "sc3",
-    name: "Deluxe Hair Wash & Style",
-    description: "Deep cleansing scalp wash with pomade styling",
-    price: 8000,
-    duration: 20,
-  },
-  {
-    id: "sc4",
-    name: "Full Royal Grooming Package",
-    description: "Haircut, beard, facial steam & hot towel",
-    price: 30000,
-    duration: 75,
-  },
-];
-
-const DAYS = [
-  { name: "Mon", number: 14 },
-  { name: "Tue", number: 15 },
-  { name: "Wed", number: 16 },
-  { name: "Thu", number: 17 },
-  { name: "Fri", number: 18 },
-];
-
-const TIMES = [
-  "09:00 AM",
-  "10:30 AM",
-  "11:15 AM",
-  "01:00 PM",
-  "02:30 PM",
-  "04:00 PM",
-];
-
-import { barberService } from "@/services/barberService";
-
-export default function BookingDetailScreen() {
-  const colors = useColors();
+export default function BarberBookingDetailScreen() {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const { t } = useLanguage();
-  const themeImages = useThemeImages();
-  const profilePic = themeImages.profilePic;
-  const params = useLocalSearchParams<{ barberId?: string; barberName?: string }>();
 
-  const initialBarber: BarberOption = {
-    id: params.barberId || "4",
-    name: params.barberName || "Master Barber",
-    specialty: "Professional Grooming",
-    rating: 5.0,
-    image: profilePic,
-    avatar: profilePic,
-  };
+  const params = useLocalSearchParams<{
+    bookingId?: string;
+    clientName?: string;
+    clientPhone?: string;
+    serviceName?: string;
+    date?: string;
+    time?: string;
+    price?: string;
+    pictureUrl?: string;
+    status?: string;
+    referenceNumber?: string;
+  }>();
 
-  const [barbersList, setBarbersList] = useState<BarberOption[]>([initialBarber]);
-  const [selectedBarber, setSelectedBarber] = useState<BarberOption>(initialBarber);
-  const [availableServices, setAvailableServices] = useState<ServiceItem[]>(AVAILABLE_SERVICES);
-  const [selectedServices, setSelectedServices] = useState<string[]>([
-    "sc1",
-    "sc2",
-  ]);
-  const [selectedDay, setSelectedDay] = useState(15);
-  const [selectedTime, setSelectedTime] = useState("10:30 AM");
+  const bookingIdParam = params.bookingId;
+  // If we were navigated here with data, render immediately and refresh silently.
+  const hasParamData = !!(params.clientName || params.serviceName);
 
+  const [booking, setBooking] = useState<BookingReceipt | null>(null);
+  const [isLoading, setIsLoading] = useState(!hasParamData);
+  const [fullscreenPhotoVisible, setFullscreenPhotoVisible] = useState(false);
+
+  // Handshake modals & Bypass State
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [arrivalPinInput, setArrivalPinInput] = useState("");
+  const [isBypassingPin, setIsBypassingPin] = useState(false);
+  const [bypassReason, setBypassReason] = useState("");
+  const [isSubmittingPin, setIsSubmittingPin] = useState(false);
+
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [completionPinInput, setCompletionPinInput] = useState("");
+  const [isBypassingCompletionPin, setIsBypassingCompletionPin] = useState(false);
+  const [bypassCompletionReason, setBypassCompletionReason] = useState("");
+  const [isSubmittingCompletion, setIsSubmittingCompletion] = useState(false);
+  const [isRequestingPin, setIsRequestingPin] = useState(false);
+  const [pinSentSuccess, setPinSentSuccess] = useState(false);
+
+  // Live status transition state
+  const [currentStatus, setCurrentStatus] = useState<string | null>(null);
+
+  // Load once per booking ID. Depending on the `params` object caused an
+  // infinite re-fetch loop because its identity changes on every render.
   useEffect(() => {
-    async function loadData() {
+    let cancelled = false;
+    (async () => {
       try {
-        const [apiBarbers, apiServices] = await Promise.all([
-          barberService.getNearbyBarbers(),
-          barberService.getBarberServices(Number(selectedBarber.id) || 4),
-        ]);
-        if (Array.isArray(apiBarbers) && apiBarbers.length > 0) {
-          const mapped: BarberOption[] = apiBarbers.map((b, idx) => ({
-            id: (b.id || idx + 1).toString(),
-            name: b.name || "Master Barber",
-            specialty: b.bio || "Fade Specialist",
-            rating: typeof b.rating === "number" ? b.rating : 4.9,
-            image: profilePic,
-            avatar: profilePic,
-          }));
-          setBarbersList(mapped);
-          if (mapped[0]) setSelectedBarber(mapped[0]);
-        }
-        if (Array.isArray(apiServices) && apiServices.length > 0) {
-          const mappedSv: ServiceItem[] = apiServices.map((s, idx) => ({
-            id: (s.id || idx + 1).toString(),
-            name: s.name,
-            description: `${s.category || "Haircut & Grooming"} • ${s.duration_minutes || 30} mins`,
-            price: s.price,
-            duration: s.duration_minutes || 30,
-          }));
-          setAvailableServices(mappedSv);
-          if (mappedSv[0]?.id) setSelectedServices([mappedSv[0].id]);
+        if (bookingIdParam) {
+          const found = await bookingService.getBookingById(bookingIdParam);
+          if (!cancelled && found) setBooking(found);
         }
       } catch {
-        // Fallback
+        // Keep rendering from navigation params
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    }
-    loadData();
-  }, []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingIdParam]);
 
-  const toggleService = (id: string) => {
-    if (selectedServices.includes(id)) {
-      if (selectedServices.length === 1) {
-        showToast("Please keep at least one service selected.", "info");
-        return;
-      }
-      setSelectedServices(selectedServices.filter((s) => s !== id));
-    } else {
-      setSelectedServices([...selectedServices, id]);
+  const clientName = booking?.client_name || params.clientName || "Valued Client";
+  const clientPhone = booking?.client_phone || params.clientPhone || "+237 670 12 34 56";
+  const serviceTitle = booking?.custom_hairstyle_name || params.serviceName || "Haircut & Grooming";
+  const priceVal = booking?.total_price || (params.price ? parseInt(params.price, 10) : 25000);
+  const statusVal = currentStatus || booking?.status || params.status || "Confirmed";
+  const photoUrl = booking?.reference_photo_url || params.pictureUrl || null;
+  const isHomeService =
+    booking?.service_type === "home_service" || (params as any).serviceType === "home_service";
+  const homeAddressVal = booking?.home_address || (params as any).homeAddress || "";
+  const homeInstructionsVal =
+    booking?.home_instructions || (params as any).homeInstructions || "";
+  const refNum = useMemo(
+    () =>
+      booking?.reference_number ||
+      params.referenceNumber ||
+      `TRM-${String(bookingIdParam || Date.now()).slice(-6)}`,
+    [booking?.reference_number, params.referenceNumber, bookingIdParam]
+  );
+
+  const timeLabel = useMemo(() => {
+    if (params.date && params.time) return `${params.date} at ${params.time}`;
+    if (booking?.start_time) {
+      const d = new Date(booking.start_time);
+      return `${d.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })} at ${d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`;
+    }
+    return "Today at 10:30 AM";
+  }, [params.date, params.time, booking?.start_time]);
+
+  const handleCallClient = () => {
+    if (clientPhone) {
+      Linking.openURL(`tel:${clientPhone}`).catch(() => {
+        showToast(`Client Phone: ${clientPhone}`, "info");
+      });
     }
   };
 
-  const activeServiceObjects = AVAILABLE_SERVICES.filter((s) =>
-    selectedServices.includes(s.id)
-  );
+  const handleNavigateToClient = () => {
+    const dest = homeAddressVal || clientName;
+    const encoded = encodeURIComponent(dest);
+    const mapUrl =
+      Platform.select({
+        ios: `maps://app?daddr=${encoded}&dirflg=d`,
+        android: `google.navigation:q=${encoded}`,
+        default: `https://www.google.com/maps/dir/?api=1&destination=${encoded}`,
+      }) || `https://www.google.com/maps/dir/?api=1&destination=${encoded}`;
 
-  const totalAmount = activeServiceObjects.reduce(
-    (sum, item) => sum + item.price,
-    0
-  );
-
-  const totalDuration = activeServiceObjects.reduce(
-    (sum, item) => sum + item.duration,
-    0
-  );
-
-  const handleConfirmBooking = () => {
-    const serviceTitles = activeServiceObjects.map((s) => s.name).join(" + ");
-    router.push({
-      pathname: "/Pages/checkout" as any,
-      params: {
-        barberName: selectedBarber.name,
-        serviceName: serviceTitles,
-        price: totalAmount.toFixed(2),
-        duration: `${totalDuration} mins`,
-        date: `Tuesday, Oct ${selectedDay}, 2023`,
-        time: selectedTime,
-      },
+    Linking.openURL(mapUrl).catch(() => {
+      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encoded}`).catch(
+        () => {
+          showToast(`Client Address: ${dest}`, "info");
+        }
+      );
     });
   };
 
+  const handleSendEndingCode = async () => {
+    const targetId = booking?.booking_id || booking?.id || params.bookingId;
+    if (!targetId) return;
+    setIsRequestingPin(true);
+    try {
+      await bookingService.requestCompletionPin(targetId);
+      setPinSentSuccess(true);
+      showToast(`Ending code sent to ${clientName}'s Trimly app!`, "success");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to send ending code to client.", "error");
+    } finally {
+      setIsRequestingPin(false);
+    }
+  };
+
+  const handleStartService = async () => {
+    if (!isBypassingPin && arrivalPinInput.trim().length !== 4) {
+      showToast("Please enter the 4-digit client arrival PIN", "error");
+      return;
+    }
+    setIsSubmittingPin(true);
+    try {
+      const targetId = booking?.booking_id || booking?.id || params.bookingId;
+      if (targetId) {
+        await bookingService.updateBookingStatus(targetId, "shaving...", {
+          arrival_pin: isBypassingPin ? undefined : arrivalPinInput.trim(),
+          bypass_pin: isBypassingPin,
+          bypass_reason: isBypassingPin
+            ? bypassReason.trim() || "Client verified in person"
+            : undefined,
+        });
+      }
+      setCurrentStatus("shaving...");
+      setBooking((prev) => ({ ...(prev || {}), status: "shaving..." } as any));
+      showToast("Service started: shaving...", "success");
+      setPinModalVisible(false);
+      setArrivalPinInput("");
+      setIsBypassingPin(false);
+      setBypassReason("");
+    } catch (err: any) {
+      showToast(err?.message || "Invalid Arrival PIN. Ask the client for their code.", "error");
+    } finally {
+      setIsSubmittingPin(false);
+    }
+  };
+
+  const handleEndService = async () => {
+    if (!isBypassingCompletionPin && completionPinInput.trim().length !== 4) {
+      showToast("Please enter the 4-digit ending code provided by the client", "error");
+      return;
+    }
+    setIsSubmittingCompletion(true);
+    try {
+      const targetId = booking?.booking_id || booking?.id || params.bookingId;
+      if (targetId) {
+        await bookingService.updateBookingStatus(targetId, "Completed", {
+          completion_pin: isBypassingCompletionPin ? undefined : completionPinInput.trim(),
+          bypass_pin: isBypassingCompletionPin,
+          bypass_reason: isBypassingCompletionPin
+            ? bypassCompletionReason.trim() || "Service completion verified in person"
+            : undefined,
+        });
+      }
+      setCurrentStatus("Completed");
+      setBooking((prev) => ({ ...(prev || {}), status: "Completed" } as any));
+      showToast(
+        `Service Ended! ${priceVal.toLocaleString()} CFA credited to your balance.`,
+        "success"
+      );
+      setCompletionModalVisible(false);
+      setCompletionPinInput("");
+      setIsBypassingCompletionPin(false);
+      setBypassCompletionReason("");
+    } catch (err: any) {
+      showToast(err?.message || "Invalid Ending Code. Ask the client for their code.", "error");
+    } finally {
+      setIsSubmittingCompletion(false);
+    }
+  };
+
+  const getStatusColor = (st: string) => {
+    switch (st.toLowerCase()) {
+      case "completed":
+        return { color: colors.success, bg: colors.successSoft };
+      case "shaving...":
+      case "shaving":
+      case "in progress":
+        return { color: colors.info, bg: colors.infoSoft };
+      case "pending":
+        return { color: colors.warning, bg: colors.warningSoft };
+      case "cancelled":
+        return { color: colors.error, bg: colors.errorSoft };
+      default:
+        return { color: colors.primary, bg: colors.brandSoft };
+    }
+  };
+
+  const statusMeta = getStatusColor(statusVal);
+  const initials =
+    clientName
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "C";
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      {/* Clean Urban Top Header */}
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 8, borderBottomColor: colors.border },
+        ]}
+      >
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => router.back()}
-          style={styles.headerBtn}
+          style={[
+            styles.headerBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={20} color={colors.primarytext} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-          {t("booking.bookAppointment")}
-        </Text>
+        <View style={styles.headerTitleGroup}>
+          <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
+            {t("bookings.bookingDetails") || "Booking Details"}
+          </Text>
+          <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
+            Ref: {refNum}
+          </Text>
+        </View>
 
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => showToast("Custom service preferences are saved.", "info")}
-          style={styles.headerBtn}
+          onPress={handleCallClient}
+          style={[
+            styles.headerBtn,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Ionicons name="ellipsis-vertical" size={20} color="#FFFFFF" />
+          <Ionicons name="call-outline" size={19} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -224,272 +304,625 @@ export default function BookingDetailScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: insets.bottom + 100 },
+          { paddingBottom: insets.bottom + 40 },
         ]}
       >
-        {/* Section: Select Barber */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-            {t("booking.selectStylist")}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.barbersList}
-          >
-            {barbersList.map((barber) => {
-              const isSelected = selectedBarber.id === barber.id;
-              return (
+        {isLoading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.secondarytext }]}>
+              Loading booking details...
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* 1. PROMINENT CLIENT-SELECTED PHOTO REFERENCE */}
+            {photoUrl ? (
+              <View
+                style={[
+                  styles.photoSectionCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.brandBorder,
+                  },
+                ]}
+              >
+                <View style={styles.photoHeaderRow}>
+                  <View
+                    style={[
+                      styles.photoBadge,
+                      {
+                        backgroundColor: colors.brandSoft,
+                        borderColor: colors.brandBorder,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="sparkles" size={12} color={colors.primary} />
+                    <Text style={[styles.photoBadgeText, { color: colors.primary }]}>
+                      CLIENT BOOKED USING THIS PHOTO
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setFullscreenPhotoVisible(true)}
+                    style={styles.expandIconBtn}
+                  >
+                    <Ionicons name="scan-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.expandText, { color: colors.primary }]}>Zoom</Text>
+                  </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity
-                  key={barber.id}
+                  activeOpacity={0.92}
+                  onPress={() => setFullscreenPhotoVisible(true)}
+                  style={[styles.photoWrap, { borderColor: colors.border }]}
+                >
+                  <Image
+                    source={{ uri: photoUrl }}
+                    style={styles.referenceImage}
+                    resizeMode="cover"
+                  />
+                  <View style={[styles.photoOverlayBadge, { borderColor: colors.border }]}>
+                    <Ionicons name="eye-outline" size={14} color="#F5F5F2" />
+                    <Text style={styles.photoOverlayText}>{t("bookings.tapToViewFullPhoto") || "Tap to View Full Photo"}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.photoCaptionBox}>
+                  <View style={styles.photoCaptionTitleRow}>
+                    <Ionicons name="cut-outline" size={15} color={colors.primary} />
+                    <Text style={[styles.photoCaptionTitle, { color: colors.primarytext }]}>
+                      Style Reference: {serviceTitle}
+                    </Text>
+                  </View>
+                  <Text style={[styles.photoCaptionSub, { color: colors.secondarytext }]}>
+                    The client selected this specific photo when booking. Replicate this hairstyle
+                    during the session.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* 2. CLIENT INFORMATION CARD */}
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.cardSectionLabel, { color: colors.secondarytext }]}>
+                CLIENT INFORMATION
+              </Text>
+              <View style={styles.clientRow}>
+                <View
+                  style={[
+                    styles.avatarCircle,
+                    {
+                      backgroundColor: colors.brandSoft,
+                      borderColor: colors.primary,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.avatarText, { color: colors.primary }]}>{initials}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.clientNameText, { color: colors.primarytext }]}>
+                    {clientName}
+                  </Text>
+                  <Text style={[styles.clientPhoneText, { color: colors.secondarytext }]}>
+                    {clientPhone}
+                  </Text>
+                </View>
+                <TouchableOpacity
                   activeOpacity={0.85}
-                  onPress={() => setSelectedBarber(barber)}
-                  style={styles.barberAvatarItem}
+                  onPress={handleCallClient}
+                  style={[styles.callActionBtn, { backgroundColor: colors.primary }]}
                 >
-                  <View
-                    style={[
-                      styles.avatarBorder,
-                      isSelected && {
-                        borderColor: "#A3B39C",
-                        borderWidth: 2.5,
-                      },
-                    ]}
-                  >
-                    <Image source={barber.avatar} style={styles.barberImg} />
-                  </View>
-                  <Text
-                    style={[
-                      styles.barberNameText,
-                      {
-                        color: isSelected ? "#FFFFFF" : colors.secondarytext,
-                        fontWeight: isSelected ? "700" : "500",
-                      },
-                    ]}
-                  >
-                    {barber.name}
-                  </Text>
+                  <Ionicons name="call" size={14} color={colors.onBrand} />
+                  <Text style={[styles.callActionText, { color: colors.onBrand }]}>Call</Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
+              </View>
 
-        {/* Section: Select Services */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-              {t("booking.serviceDetails")}
-            </Text>
-            <Text style={[styles.selectedCountText, { color: colors.secondarytext }]}>
-              {t("booking.selectedCount", { count: selectedServices.length })}
-            </Text>
-          </View>
-
-          <View style={styles.servicesList}>
-            {availableServices.map((service) => {
-              const isChecked = selectedServices.includes(service.id);
-              return (
-                <TouchableOpacity
-                  key={service.id}
-                  activeOpacity={0.8}
-                  onPress={() => toggleService(service.id)}
-                  style={styles.serviceRow}
-                >
-                  <View
-                    style={[
-                      styles.checkbox,
-                      isChecked
-                        ? [styles.checkboxChecked, { backgroundColor: "#A3B39C" }]
-                        : { borderColor: colors.surfacevariant },
-                    ]}
-                  >
-                    {isChecked && (
-                      <Ionicons name="checkmark" size={14} color="#1C1E1B" />
-                    )}
-                  </View>
-
-                  <View style={styles.serviceDetails}>
-                    <Text
-                      style={[
-                        styles.serviceTitle,
-                        { color: colors.primarytext },
-                      ]}
-                    >
-                      {service.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.serviceSubtext,
-                        { color: colors.secondarytext },
-                      ]}
-                    >
-                      {service.description}
-                    </Text>
-                  </View>
-
-                  <Text
-                    style={[styles.servicePrice, { color: colors.primarytext }]}
-                  >
-                    {service.price.toFixed(0)} CFA
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Section: Date & Time */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-            {t("booking.dateTimeLabel")}
-          </Text>
-
-          {/* Day Pills */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.daysRow}
-          >
-            {DAYS.map((day) => {
-              const isSelected = selectedDay === day.number;
-              return (
-                <TouchableOpacity
-                  key={day.number}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedDay(day.number)}
+              {/* Home Service / House Call Location Box */}
+              {isHomeService && (
+                <View
                   style={[
-                    styles.dayPill,
+                    styles.homeServiceCard,
                     {
-                      backgroundColor: isSelected ? "#A3B39C" : colors.surface,
-                      borderColor: isSelected ? "#A3B39C" : colors.surfacevariant,
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
                     },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.dayName,
-                      { color: isSelected ? "#1C1E1B" : colors.secondarytext },
-                    ]}
-                  >
-                    {day.name}
+                  <View style={styles.homeServiceBadgeRow}>
+                    <View
+                      style={[
+                        styles.homeServiceIconWrap,
+                        { backgroundColor: colors.brandSoft },
+                      ]}
+                    >
+                      <Ionicons name="home-outline" size={15} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.homeServiceLabel, { color: colors.primary }]}>
+                      HOME SERVICE / HOUSE CALL
+                    </Text>
+                  </View>
+                  <Text style={[styles.homeServiceDest, { color: colors.primarytext }]}>
+                    Destination: {homeAddressVal || "Client Home"}
                   </Text>
-                  <Text
+                  {homeInstructionsVal ? (
+                    <Text style={[styles.homeServiceNote, { color: colors.secondarytext }]}>
+                      Instructions: {homeInstructionsVal}
+                    </Text>
+                  ) : null}
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={handleNavigateToClient}
                     style={[
-                      styles.dayNumber,
+                      styles.directionsBtn,
                       {
-                        color: isSelected ? "#1C1E1B" : colors.primarytext,
-                        fontWeight: "700",
+                        backgroundColor: colors.surface,
+                        borderColor: colors.brandBorder,
                       },
                     ]}
                   >
-                    {day.number}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* Time Slots Vertical / Grid */}
-          <View style={styles.timeSlotsColumn}>
-            {TIMES.map((time) => {
-              const isSelected = selectedTime === time;
-              return (
-                <TouchableOpacity
-                  key={time}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedTime(time)}
-                  style={[
-                    styles.timeSlotRow,
-                    {
-                      backgroundColor: isSelected ? "#A3B39C" : colors.surface,
-                      borderColor: isSelected ? "#A3B39C" : colors.surfacevariant,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.timeSlotText,
-                      {
-                        color: isSelected ? "#1C1E1B" : colors.secondarytext,
-                        fontWeight: isSelected ? "700" : "500",
-                      },
-                    ]}
-                  >
-                    {time}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Booking Summary Box */}
-        <View
-          style={[
-            styles.summaryCard,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.surfacevariant,
-            },
-          ]}
-        >
-          <Text style={[styles.summaryTitle, { color: colors.primarytext }]}>
-            {t("booking.checkoutTitle")}
-          </Text>
-
-          {activeServiceObjects.map((service) => (
-            <View key={service.id} style={styles.summaryItemRow}>
-              <Text
-                style={[styles.summaryItemName, { color: colors.secondarytext }]}
-              >
-                {service.name}
-              </Text>
-              <Text
-                style={[styles.summaryItemPrice, { color: colors.primarytext }]}
-              >
-                {service.price.toFixed(0)} CFA
-              </Text>
+                    <Ionicons name="navigate-outline" size={15} color={colors.primary} />
+                    <Text style={[styles.directionsBtnText, { color: colors.primary }]}>
+                      Get Directions to Client&apos;s House
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-          ))}
 
-          <View
-            style={[
-              styles.summaryDivider,
-              { backgroundColor: colors.surfacevariant },
-            ]}
-          />
+            {/* 3. APPOINTMENT SPECIFICATIONS */}
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.cardSectionLabel, { color: colors.secondarytext }]}>
+                APPOINTMENT DETAILS
+              </Text>
 
-          <View style={styles.summaryTotalRow}>
-            <Text style={[styles.totalLabel, { color: colors.primarytext }]}>
-              {t("booking.totalAmount")}
-            </Text>
-            <Text style={[styles.totalPrice, { color: colors.primarytext }]}>
-              {totalAmount.toFixed(0)} CFA
-            </Text>
-          </View>
-        </View>
+              <View style={styles.specRow}>
+                <View
+                  style={[
+                    styles.specIconCircle,
+                    {
+                      backgroundColor: colors.brandSoft,
+                      borderColor: colors.brandBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons name="calendar-outline" size={17} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>
+                    Scheduled Time
+                  </Text>
+                  <Text style={[styles.specValue, { color: colors.secondarytext }]}>
+                    {timeLabel}
+                  </Text>
+                </View>
+                <View style={[styles.statusPill, { backgroundColor: statusMeta.bg }]}>
+                  <Text style={[styles.statusPillText, { color: statusMeta.color }]}>
+                    {statusVal}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              <View style={styles.specRow}>
+                <View
+                  style={[
+                    styles.specIconCircle,
+                    {
+                      backgroundColor: colors.brandSoft,
+                      borderColor: colors.brandBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons name="cut-outline" size={17} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>
+                    Requested Service
+                  </Text>
+                  <Text style={[styles.specValue, { color: colors.secondarytext }]}>
+                    {serviceTitle} (45 mins)
+                  </Text>
+                </View>
+                {photoUrl && (
+                  <View
+                    style={[
+                      styles.photoTagPill,
+                      {
+                        backgroundColor: colors.brandSoft,
+                        borderColor: colors.brandBorder,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="camera-outline" size={11} color={colors.primary} />
+                    <Text style={[styles.photoTagText, { color: colors.primary }]}>
+                      Photo Attached
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              <View style={styles.specRow}>
+                <View
+                  style={[
+                    styles.specIconCircle,
+                    {
+                      backgroundColor: colors.brandSoft,
+                      borderColor: colors.brandBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons name="cash-outline" size={17} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>
+                    Total Booking Price
+                  </Text>
+                  <Text style={[styles.specValue, { color: colors.secondarytext }]}>
+                    To be collected / released upon completion
+                  </Text>
+                </View>
+                <Text style={[styles.priceHighlight, { color: colors.primary }]}>
+                  {priceVal.toLocaleString()} CFA
+                </Text>
+              </View>
+            </View>
+
+            {/* 4. PIN HANDSHAKE VERIFICATION ACTIONS */}
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.cardSectionLabel, { color: colors.secondarytext }]}>
+                PHYSICAL HANDSHAKE & SERVICE CONTROL
+              </Text>
+
+              {statusVal === "Confirmed" ? (
+                <View style={{ marginTop: 4 }}>
+                  <Text style={[styles.handshakeNotice, { color: colors.secondarytext }]}>
+                    When the client is physically seated in your chair, ask for their 4-digit
+                    Arrival PIN from their Trimly receipt to start the session.
+                  </Text>
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    onPress={() => setPinModalVisible(true)}
+                    style={[styles.primaryActionBtn, { backgroundColor: colors.primary }]}
+                  >
+                    <Ionicons name="key-outline" size={18} color={colors.onBrand} />
+                    <Text style={[styles.primaryActionBtnText, { color: colors.onBrand }]}>
+                      Start Service (Verify Arrival PIN)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : statusVal.toLowerCase().includes("shav") || statusVal === "In Progress" ? (
+                <View style={{ marginTop: 4 }}>
+                  <View
+                    style={[
+                      styles.activeBanner,
+                      {
+                        backgroundColor: colors.infoSoft,
+                        borderColor: "rgba(59, 130, 246, 0.3)",
+                      },
+                    ]}
+                  >
+                    <Ionicons name="cut-outline" size={16} color={colors.info} />
+                    <Text style={[styles.activeBannerText, { color: colors.info }]}>
+                      shaving... (Active In Your Chair)
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.88}
+                    onPress={() => setCompletionModalVisible(true)}
+                    style={[styles.primaryActionBtn, { backgroundColor: colors.primary }]}
+                  >
+                    <Ionicons
+                      name="checkmark-done-circle-outline"
+                      size={19}
+                      color={colors.onBrand}
+                    />
+                    <Text style={[styles.primaryActionBtnText, { color: colors.onBrand }]}>
+                      End Service & Verify Ending Code
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.completedNoticeRow}>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={18}
+                    color={colors.secondarytext}
+                  />
+                  <Text
+                    style={[
+                      styles.handshakeNotice,
+                      { color: colors.secondarytext, marginBottom: 0, flex: 1 },
+                    ]}
+                  >
+                    Appointment is {statusVal}. No further physical handshakes are required.
+                  </Text>
+                </View>
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
 
-      {/* Sticky Confirm Booking Button */}
-      <View
-        style={[
-          styles.bottomActionBar,
-          {
-            paddingBottom: Math.max(insets.bottom, 16),
-            backgroundColor: colors.background,
-            borderTopColor: colors.surfacevariant,
-          },
-        ]}
+      {/* FULLSCREEN PHOTO VIEWER MODAL */}
+      <Modal
+        visible={fullscreenPhotoVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFullscreenPhotoVisible(false)}
       >
-        <TouchableOpacity
-          activeOpacity={0.88}
-          onPress={handleConfirmBooking}
-          style={[styles.confirmBtn, { backgroundColor: "#A3B39C" }]}
-        >
-          <Ionicons name="calendar-outline" size={18} color="#1C1E1B" />
-          <Text style={styles.confirmBtnText}>{t("booking.confirmAndBook")}</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.fullscreenModalBackdrop}>
+          <StatusBar barStyle="light-content" />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setFullscreenPhotoVisible(false)}
+            style={[
+              styles.fullscreenCloseBtn,
+              {
+                top: insets.top + 16,
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="close" size={22} color="#F5F5F2" />
+          </TouchableOpacity>
+
+          <View style={styles.fullscreenCenter}>
+            {photoUrl ? (
+              <Image
+                source={{ uri: photoUrl }}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
+            ) : null}
+            <View style={styles.fullscreenBottomBar}>
+              <View
+                style={[
+                  styles.photoBadge,
+                  {
+                    backgroundColor: "rgba(199, 243, 107, 0.16)",
+                    borderColor: "rgba(199, 243, 107, 0.35)",
+                  },
+                ]}
+              >
+                <Ionicons name="sparkles" size={12} color="#C7F36B" />
+                <Text style={[styles.photoBadgeText, { color: "#C7F36B" }]}>
+                  CLIENT CHOSEN STYLE REFERENCE
+                </Text>
+              </View>
+              <Text style={styles.fullscreenStyleTitle}>{serviceTitle}</Text>
+              <Text style={styles.fullscreenClientNote}>
+                Client: {clientName} • {priceVal.toLocaleString()} CFA
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ARRIVAL PIN MODAL */}
+      <CustomModal
+        visible={pinModalVisible}
+        onClose={() => setPinModalVisible(false)}
+        title="Verify Client Arrival PIN"
+        description={t("bookings.confirmSeatedDesc") || "Ask the client for the 4-digit PIN displayed on their Trimly booking receipt to confirm they are physically seated."}
+        icon="key-outline"
+        primaryText={isSubmittingPin ? "Verifying..." : "Confirm & Start Service"}
+        onPrimary={handleStartService}
+        secondaryText="Cancel"
+        onSecondary={() => {
+          setPinModalVisible(false);
+          setIsBypassingPin(false);
+          setArrivalPinInput("");
+        }}
+      >
+        <View style={{ width: "100%", marginVertical: 12 }}>
+          {!isBypassingPin ? (
+            <View>
+              <TextInput
+                value={arrivalPinInput}
+                onChangeText={(val) => setArrivalPinInput(val.replace(/\D/g, "").slice(0, 4))}
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="• • • •"
+                placeholderTextColor={colors.inputPlaceholder}
+                style={[
+                  styles.pinInput,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                onPress={() => setIsBypassingPin(true)}
+                style={styles.bypassLinkBtn}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>
+                  Client phone offline / dead battery? Bypass PIN
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>
+                Bypass Mode (Requires Verification Note)
+              </Text>
+              <TextInput
+                value={bypassReason}
+                onChangeText={setBypassReason}
+                placeholder={t("bookings.arrivalBypassPlaceholder") || "Reason (e.g. verified client in person, phone dead)"}
+                placeholderTextColor={colors.inputPlaceholder}
+                style={[
+                  styles.bypassReasonInput,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                onPress={() => setIsBypassingPin(false)}
+                style={styles.switchBackLinkBtn}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.primary }]}>
+                  Switch back to 4-digit PIN
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </CustomModal>
+
+      {/* END SERVICE COMPLETION PIN MODAL */}
+      <CustomModal
+        visible={completionModalVisible}
+        onClose={() => setCompletionModalVisible(false)}
+        title="Complete Service & Release Payout"
+        description={t("bookings.completionModalDesc") || "Enter the 4-digit completion code provided by the client to finalize the session and release payment to your account."}
+        icon="checkmark-done-circle-outline"
+        primaryText={
+          isSubmittingCompletion
+            ? "Finalizing..."
+            : pinSentSuccess || isBypassingCompletionPin
+            ? "Release Payout & Complete"
+            : isRequestingPin
+            ? "Sending..."
+            : "Send Ending Code to Client"
+        }
+        onPrimary={() => {
+          if (
+            pinSentSuccess ||
+            isBypassingCompletionPin ||
+            completionPinInput.length === 4
+          ) {
+            handleEndService();
+          } else {
+            handleSendEndingCode();
+          }
+        }}
+        secondaryText="Cancel"
+        onSecondary={() => {
+          setCompletionModalVisible(false);
+          setCompletionPinInput("");
+          setIsBypassingCompletionPin(false);
+          setBypassCompletionReason("");
+        }}
+      >
+        <View style={{ width: "100%", marginVertical: 12 }}>
+          {isRequestingPin ? (
+            <View style={{ alignItems: "center", paddingVertical: 16 }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={{ fontSize: 13, color: colors.secondarytext, marginTop: 8 }}>
+                Sending ending code to client...
+              </Text>
+            </View>
+          ) : !isBypassingCompletionPin ? (
+            <View>
+              <View
+                style={[
+                  styles.awaitingCodeBanner,
+                  {
+                    backgroundColor: colors.brandSoft,
+                    borderColor: colors.brandBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.awaitingCodeLabel, { color: colors.primary }]}>
+                  AWAITING 4-DIGIT ENDING CODE
+                </Text>
+                <Text style={[styles.awaitingCodeSub, { color: colors.primarytext }]}>
+                  Ask {clientName} for the 4-digit ending code on their Trimly receipt
+                </Text>
+              </View>
+
+              <TextInput
+                value={completionPinInput}
+                onChangeText={(val) =>
+                  setCompletionPinInput(val.replace(/\D/g, "").slice(0, 4))
+                }
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="• • • •"
+                placeholderTextColor={colors.inputPlaceholder}
+                style={[
+                  styles.pinInput,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                onPress={() => setIsBypassingCompletionPin(true)}
+                style={styles.bypassLinkBtn}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>
+                  Client offline? Complete without code
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>
+                Bypass Mode (Service Completion Verification Note)
+              </Text>
+              <TextInput
+                value={bypassCompletionReason}
+                onChangeText={setBypassCompletionReason}
+                placeholder={t("bookings.completionBypassPlaceholder") || "Reason (e.g. Haircut completed, client paid in cash)"}
+                placeholderTextColor={colors.inputPlaceholder}
+                style={[
+                  styles.bypassReasonInput,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                onPress={() => setIsBypassingCompletionPin(false)}
+                style={styles.switchBackLinkBtn}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.primary }]}>
+                  Switch back to 4-digit code
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </CustomModal>
     </View>
   );
 }
@@ -502,194 +935,398 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 14,
+    borderBottomWidth: 1,
   },
   headerBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
+    borderWidth: 1,
     justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitleGroup: {
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
+  },
+  headerSubtitle: {
+    fontSize: 11.5,
+    marginTop: 2,
   },
   scrollContent: {
     paddingHorizontal: 18,
-    paddingTop: 10,
+    paddingTop: 16,
   },
-  section: {
-    marginBottom: 24,
+  loadingWrap: {
+    paddingVertical: 60,
+    alignItems: "center",
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    marginBottom: 14,
+  loadingText: {
+    marginTop: 14,
+    fontSize: 13,
   },
-  sectionHeaderRow: {
+  photoSectionCard: {
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 14,
+    marginBottom: 16,
+  },
+  photoHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  photoBadge: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 14,
+    gap: 5,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 9,
   },
-  selectedCountText: {
-    fontSize: 12.5,
+  photoBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
-  barbersList: {
-    gap: 16,
-    paddingRight: 10,
-  },
-  barberAvatarItem: {
+  expandIconBtn: {
+    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
   },
-  avatarBorder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 1.5,
-    borderColor: "#3D4439",
+  expandText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  photoWrap: {
+    width: "100%",
+    height: 240,
+    borderRadius: 14,
+    borderWidth: 1,
     overflow: "hidden",
-    justifyContent: "center",
-    alignItems: "center",
+    position: "relative",
   },
-  barberImg: {
+  referenceImage: {
     width: "100%",
     height: "100%",
   },
-  barberNameText: {
-    fontSize: 12.5,
+  photoOverlayBadge: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    backgroundColor: "rgba(23, 25, 24, 0.82)",
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
   },
-  servicesList: {
-    gap: 16,
+  photoOverlayText: {
+    color: "#F5F5F2",
+    fontSize: 11,
+    fontWeight: "600",
   },
-  serviceRow: {
+  photoCaptionBox: {
+    marginTop: 12,
+  },
+  photoCaptionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  photoCaptionTitle: {
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  photoCaptionSub: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  infoCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+  },
+  cardSectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    marginBottom: 12,
+  },
+  clientRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  avatarCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     borderWidth: 1.5,
     justifyContent: "center",
     alignItems: "center",
   },
-  checkboxChecked: {
-    borderWidth: 0,
+  avatarText: {
+    fontSize: 16,
+    fontWeight: "700",
   },
-  serviceDetails: {
-    flex: 1,
+  clientNameText: {
+    fontSize: 15.5,
+    fontWeight: "700",
+    marginBottom: 2,
   },
-  serviceTitle: {
-    fontSize: 14.5,
+  clientPhoneText: {
+    fontSize: 13,
+  },
+  callActionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 13,
+  },
+  callActionText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  homeServiceCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 14,
+  },
+  homeServiceBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginBottom: 6,
+  },
+  homeServiceIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  homeServiceLabel: {
+    fontSize: 11.5,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  homeServiceDest: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  homeServiceNote: {
+    fontSize: 12,
+    marginTop: 3,
+    lineHeight: 17,
+  },
+  directionsBtn: {
+    marginTop: 11,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 40,
+    borderRadius: 12,
+  },
+  directionsBtnText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  specRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  specIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  specTitle: {
+    fontSize: 13,
     fontWeight: "600",
     marginBottom: 2,
   },
-  serviceSubtext: {
+  specValue: {
     fontSize: 12,
   },
-  servicePrice: {
-    fontSize: 14,
-    fontWeight: "600",
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
-  daysRow: {
-    gap: 10,
-    marginBottom: 16,
-  },
-  dayPill: {
-    width: 58,
-    height: 68,
-    borderRadius: 29,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    gap: 4,
-  },
-  dayName: {
+  statusPillText: {
     fontSize: 11.5,
-  },
-  dayNumber: {
-    fontSize: 16,
-  },
-  timeSlotsColumn: {
-    gap: 10,
-  },
-  timeSlotRow: {
-    height: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  timeSlotText: {
-    fontSize: 13.5,
-  },
-  summaryCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 18,
-    marginBottom: 16,
-  },
-  summaryTitle: {
-    fontSize: 16,
     fontWeight: "700",
+  },
+  photoTagPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+  },
+  photoTagText: {
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
+  priceHighlight: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  divider: {
+    height: 1,
+    marginVertical: 12,
+  },
+  handshakeNotice: {
+    fontSize: 12.5,
+    lineHeight: 18,
     marginBottom: 14,
   },
-  summaryItemRow: {
+  completedNoticeRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  summaryItemName: {
-    fontSize: 13.5,
-  },
-  summaryItemPrice: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  summaryDivider: {
-    height: 1,
-    marginVertical: 10,
-  },
-  summaryTotalRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 4,
-  },
-  totalLabel: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  totalPrice: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  bottomActionBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 12,
-    paddingHorizontal: 18,
-    borderTopWidth: 1,
-  },
-  confirmBtn: {
-    height: 50,
-    borderRadius: 25,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     gap: 8,
+    marginTop: 2,
   },
-  confirmBtnText: {
-    color: "#1C1E1B",
-    fontSize: 15,
+  primaryActionBtn: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+  },
+  primaryActionBtnText: {
+    fontSize: 14.5,
     fontWeight: "700",
+  },
+  activeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  activeBannerText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  pinInput: {
+    height: 56,
+    borderWidth: 1,
+    borderRadius: 14,
+    textAlign: "center",
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: 10,
+  },
+  bypassLinkBtn: {
+    marginTop: 12,
+    alignItems: "center",
+  },
+  switchBackLinkBtn: {
+    marginTop: 10,
+    alignItems: "center",
+  },
+  bypassLinkText: {
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+  bypassWarningLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  bypassReasonInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    fontSize: 13,
+  },
+  awaitingCodeBanner: {
+    borderWidth: 1,
+    borderRadius: 13,
+    padding: 10,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  awaitingCodeLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  awaitingCodeSub: {
+    fontSize: 11.5,
+    marginTop: 2,
+    textAlign: "center",
+  },
+  fullscreenModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(10, 11, 10, 0.96)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullscreenCloseBtn: {
+    position: "absolute",
+    right: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  fullscreenCenter: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 16,
+  },
+  fullscreenImage: {
+    width: width - 32,
+    height: height * 0.65,
+    borderRadius: 16,
+  },
+  fullscreenBottomBar: {
+    marginTop: 18,
+    alignItems: "center",
+  },
+  fullscreenStyleTitle: {
+    color: "#F5F5F2",
+    fontSize: 17,
+    fontWeight: "700",
+    marginTop: 8,
+    marginBottom: 3,
+  },
+  fullscreenClientNote: {
+    color: "#A6ACA5",
+    fontSize: 13,
   },
 });

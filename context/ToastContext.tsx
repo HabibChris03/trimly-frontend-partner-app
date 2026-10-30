@@ -120,9 +120,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       default:
         return {
           icon: "checkmark-circle-outline" as const,
-          borderColor: isDark ? "#A3B39C" : "#4F6849",
-          iconColor: isDark ? "#A3B39C" : "#4F6849",
-          badgeBg: isDark ? "rgba(163, 179, 156, 0.18)" : "rgba(79, 104, 73, 0.12)",
+          borderColor: isDark ? "#C7F36B" : "#22C55E",
+          iconColor: isDark ? "#C7F36B" : "#22C55E",
+          badgeBg: isDark ? "rgba(199, 243, 107, 0.18)" : "rgba(34, 197, 94, 0.12)",
         };
     }
   };

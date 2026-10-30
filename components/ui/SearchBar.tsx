@@ -21,12 +21,12 @@ export interface SearchBarProps {
 export function SearchBar({
   value,
   onChangeText,
-  placeholder = "Search styles, barbers...",
+  placeholder = "Search...",
   onFilterPress,
   onClear,
   style,
 }: SearchBarProps) {
-  const { colors, radius, spacing, typography, shadows } = useTheme();
+  const { colors, radius, spacing, typography } = useTheme();
 
   return (
     <View
@@ -34,12 +34,11 @@ export function SearchBar({
         styles.container,
         {
           backgroundColor: colors.card,
-          borderRadius: radius["2xl"],
+          borderRadius: 14,
           borderColor: colors.border,
           borderWidth: 1,
           paddingHorizontal: spacing.lg,
         },
-        shadows.subtle,
         style,
       ]}
     >
@@ -81,12 +80,14 @@ export function SearchBar({
             styles.filterBtn,
             {
               backgroundColor: colors.secondarySurface,
-              borderRadius: radius.md,
+              borderRadius: radius.sm + 2,
+              borderWidth: 1,
+              borderColor: colors.border,
               marginLeft: spacing.sm,
             },
           ]}
         >
-          <Ionicons name="options-outline" size={18} color={colors.primary} />
+          <Ionicons name="options-outline" size={18} color={colors.brand} />
         </TouchableOpacity>
       )}
     </View>
@@ -95,7 +96,7 @@ export function SearchBar({
 
 const styles = StyleSheet.create({
   container: {
-    height: 50,
+    height: 48,
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   filterBtn: {
-    padding: 6,
+    padding: 7,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -41,6 +41,13 @@ export const availabilityService = {
   },
 
   /**
+   * Alias for getMyAvailability.
+   */
+  async getMyWindows(): Promise<AvailabilityWindow[]> {
+    return this.getMyAvailability();
+  },
+
+  /**
    * Public: Get availability windows for a given barber ID.
    */
   async getBarberAvailability(
