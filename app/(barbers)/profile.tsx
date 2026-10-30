@@ -23,6 +23,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { CustomModal } from "@/components/ui/CustomModal";
 import { useTheme } from "@/context/ThemeContext";
 import { barberService } from "@/services/barberService";
+import { authService } from "@/services/authService";
 import { openWhatsApp, SUPPORT_WHATSAPP_NUMBER } from "@/utils/whatsapp";
 
 type DutyStatus = "active" | "on_break" | "off_duty";
@@ -62,6 +63,32 @@ export default function BarberProfileSettingsScreen() {
   const [isUnlinkingSalon, setIsUnlinkingSalon] = useState(false);
   const [showChangeSalonInput, setShowChangeSalonInput] = useState(false);
   const [unlinkModalVisible, setUnlinkModalVisible] = useState(false);
+  const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
+  const [deletePhraseInput, setDeletePhraseInput] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const REQUIRED_DELETE_PHRASE = "Deleting Account and Approving Deletion";
+  const isDeletePhraseValid = deletePhraseInput.trim() === REQUIRED_DELETE_PHRASE;
+
+  const handleDeleteAccountConfirm = async () => {
+    if (!isDeletePhraseValid || isDeletingAccount) return;
+    setIsDeletingAccount(true);
+    try {
+      await authService.deleteAccount(deletePhraseInput.trim());
+      setDeleteAccountModalVisible(false);
+      setDeletePhraseInput("");
+      showToast(t("profile.accountDeletedToast") || "Account and salon profile deleted successfully.", "success");
+      logout();
+      router.replace("/(auth)/login");
+    } catch (error: any) {
+      showToast(
+        error?.message || t("profile.deleteAccountError") || "Failed to delete account.",
+        "error"
+      );
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -1154,6 +1181,28 @@ export default function BarberProfileSettingsScreen() {
           <Text style={styles.logoutBtnText}>{t("profile.logoutPartnerAccount") || "Log Out from Partner Account"}</Text>
         </TouchableOpacity>
 
+        {/* Delete Salon / Barber Account Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            setDeletePhraseInput("");
+            setDeleteAccountModalVisible(true);
+          }}
+          style={[
+            styles.logoutBtn,
+            {
+              backgroundColor: "rgba(239, 68, 68, 0.08)",
+              borderColor: "#EF4444",
+              marginTop: 10,
+            },
+          ]}
+        >
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          <Text style={[styles.logoutBtnText, { color: "#EF4444" }]}>
+            {t("profile.deleteSalonAccount") || "Delete Salon / Barber Account"}
+          </Text>
+        </TouchableOpacity>
+
         {/* Footer Build Info */}
         <View style={styles.footerWrap}>
           <Text style={[styles.footerTitle, { color: colors.secondaryText }]}>
@@ -1200,6 +1249,76 @@ export default function BarberProfileSettingsScreen() {
                 <Text style={styles.modalDangerBtnText}>Log Out</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </CustomModal>
+
+        {/* Account Deletion Confirmation Modal */}
+        <CustomModal
+          visible={deleteAccountModalVisible}
+          onClose={() => {
+            if (!isDeletingAccount) {
+              setDeleteAccountModalVisible(false);
+              setDeletePhraseInput("");
+            }
+          }}
+          title={t("profile.deleteSalonModalTitle") || "Delete Account & Salon Profile"}
+          description={t("profile.deleteSalonWarning")}
+          icon="alert-circle-outline"
+          iconBg="rgba(239, 68, 68, 0.16)"
+          iconColor="#EF4444"
+          primaryText={isDeletingAccount ? "Deleting..." : (t("profile.deleteSalonBtn") || "Delete Account Permanently")}
+          primaryDanger={true}
+          primaryDisabled={!isDeletePhraseValid || isDeletingAccount}
+          loading={isDeletingAccount}
+          secondaryText={t("common.cancel") || "Cancel"}
+          onPrimary={handleDeleteAccountConfirm}
+          onSecondary={() => {
+            setDeleteAccountModalVisible(false);
+            setDeletePhraseInput("");
+          }}
+        >
+          <View style={styles.deletionModalBody}>
+            <Text style={[styles.deletionInstruction, { color: colors.secondaryText }]}>
+              {t("profile.deleteSalonInstruction")}
+            </Text>
+            <View
+              style={[
+                styles.phraseBadge,
+                {
+                  backgroundColor: colors.elevated || "#252926",
+                  borderColor: colors.border || "#383D38",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.phraseBadgeText,
+                  { color: colors.brand || "#C7F36B" },
+                ]}
+                selectable
+              >
+                Deleting Account and Approving Deletion
+              </Text>
+            </View>
+            <TextInput
+              style={[
+                styles.deletionInput,
+                {
+                  backgroundColor: colors.card || "#1F2320",
+                  borderColor: isDeletePhraseValid
+                    ? "#EF4444"
+                    : colors.border || "#383D38",
+                  color: colors.primaryText,
+                },
+              ]}
+              placeholder={t("profile.deleteSalonPlaceholder") || "Type the confirmation phrase..."}
+              placeholderTextColor={colors.secondaryText || "#687069"}
+              value={deletePhraseInput}
+              onChangeText={setDeletePhraseInput}
+              autoCapitalize="sentences"
+              autoCorrect={false}
+              editable={!isDeletingAccount}
+            />
           </View>
         </CustomModal>
 
@@ -1327,6 +1446,38 @@ export default function BarberProfileSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  deletionModalBody: {
+    width: "100%",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  deletionInstruction: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  phraseBadge: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  phraseBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.2,
+  },
+  deletionInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
   container: {
     flex: 1,
   },

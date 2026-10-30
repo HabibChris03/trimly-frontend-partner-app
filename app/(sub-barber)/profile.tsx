@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -18,6 +19,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { barberService } from "@/services/barberService";
+import { authService } from "@/services/authService";
 import { CustomModal } from "@/components/ui/CustomModal";
 
 export default function SubBarberProfileScreen() {
@@ -32,6 +34,32 @@ export default function SubBarberProfileScreen() {
   >((user as any)?.staff_status || "Active");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
+  const [deletePhraseInput, setDeletePhraseInput] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const REQUIRED_DELETE_PHRASE = "Deleting Account and Approving Deletion";
+  const isDeletePhraseValid = deletePhraseInput.trim() === REQUIRED_DELETE_PHRASE;
+
+  const handleDeleteAccountConfirm = async () => {
+    if (!isDeletePhraseValid || isDeletingAccount) return;
+    setIsDeletingAccount(true);
+    try {
+      await authService.deleteAccount(deletePhraseInput.trim());
+      setDeleteAccountModalVisible(false);
+      setDeletePhraseInput("");
+      showToast(t("profile.accountDeletedToast") || "Account deleted successfully.", "success");
+      logout();
+      router.replace("/(auth)/login");
+    } catch (error: any) {
+      showToast(
+        error?.message || t("profile.deleteAccountError") || "Failed to delete account.",
+        "error"
+      );
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
 
   const handleStatusChange = async (
     newStatus: "Active" | "On Break" | "Off Duty"
@@ -475,6 +503,21 @@ export default function SubBarberProfileScreen() {
           <Ionicons name="log-out-outline" size={19} color="#EF4444" />
           <Text style={styles.logoutText}>{t("common.logout")}</Text>
         </TouchableOpacity>
+
+        {/* Delete Account Button */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => {
+            setDeletePhraseInput("");
+            setDeleteAccountModalVisible(true);
+          }}
+          style={[styles.logoutBtn, { borderColor: "#EF4444", backgroundColor: "rgba(239, 68, 68, 0.08)", marginTop: 10 }]}
+        >
+          <Ionicons name="trash-outline" size={19} color="#EF4444" />
+          <Text style={[styles.logoutText, { color: "#EF4444" }]}>
+            {t("profile.deleteSalonAccount") || "Delete Account & Profile"}
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Logout Confirmation Modal */}
@@ -490,11 +533,113 @@ export default function SubBarberProfileScreen() {
         onPrimary={handleLogOutConfirm}
         onSecondary={() => setLogoutModalVisible(false)}
       />
+
+      {/* Account Deletion Confirmation Modal */}
+      <CustomModal
+        visible={deleteAccountModalVisible}
+        onClose={() => {
+          if (!isDeletingAccount) {
+            setDeleteAccountModalVisible(false);
+            setDeletePhraseInput("");
+          }
+        }}
+        title={t("profile.deleteSalonModalTitle") || "Delete Account & Profile"}
+        description={t("profile.deleteSalonWarning")}
+        icon="alert-circle-outline"
+        iconBg="rgba(239, 68, 68, 0.16)"
+        iconColor="#EF4444"
+        primaryText={isDeletingAccount ? "Deleting..." : (t("profile.deleteSalonBtn") || "Delete Account Permanently")}
+        primaryDanger={true}
+        primaryDisabled={!isDeletePhraseValid || isDeletingAccount}
+        loading={isDeletingAccount}
+        secondaryText={t("common.cancel") || "Cancel"}
+        onPrimary={handleDeleteAccountConfirm}
+        onSecondary={() => {
+          setDeleteAccountModalVisible(false);
+          setDeletePhraseInput("");
+        }}
+      >
+        <View style={styles.deletionModalBody}>
+          <Text style={[styles.deletionInstruction, { color: colors.secondarytext }]}>
+            {t("profile.deleteSalonInstruction")}
+          </Text>
+          <View
+            style={[
+              styles.phraseBadge,
+              {
+                backgroundColor: colors.surface || "#252926",
+                borderColor: colors.border || "#383D38",
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.phraseBadgeText,
+                { color: colors.primary || "#C7F36B" },
+              ]}
+              selectable
+            >
+              Deleting Account and Approving Deletion
+            </Text>
+          </View>
+          <TextInput
+            style={[
+              styles.deletionInput,
+              {
+                backgroundColor: colors.card || "#1F2320",
+                borderColor: isDeletePhraseValid
+                  ? "#EF4444"
+                  : colors.border || "#383D38",
+                color: colors.primarytext,
+              },
+            ]}
+            placeholder={t("profile.deleteSalonPlaceholder") || "Type the confirmation phrase..."}
+            placeholderTextColor={colors.secondarytext || "#687069"}
+            value={deletePhraseInput}
+            onChangeText={setDeletePhraseInput}
+            autoCapitalize="sentences"
+            autoCorrect={false}
+            editable={!isDeletingAccount}
+          />
+        </View>
+      </CustomModal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  deletionModalBody: {
+    width: "100%",
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  deletionInstruction: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  phraseBadge: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+  phraseBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.2,
+  },
+  deletionInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
   container: {
     flex: 1,
   },

@@ -250,4 +250,18 @@ export const authService = {
       return { valid: false, message: e?.message || "Validation failed" };
     }
   },
+
+  /**
+   * Permanently delete account, salon, profile, and data.
+   * Endpoint: DELETE /api/v1/auth/delete-account
+   */
+  async deleteAccount(confirmationPhrase: string): Promise<{ status: string; message: string }> {
+    const res = await apiRequest<{ status: string; message: string }>("/api/v1/auth/delete-account", {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation_phrase: confirmationPhrase }),
+    });
+    await setAuthToken(null);
+    await setActiveMode(null);
+    return res;
+  },
 };

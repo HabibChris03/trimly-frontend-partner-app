@@ -29,6 +29,7 @@ interface CustomModalProps {
   primaryText?: string | null;
   onPrimary?: () => void | Promise<void>;
   primaryDanger?: boolean;
+  primaryDisabled?: boolean;
   secondaryText?: string | null;
   onSecondary?: () => void;
   loading?: boolean;
@@ -50,6 +51,7 @@ export function CustomModal({
   primaryText,
   onPrimary,
   primaryDanger = false,
+  primaryDisabled = false,
   secondaryText,
   onSecondary,
   loading = false,
@@ -205,9 +207,9 @@ export function CustomModal({
                     {effectivePrimaryText ? (
                       <TouchableOpacity
                         activeOpacity={0.85}
-                        disabled={isActionLoading}
+                        disabled={isActionLoading || primaryDisabled}
                         onPress={async () => {
-                          if (isActionLoading) return;
+                          if (isActionLoading || primaryDisabled) return;
                           if (onPrimary) {
                             try {
                               const res = onPrimary();
@@ -228,7 +230,7 @@ export function CustomModal({
                             backgroundColor: primaryDanger
                               ? "#EF4444"
                               : colors.brand || "#C7F36B",
-                            opacity: isActionLoading ? 0.75 : 1,
+                            opacity: isActionLoading || primaryDisabled ? 0.4 : 1,
                           },
                         ]}
                       >

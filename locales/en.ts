@@ -433,7 +433,16 @@ export const en = {
     "pointsEarnedMsg": "Trimly Rewards: {points} CFA points earned from bookings!",
     "loggedOutMsg": "You have been logged out.",
     "logoutSub": "Sign out from your Trimly account",
-    "profileRefreshed": "Profile refreshed."
+    "profileRefreshed": "Profile refreshed.",
+    "deleteSalonAccount": "Delete Salon / Barber Account",
+    "deleteSalonSub": "Permanently erase salon profile, staff affiliations & data",
+    "deleteSalonModalTitle": "Delete Account & Salon Profile",
+    "deleteSalonWarning": "This action is permanent and irreversible. Your salon profile, services, chair configurations, staff affiliations, and bookings will be permanently removed from the system.",
+    "deleteSalonInstruction": "To confirm, type \"Deleting Account and Approving Deletion\" below:",
+    "deleteSalonPlaceholder": "Type the confirmation phrase...",
+    "deleteSalonBtn": "Delete Account Permanently",
+    "accountDeletedToast": "Your account and salon profile have been permanently deleted.",
+    "deleteAccountError": "Failed to delete account. Please verify your phrase and try again."
   },
   "barberProfile": {
     "servicesTab": "Services",

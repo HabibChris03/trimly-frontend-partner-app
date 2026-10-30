@@ -433,7 +433,16 @@ export const fr = {
     "pointsEarnedMsg": "Récompenses Trimly : {points} points CFA gagnés grâce à vos réservations !",
     "loggedOutMsg": "Vous avez été déconnecté.",
     "logoutSub": "Se déconnecter de votre compte Trimly",
-    "profileRefreshed": "Profil actualisé."
+    "profileRefreshed": "Profil actualisé.",
+    "deleteSalonAccount": "Supprimer le compte salon / coiffeur",
+    "deleteSalonSub": "Supprimer définitivement le profil du salon, le personnel et les données",
+    "deleteSalonModalTitle": "Supprimer le compte et le profil du salon",
+    "deleteSalonWarning": "Cette action est irréversible. Le profil de votre salon, vos services, fauteuils, affiliations et réservations seront définitivement supprimés du système.",
+    "deleteSalonInstruction": "Pour confirmer, écrivez \"Deleting Account and Approving Deletion\" ci-dessous :",
+    "deleteSalonPlaceholder": "Écrivez la phrase de confirmation...",
+    "deleteSalonBtn": "Supprimer définitivement mon compte",
+    "accountDeletedToast": "Votre compte et votre profil de salon ont été définitivement supprimés.",
+    "deleteAccountError": "Échec de la suppression du compte. Veuillez vérifier votre phrase et réessayer."
   },
   "barberProfile": {
     "servicesTab": "Prestations",
