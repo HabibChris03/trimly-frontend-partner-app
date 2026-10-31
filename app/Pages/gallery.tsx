@@ -74,7 +74,7 @@ export default function GalleryScreen() {
                   p.hairstyle_or_service_name ||
                   "Custom Haircut",
                 barberName: "Master Barber",
-                price: p.price || 25000,
+                price: (Number(p.price) > 0 ? Number(p.price) : 1000),
                 likes: p.likes || 120 + idx * 15,
                 image: p.media_url,
                 category:
@@ -163,7 +163,7 @@ export default function GalleryScreen() {
               {item.styleName}
             </Text>
             <Text style={styles.cardBarberName} numberOfLines={1}>
-              {item.price.toLocaleString()} CFA • {item.category}
+              {(Number(item.price) > 0 ? Number(item.price) : 1000).toLocaleString()} {t("common.cfa")} • {item.category}
             </Text>
           </View>
         </View>

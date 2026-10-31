@@ -23,18 +23,25 @@ import { useToast } from "@/context/ToastContext";
 import { reviewService, ReviewItemResponse } from "@/services/reviewService";
 import { feedback } from "@/utils/feedback";
 
-const QUICK_REPLIES = [
+const QUICK_REPLIES_EN = [
   "Thank you for your visit! Glad you loved the cut.",
   "Appreciate your review! See you next time at the chair.",
   "Thank you for trusting our stylists with your look.",
   "Always a pleasure having you! Thanks for the great feedback.",
 ];
 
+const QUICK_REPLIES_FR = [
+  "Merci pour votre visite ! Ravi(e) que la coupe vous plaise.",
+  "Merci pour votre avis ! À très bientôt au salon.",
+  "Merci de faire confiance à nos coiffeurs pour votre style.",
+  "Toujours un plaisir de vous accueillir ! Merci pour votre confiance.",
+];
+
 export default function BarberReviewsScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
 
   const params = useLocalSearchParams<{ barberId?: string }>();
@@ -802,14 +809,14 @@ export default function BarberReviewsScreen() {
             <Text
               style={[styles.quickRepliesTitle, { color: colors.secondarytext }]}
             >
-              QUICK TEMPLATES
+              {language === "fr" ? "MODÈLES RAPIDES" : "QUICK TEMPLATES"}
             </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.quickRepliesScroll}
             >
-              {QUICK_REPLIES.map((tmpl, idx) => (
+              {(language === "fr" ? QUICK_REPLIES_FR : QUICK_REPLIES_EN).map((tmpl, idx) => (
                 <TouchableOpacity
                   key={idx}
                   activeOpacity={0.75}
