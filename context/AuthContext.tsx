@@ -29,6 +29,7 @@ function normalizeUser(data: any): UserRead | null {
     role: raw.role || "client",
     name: raw.name || null,
     phone: raw.phone || null,
+    city: raw.city || null,
     logo_url: raw.logo_url || raw.avatar_url || null,
     avatar_url: raw.avatar_url || raw.logo_url || null,
     about_us: raw.about_us || null,

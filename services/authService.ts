@@ -25,6 +25,7 @@ export interface UserRead {
   role: "client" | "barber" | "salon" | string;
   name?: string | null;
   phone?: string | null;
+  city?: string | null;
   logo_url?: string | null;
   avatar_url?: string | null;
   about_us?: string | null;
@@ -50,6 +51,7 @@ export interface LoginResponse {
   token_type: string;
   user?: UserRead;
   status?: string;
+  needs_profile_completion?: boolean;
 }
 
 export const authService = {

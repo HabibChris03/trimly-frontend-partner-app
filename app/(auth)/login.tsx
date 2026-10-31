@@ -27,11 +27,9 @@ import { setActiveMode } from "@/services/api";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
+import { GOOGLE_OAUTH_CONFIG } from "@/constants/oauth";
 
 WebBrowser.maybeCompleteAuthSession();
-
-const GOOGLE_CLIENT_ID =
-  "446635548067-l57kdu46j2if0pd3rke70hsks4kibq03.apps.googleusercontent.com";
 
 export default function LoginScreen() {
   const { colors, isDark } = useTheme();
@@ -51,16 +49,13 @@ export default function LoginScreen() {
   }>({});
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    androidClientId: GOOGLE_CLIENT_ID,
-    iosClientId: GOOGLE_CLIENT_ID,
-    webClientId: GOOGLE_CLIENT_ID,
-    responseType: AuthSession.ResponseType.IdToken,
-    scopes: ["openid", "profile", "email"],
-    redirectUri: Platform.select({
-      web: AuthSession.makeRedirectUri(),
-      default: "https://auth.expo.io/@habib_chris/trimly",
-    }),
+    clientId: GOOGLE_OAUTH_CONFIG.clientId,
+    androidClientId: GOOGLE_OAUTH_CONFIG.androidClientId,
+    iosClientId: GOOGLE_OAUTH_CONFIG.iosClientId,
+    webClientId: GOOGLE_OAUTH_CONFIG.webClientId,
+    responseType: GOOGLE_OAUTH_CONFIG.responseType,
+    scopes: GOOGLE_OAUTH_CONFIG.scopes,
+    redirectUri: GOOGLE_OAUTH_CONFIG.redirectUri,
   });
 
   const processGoogleLogin = React.useCallback(
