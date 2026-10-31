@@ -263,10 +263,10 @@ export default function HelpSupportScreen() {
               <Ionicons name="chatbubbles" size={22} color={colors.primary} />
             </View>
             <Text style={[styles.actionTitle, { color: colors.primarytext }]}>
-              Admin Chat
+              {t("helpSupport.adminChat") || "Admin Chat"}
             </Text>
             <Text style={[styles.actionSub, { color: colors.secondarytext }]}>
-              Report Issue
+              {t("helpSupport.reportIssue") || "Report Issue"}
             </Text>
           </TouchableOpacity>
 
@@ -307,10 +307,10 @@ export default function HelpSupportScreen() {
               <Ionicons name="help-buoy-outline" size={22} color={colors.primary} />
             </View>
             <Text style={[styles.actionTitle, { color: colors.primarytext }]}>
-              Open Ticket
+              {t("helpSupport.openTicket") || "Open Ticket"}
             </Text>
             <Text style={[styles.actionSub, { color: colors.secondarytext }]}>
-              Admin Desk
+              {t("helpSupport.adminDesk") || "Admin Desk"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -354,7 +354,7 @@ export default function HelpSupportScreen() {
                 {t("helpSupport.sendTestEmail") || "Send Test Email"}
               </Text>
               <Text style={{ fontSize: 12, color: colors.secondarytext, marginTop: 2 }}>
-                Delivers to: {user?.email || "your account email"}
+                {t("helpSupport.deliversTo") || "Delivers to:"} {user?.email || "your account email"}
               </Text>
             </View>
           </View>
@@ -367,7 +367,7 @@ export default function HelpSupportScreen() {
             }}
           >
             <Text style={{ color: colors.background, fontSize: 12, fontWeight: "700" }}>
-              {isSendingEmail ? "Sending..." : "Send Now"}
+              {isSendingEmail ? (t("helpSupport.sending") || "Sending...") : (t("helpSupport.sendNow") || "Send Now")}
             </Text>
           </View>
         </TouchableOpacity>
@@ -375,7 +375,7 @@ export default function HelpSupportScreen() {
         {/* FAQ Accordion Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-            Frequently Asked Questions
+            {t("helpSupport.faqTitle") || "Frequently Asked Questions"}
           </Text>
 
           <View style={styles.faqList}>
@@ -445,7 +445,7 @@ export default function HelpSupportScreen() {
           <Ionicons name="logo-whatsapp" size={26} color="#25D366" />
           <View style={{ flex: 1 }}>
             <Text style={[styles.ticketTitle, { color: colors.primarytext }]}>
-              Still have questions?
+              {t("helpSupport.stillHaveQuestions") || "Still have questions?"}
             </Text>
             <Text style={[styles.ticketSub, { color: colors.secondarytext }]}>
               {t("helpSupport.chatWhatsApp") || "Chat directly with our support team on WhatsApp (653811357)." }
@@ -519,7 +519,7 @@ export default function HelpSupportScreen() {
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={[styles.inputLabel, { color: colors.primarytext }]}>Subject</Text>
+              <Text style={[styles.inputLabel, { color: colors.primarytext }]}>{t("helpSupport.subject") || "Subject"}</Text>
               <TextInput
                 style={[styles.modalInput, { backgroundColor: colors.surfacevariant, color: colors.primarytext, borderColor: colors.surfacevariant }]}
                 placeholder={t("helpSupport.subjectPlaceholder") || "e.g. Payout Inquiry, Shop Listing, or Technical Issue"}
@@ -551,7 +551,7 @@ export default function HelpSupportScreen() {
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <Ionicons name="send" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                     <Text style={[styles.modalSubmitText, { color: "#FFFFFF" }]}>
-                      Submit Ticket
+                      {t("helpSupport.submitTicket") || "Submit Ticket"}
                     </Text>
                   </View>
                 )}

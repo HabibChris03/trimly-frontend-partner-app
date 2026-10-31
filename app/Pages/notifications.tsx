@@ -243,7 +243,7 @@ export default function NotificationsScreen() {
                     },
                   ]}
                 >
-                  {pill.label}
+                  {t(`notifications.filter_${pill.key}`) || pill.label}
                   {count !== null && count > 0 ? ` (${count})` : ""}
                 </Text>
               </TouchableOpacity>
@@ -272,8 +272,8 @@ export default function NotificationsScreen() {
             </View>
             <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
               {activeFilter === "unread"
-                ? "No unread notifications"
-                : "No notifications right now"}
+                ? (t("notifications.noUnreadTitle") || "No unread notifications")
+                : (t("notifications.noNotificationsTitle") || "No notifications right now")}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
               {activeFilter === "unread"
@@ -288,7 +288,7 @@ export default function NotificationsScreen() {
               <View style={styles.sectionWrap}>
                 <View style={styles.sectionHeaderRow}>
                   <Text style={[styles.sectionHeading, { color: colors.primarytext }]}>
-                    New
+                    {t("notifications.newSection") || "New"}
                   </Text>
                   <TouchableOpacity activeOpacity={0.7} onPress={handleMarkAllRead}>
                     <Text style={[styles.seeAllAction, { color: colors.brand }]}>
@@ -306,7 +306,7 @@ export default function NotificationsScreen() {
               <View style={styles.sectionWrap}>
                 <View style={styles.sectionHeaderRow}>
                   <Text style={[styles.sectionHeading, { color: colors.primarytext }]}>
-                    Earlier
+                    {t("notifications.earlierSection") || "Earlier"}
                   </Text>
                 </View>
 
@@ -360,10 +360,10 @@ export default function NotificationsScreen() {
               </View>
               <View style={styles.sheetRowText}>
                 <Text style={[styles.sheetRowTitle, { color: colors.primarytext }]}>
-                  Mark as read
+                  {t("notifications.markAsRead") || "Mark as read"}
                 </Text>
                 <Text style={[styles.sheetRowDesc, { color: colors.secondarytext }]}>
-                  Keep this notification without removing it
+                  {t("notifications.keepNotification") || "Keep this notification without removing it"}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -385,7 +385,7 @@ export default function NotificationsScreen() {
               </View>
               <View style={styles.sheetRowText}>
                 <Text style={[styles.sheetRowTitle, { color: "#EF4444" }]}>
-                  Remove this notification
+                  {t("notifications.removeNotification") || "Remove this notification"}
                 </Text>
                 <Text style={[styles.sheetRowDesc, { color: colors.secondarytext }]}>
                   {t("notifications.deleteNotificationDesc") || "Delete this notification from your partner feed"}

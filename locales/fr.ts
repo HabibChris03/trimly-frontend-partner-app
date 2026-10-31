@@ -985,6 +985,26 @@ export const fr = {
     "checking": "Vérification...",
     "logOut": "Se déconnecter",
     "suspensionLifted": "Votre suspension a été levée ! Vous êtes de nouveau actif.",
-    "stillSuspended": "Votre compte est toujours suspendu. Veuillez contacter le gérant de votre salon."
+    "stillSuspended": "Votre compte est toujours suspendu. Veuillez contacter le gérant de votre salon."  },
+  "notifications": {
+    "title": "Notifications",
+    "filter_all": "Tous",
+    "filter_unread": "Non lus",
+    "filter_bookings": "Réservations",
+    "filter_offers": "Offres",
+    "filter_updates": "Mises à jour",
+    "newSection": "Nouveau",
+    "earlierSection": "Plus tôt",
+    "markAllAsRead": "Tout marquer comme lu",
+    "noUnreadTitle": "Aucune notification non lue",
+    "noUnreadSubtitle": "Vous êtes à jour dans vos rendez-vous et votre planning.",
+    "noNotificationsTitle": "Aucune notification pour le moment",
+    "noNotificationsSubtitle": "Les nouvelles réservations, actualités du salon et paiements apparaîtront ici.",
+    "markAsRead": "Marquer comme lu",
+    "keepNotification": "Conserver cette notification sans la supprimer",
+    "removeNotification": "Supprimer cette notification",
+    "deleteHistory": "Supprimer de l'historique des notifications",
+    "synced": "Notifications synchronisées.",
+    "settingsNotice": "Les paramètres de notification sont synchronisés avec les préférences de votre appareil."
   }
 };
