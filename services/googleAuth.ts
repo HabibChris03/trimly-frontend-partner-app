@@ -15,9 +15,28 @@ export interface GoogleAuthResult {
   error?: string;
 }
 
+// Dynamically check for native GoogleSignin module
+let GoogleSignin: any = null;
+let statusCodes: any = null;
+
+try {
+  const gModule = require("@react-native-google-signin/google-signin");
+  GoogleSignin = gModule.GoogleSignin;
+  statusCodes = gModule.statusCodes;
+  if (GoogleSignin) {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_OAUTH_CONFIG.webClientId,
+      iosClientId: GOOGLE_OAUTH_CONFIG.iosClientId,
+      scopes: ["profile", "email"],
+    });
+  }
+} catch {
+  // Native module not linked in current runtime (e.g. Expo Go)
+  GoogleSignin = null;
+}
+
 /**
  * Parses query parameters and hash fragments from an auth callback URL.
- * Independent of expo-crypto and expo-auth-session.
  */
 export function parseAuthUrl(url: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -80,9 +99,40 @@ function resolveReturnUrl(fallback: string): string {
 }
 
 /**
- * Triggers Google OAuth authentication in an in-app browser or Web window for Partner app.
+ * Triggers Google OAuth authentication in Partner app.
+ * Uses native @react-native-google-signin/google-signin if available in the runtime build;
+ * otherwise gracefully falls back to WebBrowser.openAuthSessionAsync.
  */
 export async function promptGoogleAuth(): Promise<GoogleAuthResult> {
+  // 1. Try Native Google Sign-In SDK if available in the runtime
+  if (Platform.OS !== "web" && GoogleSignin) {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (response && response.type === "cancelled") {
+        return { type: "cancel" };
+      }
+      const data = response?.data || response;
+      const idToken = data?.idToken;
+      if (idToken) {
+        return {
+          type: "success",
+          idToken: idToken,
+          accessToken: undefined,
+        };
+      }
+    } catch (err: any) {
+      if (statusCodes && err.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { type: "cancel" };
+      }
+      if (statusCodes && err.code === statusCodes.IN_PROGRESS) {
+        return { type: "error", error: "Google sign-in is already in progress." };
+      }
+      console.warn("Native Google Sign-In fallback to web session:", err?.message);
+    }
+  }
+
+  // 2. Web / Browser fallback
   try {
     const isWeb = Platform.OS === "web";
     const clientId = GOOGLE_OAUTH_CONFIG.clientId;

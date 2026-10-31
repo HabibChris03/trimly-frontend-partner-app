@@ -89,6 +89,12 @@
           "icon": "./assets/images/logo.png",
           "color": "#C7F36B"
         }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.655457325785-piuqg1q6jmrqi6crocohcj8g1kc8tvvn"
+        }
       ]
     ],
     "experiments": {
@@ -100,7 +106,6 @@
       "eas": {
         "projectId": "b89a4d76-2f14-4582-98b3-46f311c1c1a6"
       }
-    },
-    "owner": "habib_chris"
+    }
   }
 }
