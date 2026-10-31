@@ -24,5 +24,5 @@ export const GOOGLE_OAUTH_CONFIG = {
   scopes: ["openid", "profile", "email"],
 
   redirectUri: "https://auth.expo.io/@habib_chris/trimly-partner",
-  customSchemeRedirectUri: "trimly-partner://",
+  customSchemeRedirectUri: "trimly-partner://expo-auth-session",
 };

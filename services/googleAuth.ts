@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { GOOGLE_OAUTH_CONFIG } from "@/constants/oauth";
@@ -63,6 +64,22 @@ export function parseAuthUrl(url: string): Record<string, string> {
 }
 
 /**
+ * Safely resolves the return URL. Always ensures a valid URI schema and path.
+ */
+function resolveReturnUrl(fallback: string): string {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  try {
+    const url = Linking.createURL("expo-auth-session");
+    if (url && url.includes("://") && !url.endsWith("://")) {
+      return url;
+    }
+  } catch {}
+  return fallback;
+}
+
+/**
  * Triggers Google OAuth authentication in an in-app browser or Web window for Partner app.
  */
 export async function promptGoogleAuth(): Promise<GoogleAuthResult> {
@@ -73,10 +90,9 @@ export async function promptGoogleAuth(): Promise<GoogleAuthResult> {
       isWeb && typeof window !== "undefined"
         ? window.location.origin
         : GOOGLE_OAUTH_CONFIG.redirectUri;
-    const returnUrl =
-      isWeb && typeof window !== "undefined"
-        ? window.location.origin
-        : GOOGLE_OAUTH_CONFIG.customSchemeRedirectUri;
+    const returnUrl = resolveReturnUrl(
+      GOOGLE_OAUTH_CONFIG.customSchemeRedirectUri
+    );
 
     const nonce =
       Math.random().toString(36).substring(2, 15) +
@@ -101,7 +117,7 @@ export async function promptGoogleAuth(): Promise<GoogleAuthResult> {
 
     const result = await WebBrowser.openAuthSessionAsync(
       startUrl,
-      isWeb ? redirectUri : returnUrl
+      returnUrl
     );
 
     if (result.type === "success" && result.url) {
