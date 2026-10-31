@@ -31,12 +31,7 @@ import SpecialtiesDropdown from "@/components/auth/SpecialtiesDropdown";
 import BarberLocationPickerModal from "@/components/map/BarberLocationPickerModal";
 import { barberService } from "@/services/barberService";
 import { authService } from "@/services/authService";
-import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
-import * as Google from "expo-auth-session/providers/google";
-import { GOOGLE_OAUTH_CONFIG } from "@/constants/oauth";
-
-WebBrowser.maybeCompleteAuthSession();
+import { promptGoogleAuth } from "@/services/googleAuth";
 
 type SignupStep = 1 | 2 | 3;
 
@@ -147,15 +142,6 @@ export default function SignupScreen() {
   }, []);
 
   // Google OAuth
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_OAUTH_CONFIG.clientId,
-    androidClientId: GOOGLE_OAUTH_CONFIG.androidClientId,
-    iosClientId: GOOGLE_OAUTH_CONFIG.iosClientId,
-    webClientId: GOOGLE_OAUTH_CONFIG.webClientId,
-    responseType: GOOGLE_OAUTH_CONFIG.responseType,
-    scopes: GOOGLE_OAUTH_CONFIG.scopes,
-    redirectUri: GOOGLE_OAUTH_CONFIG.redirectUri,
-  });
 
   const processGoogleLogin = React.useCallback(
     async (token: string, accessToken?: string) => {
@@ -174,27 +160,6 @@ export default function SignupScreen() {
     [loginWithGoogle, role, router, showToast]
   );
 
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token, access_token } = response.params;
-      const token = id_token || access_token;
-      if (token) {
-        processGoogleLogin(token, access_token);
-      } else if (response.params?.code) {
-        showToast(
-          "Google authorization code received. Retrying with token...",
-          "error"
-        );
-      }
-    } else if (response?.type === "error") {
-      showToast(
-        response.error?.message ||
-          "Google registration encountered an error.",
-        "error"
-      );
-      setIsSubmitting(false);
-    }
-  }, [response, processGoogleLogin, showToast]);
 
   const handleVerifyBarberEmail = async () => {
     if (!barberEmailInput.trim()) {
@@ -542,65 +507,13 @@ export default function SignupScreen() {
 
   const handleSocialAuth = async (provider: "google" | "apple") => {
     if (provider === "google") {
-      if (!request) {
-        showToast(
-          "Google Sign-In is initializing. Please tap again in a moment.",
-          "info"
-        );
-        return;
-      }
       try {
         setIsSubmitting(true);
-        if (Platform.OS === "web") {
-          const result = await promptAsync();
-          if (result.type === "success") {
-            const { id_token, access_token } = result.params;
-            const token = id_token || access_token;
-            if (token) {
-              await processGoogleLogin(token, access_token);
-            }
-          } else if (result.type === "error") {
-            showToast(
-              result.error?.message ||
-                "Google registration encountered an error.",
-              "error"
-            );
-          }
-        } else {
-          const authUrl =
-            request.url ||
-            (await request.makeAuthUrlAsync({
-              authorizationEndpoint:
-                "https://accounts.google.com/o/oauth2/v2/auth",
-            }));
-
-          const returnUrl = AuthSession.getDefaultReturnUrl();
-          const startUrl = `https://auth.expo.io/@habib_chris/trimly/start?authUrl=${encodeURIComponent(
-            authUrl
-          )}&returnUrl=${encodeURIComponent(returnUrl)}`;
-
-          const result = await WebBrowser.openAuthSessionAsync(
-            startUrl,
-            returnUrl
-          );
-          if (result.type === "success" && result.url) {
-            const parsed =
-              (AuthSession as any).QueryParams?.getQueryParams(result.url) || {
-                params: {},
-              };
-            const token =
-              parsed.params?.id_token || parsed.params?.access_token;
-            if (token) {
-              await processGoogleLogin(token, parsed.params?.access_token);
-            } else if (parsed.params?.error) {
-              showToast(
-                parsed.params.error_description ||
-                  parsed.params.error ||
-                  "Google registration was declined.",
-                "error"
-              );
-            }
-          }
+        const res = await promptGoogleAuth();
+        if (res.type === "success" && (res.idToken || res.accessToken)) {
+          await processGoogleLogin(res.idToken || res.accessToken!, res.accessToken);
+        } else if (res.type === "error" && res.error) {
+          showToast(res.error, "error");
         }
       } catch (e: any) {
         showToast(e?.message || "Could not launch Google Sign-In", "error");
@@ -609,10 +522,7 @@ export default function SignupScreen() {
       }
       return;
     }
-    showToast(
-      "Apple sign-up is currently unavailable. Please use Google or email.",
-      "info"
-    );
+    showToast("Apple sign-up is currently unavailable. Please use Google or email.", "info");
   };
 
   const getStepTitles = () => {

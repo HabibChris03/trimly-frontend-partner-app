@@ -99,7 +99,7 @@ export default function AnimatedTabBar({
 
           if (!isFocused && !isDefaultPrevented) {
             try {
-              Haptics.selectionAsync();
+              Haptics.selectionAsync().catch(() => {});
             } catch {}
             if (typeof navigateToTab === "function") {
               navigateToTab(route.key);

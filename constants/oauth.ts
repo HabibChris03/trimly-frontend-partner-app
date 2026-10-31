@@ -1,5 +1,4 @@
 import { Platform } from "react-native";
-import * as AuthSession from "expo-auth-session";
 
 /**
  * Google OAuth Configuration for Trimly Partner App
@@ -21,11 +20,9 @@ export const GOOGLE_OAUTH_CONFIG = {
     default: "655457325785-qcj8ncsv2qgqfsq5ljp967huephlqh36.apps.googleusercontent.com",
   }) as string,
 
-  responseType: AuthSession.ResponseType.IdToken,
+  responseType: "id_token token",
   scopes: ["openid", "profile", "email"],
 
-  redirectUri: Platform.select({
-    web: AuthSession.makeRedirectUri(),
-    default: "https://auth.expo.io/@habib_chris/trimly-partner",
-  }) as string,
+  redirectUri: "https://auth.expo.io/@habib_chris/trimly-partner",
+  customSchemeRedirectUri: "trimly-partner://",
 };
