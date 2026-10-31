@@ -44,7 +44,8 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.RECORD_AUDIO",
         "android.permission.POST_NOTIFICATIONS"
-      ]
+      ],
+      "versionCode": 3
     },
     "web": {
       "output": "static",
