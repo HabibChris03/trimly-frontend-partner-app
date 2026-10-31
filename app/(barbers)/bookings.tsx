@@ -164,7 +164,7 @@ export default function BarberBookingsScreen() {
               time: `${dateStr} • ${timeStr}`,
               rawStartTime: rawStart,
               duration: "45 mins",
-              price: b.total_price || 25000,
+              price: b.total_price || 1000,
               accent:
                 idx % 4 === 0
                   ? "#C7F36B"

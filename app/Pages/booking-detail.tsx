@@ -95,7 +95,7 @@ export default function BarberBookingDetailScreen() {
   const clientName = booking?.client_name || params.clientName || "Valued Client";
   const clientPhone = booking?.client_phone || params.clientPhone || "+237 670 12 34 56";
   const serviceTitle = booking?.custom_hairstyle_name || params.serviceName || "Haircut & Grooming";
-  const priceVal = booking?.total_price || (params.price ? parseInt(params.price, 10) : 25000);
+  const priceVal = booking?.total_price || (params.price ? parseInt(params.price, 10) : 1000);
   const statusVal = currentStatus || booking?.status || params.status || "Confirmed";
   const photoUrl = booking?.reference_photo_url || params.pictureUrl || null;
   const isHomeService =
