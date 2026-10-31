@@ -61,7 +61,7 @@ export default function BarberBookingsScreen() {
   const params = useLocalSearchParams<{ bookingId?: string; pictureUrl?: string }>();
   const { user } = useAuth();
   const barberId = user?.id || 4;
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
   const { handleScroll, showTabBar } = useTabBarVisibility();
 
@@ -312,11 +312,19 @@ export default function BarberBookingsScreen() {
     setProcessingInlineId(String(app.id));
     try {
       await bookingService.acceptBooking(targetId);
-      showToast(`Accepted appointment for ${app.client}`, "success");
+      showToast(
+        language === "fr"
+          ? `Rendez-vous accepté pour ${app.client}`
+          : `Accepted appointment for ${app.client}`,
+        "success"
+      );
       setSelectedAppointment(null);
       await fetchSchedule();
     } catch (err: any) {
-      showToast(err?.message || "Could not accept appointment", "error");
+      showToast(
+        err?.message || (language === "fr" ? "Impossible d'accepter le rendez-vous" : "Could not accept appointment"),
+        "error"
+      );
     } finally {
       setProcessingInlineId(null);
     }
@@ -327,11 +335,19 @@ export default function BarberBookingsScreen() {
     setProcessingInlineId(String(app.id));
     try {
       await bookingService.declineBooking(targetId);
-      showToast(`Declined appointment for ${app.client}`, "info");
+      showToast(
+        language === "fr"
+          ? `Rendez-vous refusé pour ${app.client}`
+          : `Declined appointment for ${app.client}`,
+        "info"
+      );
       setSelectedAppointment(null);
       await fetchSchedule();
     } catch (err: any) {
-      showToast(err?.message || "Could not decline appointment", "error");
+      showToast(
+        err?.message || (language === "fr" ? "Impossible de refuser le rendez-vous" : "Could not decline appointment"),
+        "error"
+      );
     } finally {
       setProcessingInlineId(null);
     }
@@ -341,7 +357,12 @@ export default function BarberBookingsScreen() {
   const handleConfirmStartService = async () => {
     if (!selectedAppointment) return;
     if (!isBypassingPin && arrivalPinInput.trim().length !== 4) {
-      showToast("Please enter the 4-digit client arrival PIN", "error");
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer le code d'arrivée à 4 chiffres du client"
+          : "Please enter the 4-digit client arrival PIN",
+        "error"
+      );
       return;
     }
 
@@ -352,11 +373,16 @@ export default function BarberBookingsScreen() {
         arrival_pin: isBypassingPin ? undefined : arrivalPinInput.trim(),
         bypass_pin: isBypassingPin,
         bypass_reason: isBypassingPin
-          ? bypassReason.trim() || "Client verified in person"
+          ? bypassReason.trim() || (language === "fr" ? "Client vérifié en personne" : "Client verified in person")
           : undefined,
       });
 
-      showToast(`Started service for ${selectedAppointment.client}: shaving...`, "success");
+      showToast(
+        language === "fr"
+          ? `Service démarré pour ${selectedAppointment.client} : en cours...`
+          : `Started service for ${selectedAppointment.client}: shaving...`,
+        "success"
+      );
       setPinModalVisible(false);
       setSelectedAppointment(null);
       setArrivalPinInput("");
@@ -364,7 +390,10 @@ export default function BarberBookingsScreen() {
       setBypassReason("");
       await fetchSchedule();
     } catch (err: any) {
-      showToast(err?.message || "Invalid Arrival PIN. Ask the client for their code.", "error");
+      showToast(
+        err?.message || (language === "fr" ? "Code d'arrivée invalide. Demandez le code au client." : "Invalid Arrival PIN. Ask the client for their code."),
+        "error"
+      );
     } finally {
       setIsSubmittingPin(false);
     }
@@ -378,10 +407,20 @@ export default function BarberBookingsScreen() {
       const targetId = bookingToDelete.booking_id || bookingToDelete.id;
       await bookingService.deleteBookingFromHistory(targetId);
       setAppointments((prev) => prev.filter((a) => (a.booking_id || a.id) !== targetId));
-      showToast("Booking deleted from history", "success");
+      showToast(
+        language === "fr"
+          ? "Réservation supprimée de l'historique"
+          : "Booking deleted from history",
+        "success"
+      );
       setBookingToDelete(null);
     } catch {
-      showToast("Could not delete past booking", "error");
+      showToast(
+        language === "fr"
+          ? "Impossible de supprimer la réservation"
+          : "Could not delete past booking",
+        "error"
+      );
     } finally {
       setIsDeletingBooking(false);
     }
@@ -391,7 +430,12 @@ export default function BarberBookingsScreen() {
   const handleConfirmPaymentComplete = async () => {
     if (!selectedAppointment) return;
     if (selectedPaymentMethod === "unpaid" && !unpaidDisputeNote.trim()) {
-      showToast("Please add an incident note explaining the non-payment", "error");
+      showToast(
+        language === "fr"
+          ? "Veuillez ajouter une note expliquant le non-paiement"
+          : "Please add an incident note explaining the non-payment",
+        "error"
+      );
       return;
     }
 
@@ -404,10 +448,17 @@ export default function BarberBookingsScreen() {
       });
 
       if (selectedPaymentMethod === "unpaid") {
-        showToast("Service marked as disputed. Admin team alerted.", "info");
+        showToast(
+          language === "fr"
+            ? "Service marqué comme contesté. Équipe administrative alertée."
+            : "Service marked as disputed. Admin team alerted.",
+          "info"
+        );
       } else {
         showToast(
-          `Service completed! Payment confirmed via ${selectedPaymentMethod.toUpperCase()}.`,
+          language === "fr"
+            ? `Service terminé ! Paiement confirmé via ${selectedPaymentMethod.toUpperCase()}.`
+            : `Service completed! Payment confirmed via ${selectedPaymentMethod.toUpperCase()}.`,
           "success"
         );
       }
@@ -418,7 +469,10 @@ export default function BarberBookingsScreen() {
       setUnpaidDisputeNote("");
       await fetchSchedule();
     } catch (err: any) {
-      showToast(err?.message || "Could not complete service.", "error");
+      showToast(
+        err?.message || (language === "fr" ? "Impossible de terminer le service." : "Could not complete service."),
+        "error"
+      );
     } finally {
       setIsSubmittingPayment(false);
     }
@@ -431,13 +485,18 @@ export default function BarberBookingsScreen() {
     try {
       const targetId = selectedAppointment.booking_id || selectedAppointment.id;
       await bookingService.updateBookingStatus(targetId, "No-Show");
-      showToast(`Marked ${selectedAppointment.client} as No-Show. Slot released.`, "info");
+      showToast(
+        language === "fr"
+          ? `${selectedAppointment.client} marqué comme absent. Créneau libéré.`
+          : `Marked ${selectedAppointment.client} as No-Show. Slot released.`,
+        "info"
+      );
       setNoShowModalVisible(false);
       setSelectedAppointment(null);
       await fetchSchedule();
     } catch (err: any) {
       showToast(
-        err?.message || "Cannot mark as No-Show yet. 15-min grace period applies.",
+        err?.message || (language === "fr" ? "Impossible de marquer absent pour l'instant. Délai de grâce de 15 min requis." : "Cannot mark as No-Show yet. 15-min grace period applies."),
         "error"
       );
     } finally {
@@ -454,9 +513,17 @@ export default function BarberBookingsScreen() {
       const targetId = app.booking_id || app.id;
       await bookingService.requestCompletionPin(targetId);
       setPinSentSuccess(true);
-      showToast(`Ending code sent to ${app.client}'s Trimly app!`, "success");
+      showToast(
+        language === "fr"
+          ? `Code de fin envoyé sur l'application Trimly de ${app.client} !`
+          : `Ending code sent to ${app.client}'s Trimly app!`,
+        "success"
+      );
     } catch (err: any) {
-      showToast(err?.message || "Failed to send ending code to client.", "error");
+      showToast(
+        err?.message || (language === "fr" ? "Échec de l'envoi du code de fin au client." : "Failed to send ending code to client."),
+        "error"
+      );
     } finally {
       setIsRequestingPin(false);
     }
@@ -466,7 +533,12 @@ export default function BarberBookingsScreen() {
   const handleConfirmEndService = async () => {
     if (!selectedAppointment) return;
     if (!isBypassingCompletionPin && completionPinInput.trim().length !== 4) {
-      showToast("Please enter the 4-digit code provided by the client", "error");
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer le code à 4 chiffres fourni par le client"
+          : "Please enter the 4-digit code provided by the client",
+        "error"
+      );
       return;
     }
 
@@ -477,12 +549,14 @@ export default function BarberBookingsScreen() {
         completion_pin: isBypassingCompletionPin ? undefined : completionPinInput.trim(),
         bypass_pin: isBypassingCompletionPin,
         bypass_reason: isBypassingCompletionPin
-          ? bypassCompletionReason.trim() || "Service completion verified in person"
+          ? bypassCompletionReason.trim() || (language === "fr" ? "Fin de service vérifiée en personne" : "Service completion verified in person")
           : undefined,
       });
 
       showToast(
-        `Service Ended! ${selectedAppointment.price.toLocaleString()} CFA credited to your account.`,
+        language === "fr"
+          ? `Service terminé ! ${selectedAppointment.price.toLocaleString()} CFA crédités sur votre compte.`
+          : `Service Ended! ${selectedAppointment.price.toLocaleString()} CFA credited to your account.`,
         "success"
       );
       setCompletionModalVisible(false);
@@ -494,7 +568,7 @@ export default function BarberBookingsScreen() {
       await fetchSchedule();
     } catch (err: any) {
       showToast(
-        err?.message || "Invalid Ending Code. Please check the code with the client.",
+        err?.message || (language === "fr" ? "Code de fin invalide. Veuillez vérifier le code avec le client." : "Invalid Ending Code. Please check the code with the client."),
         "error"
       );
     } finally {
@@ -1105,7 +1179,9 @@ export default function BarberBookingsScreen() {
                       color={colors.onBrand}
                     />
                     <Text style={[styles.inProgressCtaText, { color: colors.onBrand }]}>
-                      shaving... • Tap to End Service & Collect PIN
+                      {language === "fr"
+                        ? "Coupe en cours... • Touchez pour terminer et valider le PIN"
+                        : "shaving... • Tap to End Service & Collect PIN"}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -1167,9 +1243,21 @@ export default function BarberBookingsScreen() {
             visible={!!selectedAppointment}
             onClose={() => setSelectedAppointment(null)}
             title={selectedAppointment.client}
-            description={`${selectedAppointment.service}\nScheduled: ${selectedAppointment.time} (${selectedAppointment.duration})\nPrice: ${selectedAppointment.price.toLocaleString()} CFA\nStatus: ${
+            description={`${selectedAppointment.service}\n${
+              language === "fr" ? "Prévu" : "Scheduled"
+            }: ${selectedAppointment.time} (${selectedAppointment.duration})\n${
+              language === "fr" ? "Prix" : "Price"
+            }: ${selectedAppointment.price.toLocaleString()} CFA\n${
+              language === "fr" ? "Statut" : "Status"
+            }: ${
               selectedAppointment.status === "disputed"
-                ? "Disputed (Under Review)"
+                ? (language === "fr" ? "Litige (en cours d'examen)" : "Disputed (Under Review)")
+                : selectedAppointment.status === "shaving..." || selectedAppointment.status === "In Progress"
+                ? (language === "fr" ? "En cours de coupe" : "shaving...")
+                : selectedAppointment.status === "Confirmed"
+                ? (language === "fr" ? "Confirmé" : "Confirmed")
+                : selectedAppointment.status === "Completed"
+                ? (language === "fr" ? "Terminé" : "Completed")
                 : selectedAppointment.status
             }`}
             icon="person-outline"
@@ -1184,7 +1272,9 @@ export default function BarberBookingsScreen() {
                   <View style={styles.photoModalHeader}>
                     <Ionicons name="sparkles" size={13} color={colors.brand} />
                     <Text style={[styles.photoModalTitle, { color: colors.brand }]}>
-                      CLIENT'S SELECTED HAIRSTYLE REFERENCE
+                      {language === "fr"
+                        ? "RÉFÉRENCE COUPE CHOISIE PAR LE CLIENT"
+                        : "CLIENT'S SELECTED HAIRSTYLE REFERENCE"}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -1390,14 +1480,14 @@ export default function BarberBookingsScreen() {
                       ]}
                     >
                       {selectedAppointment.status === "Pending"
-                        ? "Accept Appointment"
+                        ? (language === "fr" ? "Accepter le rendez-vous" : "Accept Appointment")
                         : selectedAppointment.status === "Confirmed"
-                        ? "Start Service (Verify PIN)"
+                        ? (language === "fr" ? "Démarrer la coupe (Vérifier PIN)" : "Start Service (Verify PIN)")
                         : selectedAppointment.status === "In Progress" ||
                           selectedAppointment.status === "shaving..." ||
                           (selectedAppointment.status as string).toLowerCase().includes("shav")
-                        ? "End Service (Await Code)"
-                        : (t("bookings.deleteFromHistory") || "Delete from History")}
+                        ? (language === "fr" ? "Terminer le service (Code requis)" : "End Service (Await Code)")
+                        : (language === "fr" ? "Supprimer de l'historique" : (t("bookings.deleteFromHistory") || "Delete from History"))}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -1410,8 +1500,12 @@ export default function BarberBookingsScreen() {
       <CustomModal
         visible={pinModalVisible}
         onClose={() => setPinModalVisible(false)}
-        title="Verify Client Arrival"
-        description={t("bookings.arrivalPinModalDesc") || "To prevent accidental starts when the client is absent, enter the 4-digit Arrival PIN shown on their Trimly app receipt."}
+        title={language === "fr" ? "Vérifier l'arrivée du client" : "Verify Client Arrival"}
+        description={
+          language === "fr"
+            ? "Pour valider l'assise du client, saisissez le code d'arrivée à 4 chiffres affiché sur son reçu Trimly."
+            : (t("bookings.arrivalPinModalDesc") || "To prevent accidental starts when the client is absent, enter the 4-digit Arrival PIN shown on their Trimly app receipt.")
+        }
         icon="key-outline"
         iconBg={colors.brandSoft}
         iconColor={colors.brand}
@@ -1443,19 +1537,19 @@ export default function BarberBookingsScreen() {
                 style={{ marginTop: 12, alignItems: "center" }}
               >
                 <Text style={[styles.underlineLink, { color: colors.secondaryText }]}>
-                  {t("bookings.bypassPinDeadPhone") || "Client phone battery dead / offline? Bypass PIN"}
+                  {language === "fr" ? "Batterie à plat / Hors ligne ? Contourner le PIN" : (t("bookings.bypassPinDeadPhone") || "Client phone battery dead / offline? Bypass PIN")}
                 </Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View>
               <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>
-                Bypass Mode (Requires Verification Note)
+                {language === "fr" ? "Mode contournement (Note de vérification requise)" : "Bypass Mode (Requires Verification Note)"}
               </Text>
               <TextInput
                 value={bypassReason}
                 onChangeText={setBypassReason}
-                placeholder={t("bookings.bypassReasonPlaceholder") || "e.g. Verified client identity in chair, phone dead"}
+                placeholder={language === "fr" ? "Ex: Client vérifié en fauteuil, batterie à plat" : (t("bookings.bypassReasonPlaceholder") || "e.g. Verified client identity in chair, phone dead")}
                 placeholderTextColor={colors.inputPlaceholder}
                 style={[
                   styles.noteInputBox,
@@ -1471,7 +1565,7 @@ export default function BarberBookingsScreen() {
                 style={{ marginTop: 10, alignItems: "center" }}
               >
                 <Text style={[styles.underlineLink, { color: colors.secondaryText }]}>
-                  {t("bookings.backToPinEntry") || "Back to PIN entry"}
+                  {language === "fr" ? "Retour à la saisie du PIN" : (t("bookings.backToPinEntry") || "Back to PIN entry")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1491,7 +1585,7 @@ export default function BarberBookingsScreen() {
               ]}
             >
               <Text style={[styles.modalSecondaryBtnText, { color: colors.primaryText }]}>
-                Cancel
+                {language === "fr" ? "Annuler" : "Cancel"}
               </Text>
             </TouchableOpacity>
 
@@ -1511,7 +1605,7 @@ export default function BarberBookingsScreen() {
                 <ActivityIndicator size="small" color={colors.onBrand} />
               ) : (
                 <Text style={[styles.modalPrimaryBtnText, { color: colors.onBrand }]}>
-                  {t("bookings.confirmAndStart") || "Confirm & Start"}
+                  {language === "fr" ? "Confirmer et démarrer" : (t("bookings.confirmAndStart") || "Confirm & Start")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -1523,8 +1617,12 @@ export default function BarberBookingsScreen() {
       <CustomModal
         visible={paymentModalVisible}
         onClose={() => setPaymentModalVisible(false)}
-        title="Collect & Finalize Payment"
-        description={`Confirm how the client settled the ${selectedAppointment?.price.toLocaleString()} CFA service charge:`}
+        title={language === "fr" ? "Encaisser et finaliser le paiement" : "Collect & Finalize Payment"}
+        description={
+          language === "fr"
+            ? `Confirmez comment le client a réglé les ${selectedAppointment?.price.toLocaleString()} CFA de la prestation :`
+            : `Confirm how the client settled the ${selectedAppointment?.price.toLocaleString()} CFA service charge:`
+        }
         icon="cash-outline"
         iconBg={colors.brandSoft}
         iconColor={colors.brand}
@@ -1568,10 +1666,12 @@ export default function BarberBookingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.primaryText }}>
-                Cash Settled
+                {language === "fr" ? "Espèces réglées" : "Cash Settled"}
               </Text>
               <Text style={{ fontSize: 11.5, color: colors.secondaryText }}>
-                {t("bookings.clientPaidCash") || "Client paid directly in physical cash"}
+                {language === "fr"
+                  ? "Le client a payé directement en espèces physiques"
+                  : (t("bookings.clientPaidCash") || "Client paid directly in physical cash")}
               </Text>
             </View>
             {selectedPaymentMethod === "cash" && (
@@ -1615,10 +1715,12 @@ export default function BarberBookingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.primaryText }}>
-                Mobile Money Settled
+                {language === "fr" ? "Mobile Money réglé" : "Mobile Money Settled"}
               </Text>
               <Text style={{ fontSize: 11.5, color: colors.secondaryText }}>
-                {t("bookings.momoTransferVerified") || "MTN MoMo or Orange Money transfer verified"}
+                {language === "fr"
+                  ? "Virement MTN MoMo ou Orange Money vérifié"
+                  : (t("bookings.momoTransferVerified") || "MTN MoMo or Orange Money transfer verified")}
               </Text>
             </View>
             {selectedPaymentMethod === "momo" && (
@@ -1656,10 +1758,12 @@ export default function BarberBookingsScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.error }}>
-                Client Refused / Did Not Pay
+                {language === "fr" ? "Client a refusé / n'a pas payé" : "Client Refused / Did Not Pay"}
               </Text>
               <Text style={{ fontSize: 11.5, color: colors.secondaryText }}>
-                {t("bookings.escalatesToAdmin") || "Escalates directly to Trimly Super Admin"}
+                {language === "fr"
+                  ? "Transmis directement au Super Admin Trimly"
+                  : (t("bookings.escalatesToAdmin") || "Escalates directly to Trimly Super Admin")}
               </Text>
             </View>
             {selectedPaymentMethod === "unpaid" && (
@@ -1671,7 +1775,11 @@ export default function BarberBookingsScreen() {
             <TextInput
               value={unpaidDisputeNote}
               onChangeText={setUnpaidDisputeNote}
-              placeholder="Explain incident (e.g. Client walked out without paying)"
+              placeholder={
+                language === "fr"
+                  ? "Expliquez l'incident (ex: Client parti sans payer)"
+                  : "Explain incident (e.g. Client walked out without paying)"
+              }
               placeholderTextColor={colors.inputPlaceholder}
               multiline
               numberOfLines={2}
@@ -1701,7 +1809,7 @@ export default function BarberBookingsScreen() {
               ]}
             >
               <Text style={[styles.modalSecondaryBtnText, { color: colors.primaryText }]}>
-                Cancel
+                {language === "fr" ? "Annuler" : "Cancel"}
               </Text>
             </TouchableOpacity>
 
@@ -1737,7 +1845,9 @@ export default function BarberBookingsScreen() {
                     },
                   ]}
                 >
-                  {t("bookings.completeBooking") || "Complete Booking"}
+                  {language === "fr"
+                    ? "Terminer la réservation"
+                    : (t("bookings.completeBooking") || "Complete Booking")}
                 </Text>
               )}
             </TouchableOpacity>
@@ -1749,8 +1859,12 @@ export default function BarberBookingsScreen() {
       <CustomModal
         visible={noShowModalVisible}
         onClose={() => setNoShowModalVisible(false)}
-        title="Mark Client as No-Show?"
-        description={t("bookings.noShowModalDesc") || "The 15-minute arrival grace period has passed. Marking this booking as No-Show will notify the client and unlock your calendar slot for new bookings or walk-ins."}
+        title={language === "fr" ? "Marquer le client comme absent ?" : "Mark Client as No-Show?"}
+        description={
+          language === "fr"
+            ? "Le délai de grâce de 15 minutes est écoulé. Marquer ce rendez-vous comme absent notifiera le client et libérera votre créneau horaire."
+            : (t("bookings.noShowModalDesc") || "The 15-minute arrival grace period has passed. Marking this booking as No-Show will notify the client and unlock your calendar slot for new bookings or walk-ins.")
+        }
         icon="alert-circle-outline"
         iconBg={colors.errorSoft}
         iconColor={colors.error}
@@ -1772,7 +1886,7 @@ export default function BarberBookingsScreen() {
             ]}
           >
             <Text style={[styles.modalSecondaryBtnText, { color: colors.primaryText }]}>
-              Keep Waiting
+              {language === "fr" ? "Continuer d'attendre" : "Keep Waiting"}
             </Text>
           </TouchableOpacity>
 
@@ -1792,7 +1906,7 @@ export default function BarberBookingsScreen() {
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={[styles.modalPrimaryBtnText, { color: colors.white }]}>
-                {t("bookings.confirmNoShow") || "Confirm No-Show"}
+                {language === "fr" ? "Confirmer l'absence" : (t("bookings.confirmNoShow") || "Confirm No-Show")}
               </Text>
             )}
           </TouchableOpacity>
@@ -1808,17 +1922,27 @@ export default function BarberBookingsScreen() {
           setIsBypassingCompletionPin(false);
           setBypassCompletionReason("");
         }}
-        title="End Service & Receive Payment"
+        title={language === "fr" ? "Terminer le service et encaisser" : "End Service & Receive Payment"}
         description={
           isBypassingCompletionPin
-            ? "Enter a verification note to complete service without the client's code."
+            ? (language === "fr"
+                ? "Saisissez une note de vérification pour terminer le service sans le code du client."
+                : "Enter a verification note to complete service without the client's code.")
             : pinSentSuccess || selectedAppointment?.completion_pin_requested
-            ? `A 4-digit service ending code was sent to ${
-                selectedAppointment?.client || "the client"
-              }'s Trimly app. Ask the client for their code to finalize the service and receive payment.`
-            : `Send a 4-digit ending code to ${
-                selectedAppointment?.client || "the client"
-              }'s Trimly app to verify haircut completion.`
+            ? (language === "fr"
+                ? `Un code à 4 chiffres a été envoyé sur l'application Trimly de ${
+                    selectedAppointment?.client || "le client"
+                  }. Demandez son code pour finaliser la prestation.`
+                : `A 4-digit service ending code was sent to ${
+                    selectedAppointment?.client || "the client"
+                  }'s Trimly app. Ask the client for their code to finalize the service and receive payment.`)
+            : (language === "fr"
+                ? `Envoyez un code de fin à 4 chiffres sur l'application Trimly de ${
+                    selectedAppointment?.client || "le client"
+                  } pour valider la prestation.`
+                : `Send a 4-digit ending code to ${
+                    selectedAppointment?.client || "the client"
+                  }'s Trimly app to verify haircut completion.`)
         }
         icon="checkmark-done-circle-outline"
         iconBg={colors.brandSoft}
@@ -1831,7 +1955,7 @@ export default function BarberBookingsScreen() {
             <View style={{ alignItems: "center", paddingVertical: 16 }}>
               <ActivityIndicator size="small" color={colors.brand} />
               <Text style={{ fontSize: 13, color: colors.secondaryText, marginTop: 8 }}>
-                {t("bookings.sendingEndingCode") || "Sending ending code to client..."}
+                {language === "fr" ? "Envoi du code de fin au client..." : (t("bookings.sendingEndingCode") || "Sending ending code to client...")}
               </Text>
             </View>
           ) : !isBypassingCompletionPin ? (
@@ -1855,7 +1979,7 @@ export default function BarberBookingsScreen() {
                         letterSpacing: 0.6,
                       }}
                     >
-                      {t("bookings.codeDispatchedToClient") || "CODE DISPATCHED TO CLIENT"}
+                      {language === "fr" ? "CODE TRANSMIS AU CLIENT" : (t("bookings.codeDispatchedToClient") || "CODE DISPATCHED TO CLIENT")}
                     </Text>
                     <Text
                       style={{
@@ -1865,8 +1989,9 @@ export default function BarberBookingsScreen() {
                         textAlign: "center",
                       }}
                     >
-                      Awaiting 4-digit ending code from{" "}
-                      {selectedAppointment?.client || "client"}...
+                      {language === "fr"
+                        ? `En attente du code à 4 chiffres de ${selectedAppointment?.client || "client"}...`
+                        : `Awaiting 4-digit ending code from ${selectedAppointment?.client || "client"}...`}
                     </Text>
                   </View>
 
@@ -1896,13 +2021,13 @@ export default function BarberBookingsScreen() {
                       disabled={isRequestingPin}
                     >
                       <Text style={{ fontSize: 12, color: colors.brand, fontWeight: "700" }}>
-                        Resend Code
+                        {language === "fr" ? "Renvoyer le code" : "Resend Code"}
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity onPress={() => setIsBypassingCompletionPin(true)}>
                       <Text style={[styles.underlineLink, { color: colors.secondaryText }]}>
-                        {t("bookings.bypassPhoneDead") || "Client phone dead? Bypass"}
+                        {language === "fr" ? "Téléphone déchargé ? Contourner" : (t("bookings.bypassPhoneDead") || "Client phone dead? Bypass")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1916,8 +2041,9 @@ export default function BarberBookingsScreen() {
                       textAlign: "center",
                     }}
                   >
-                    When you finish the service, send the ending code to the client to verify
-                    completion and credit your earnings.
+                    {language === "fr"
+                      ? "Une fois la coupe terminée, envoyez le code de fin au client pour valider la prestation et créditer vos gains."
+                      : "When you finish the service, send the ending code to the client to verify completion and credit your earnings."}
                   </Text>
                 </View>
               )}
@@ -1925,12 +2051,16 @@ export default function BarberBookingsScreen() {
           ) : (
             <View>
               <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>
-                Bypass Ending Code (Requires Verification Note)
+                {language === "fr" ? "Contourner le code de fin (Note requise)" : "Bypass Ending Code (Requires Verification Note)"}
               </Text>
               <TextInput
                 value={bypassCompletionReason}
                 onChangeText={setBypassCompletionReason}
-                placeholder={t("bookings.endingBypassPlaceholder") || "e.g. Service finished, client phone died in shop"}
+                placeholder={
+                  language === "fr"
+                    ? "Ex: Prestation terminée, téléphone du client déchargé"
+                    : (t("bookings.endingBypassPlaceholder") || "e.g. Service finished, client phone died in shop")
+                }
                 placeholderTextColor={colors.inputPlaceholder}
                 style={[
                   styles.noteInputBox,
@@ -1946,7 +2076,7 @@ export default function BarberBookingsScreen() {
                 style={{ marginTop: 10, alignItems: "center" }}
               >
                 <Text style={[styles.underlineLink, { color: colors.secondaryText }]}>
-                  {t("bookings.backToCodeEntry") || "Back to Code Entry"}
+                  {language === "fr" ? "Retour à la saisie du code" : (t("bookings.backToCodeEntry") || "Back to Code Entry")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1971,7 +2101,7 @@ export default function BarberBookingsScreen() {
               ]}
             >
               <Text style={[styles.modalSecondaryBtnText, { color: colors.primaryText }]}>
-                Cancel
+                {language === "fr" ? "Annuler" : "Cancel"}
               </Text>
             </TouchableOpacity>
 
@@ -2016,8 +2146,8 @@ export default function BarberBookingsScreen() {
                     {pinSentSuccess ||
                     selectedAppointment?.completion_pin_requested ||
                     isBypassingCompletionPin
-                      ? "Verify & End"
-                      : "Send Code"}
+                      ? (language === "fr" ? "Vérifier et terminer" : "Verify & End")
+                      : (language === "fr" ? "Envoyer le code" : "Send Code")}
                   </Text>
                 </>
               )}
@@ -2037,7 +2167,9 @@ export default function BarberBookingsScreen() {
           >
             <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
             <Text style={{ fontSize: 11.5, color: colors.error, fontWeight: "600" }}>
-              {t("bookings.reportIncidentRefused") || "Client refused to pay or walked out? Report Incident"}
+              {language === "fr"
+                ? "Client a refusé de payer ou est parti ? Signaler un incident"
+                : (t("bookings.reportIncidentRefused") || "Client refused to pay or walked out? Report Incident")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -2047,10 +2179,12 @@ export default function BarberBookingsScreen() {
       <CustomModal
         visible={!!bookingToDelete}
         onClose={() => setBookingToDelete(null)}
-        title={t("bookings.deleteBookingTitle") || "Delete Past Booking"}
+        title={language === "fr" ? "Supprimer de l'historique" : (t("bookings.deleteBookingTitle") || "Delete Past Booking")}
         description={
           bookingToDelete
-            ? `Are you sure you want to remove the past booking for ${bookingToDelete.client} (${bookingToDelete.service}) from your history? This will permanently delete this record.`
+            ? (language === "fr"
+                ? `Voulez-vous vraiment retirer la réservation de ${bookingToDelete.client} (${bookingToDelete.service}) de votre historique ? Cette action est irréversible.`
+                : `Are you sure you want to remove the past booking for ${bookingToDelete.client} (${bookingToDelete.service}) from your history? This will permanently delete this record.`)
             : ""
         }
         icon="trash-outline"
@@ -2074,7 +2208,7 @@ export default function BarberBookingsScreen() {
             ]}
           >
             <Text style={[styles.modalSecondaryBtnText, { color: colors.primaryText }]}>
-              Cancel
+              {language === "fr" ? "Annuler" : "Cancel"}
             </Text>
           </TouchableOpacity>
 
@@ -2094,7 +2228,7 @@ export default function BarberBookingsScreen() {
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={[styles.modalPrimaryBtnText, { color: colors.white }]}>
-                {t("bookings.deleteFromHistory") || "Delete from History"}
+                {language === "fr" ? "Supprimer" : (t("bookings.deleteFromHistory") || "Delete from History")}
               </Text>
             )}
           </TouchableOpacity>

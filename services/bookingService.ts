@@ -38,6 +38,8 @@ export interface BookingReceipt {
   end_time?: string;
   total_price?: number;
   status?: string;
+  arrival_pin?: string;
+  completion_pin?: string;
   payment_status?: string;
   completion_pin_requested?: boolean;
   service_started_at?: string;
@@ -241,7 +243,24 @@ export const bookingService = {
           c.id === overridden.id
       );
       if (existingIdx >= 0) {
-        combined[existingIdx] = overridden;
+        // Authoritative server record already exists in database: sync cached copy
+        cacheItem.status = combined[existingIdx].status;
+        if (combined[existingIdx].arrival_pin) cacheItem.arrival_pin = combined[existingIdx].arrival_pin;
+        if (combined[existingIdx].completion_pin) cacheItem.completion_pin = combined[existingIdx].completion_pin;
+        if (combined[existingIdx].payment_status) cacheItem.payment_status = combined[existingIdx].payment_status;
+
+        // Clear out any stale local status overrides for this booking so server status prevails
+        const keysToClear = [
+          String(cacheItem.id),
+          String(cacheItem.booking_id),
+          String(cacheItem.reference_number),
+          String(combined[existingIdx].id),
+          String(combined[existingIdx].booking_id),
+          String(combined[existingIdx].reference_number),
+        ];
+        for (const k of keysToClear) {
+          if (k) delete statusOverrides[k];
+        }
       } else {
         combined.unshift(overridden);
       }
@@ -547,7 +566,24 @@ export const bookingService = {
           c.id === overridden.id
       );
       if (existingIdx >= 0) {
-        combined[existingIdx] = overridden;
+        // Authoritative server record already exists in database: sync cached copy
+        cacheItem.status = combined[existingIdx].status;
+        if (combined[existingIdx].arrival_pin) cacheItem.arrival_pin = combined[existingIdx].arrival_pin;
+        if (combined[existingIdx].completion_pin) cacheItem.completion_pin = combined[existingIdx].completion_pin;
+        if (combined[existingIdx].payment_status) cacheItem.payment_status = combined[existingIdx].payment_status;
+
+        // Clear out any stale local status overrides for this booking so server status prevails
+        const keysToClear = [
+          String(cacheItem.id),
+          String(cacheItem.booking_id),
+          String(cacheItem.reference_number),
+          String(combined[existingIdx].id),
+          String(combined[existingIdx].booking_id),
+          String(combined[existingIdx].reference_number),
+        ];
+        for (const k of keysToClear) {
+          if (k) delete statusOverrides[k];
+        }
       } else {
         combined.unshift(overridden);
       }

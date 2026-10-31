@@ -4,6 +4,7 @@ import InputField from "@/components/auth/InputField";
 import RoleSelector, { UserRole } from "@/components/auth/RoleSelector";
 import SocialButton from "@/components/auth/SocialButton";
 import TrimlyLogoLoader from "@/components/ui/TrimlyLogoLoader";
+import CompleteProfileModal from "@/components/ui/CompleteProfileModal";
 import { useTheme } from "@/context/ThemeContext";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
@@ -40,9 +41,10 @@ export default function SignupScreen() {
   const router = useRouter();
   const { signup, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [currentStep, setCurrentStep] = useState<SignupStep>(1);
+  const [showGoogleCompleteModal, setShowGoogleCompleteModal] = useState(false);
 
   // Registration Option Hierarchy State
   const [primaryCategory, setPrimaryCategory] = useState<"salon" | "barber">("salon");
@@ -147,17 +149,38 @@ export default function SignupScreen() {
     async (token: string, accessToken?: string) => {
       setIsSubmitting(true);
       try {
-        await loginWithGoogle(token, role, accessToken);
-        showToast("Account created with Google successfully.", "success");
-        await setActiveMode("barber");
-        router.replace("/(barbers)");
+        const res: any = await loginWithGoogle(token, role, accessToken);
+        const loggedUser = res?.user;
+        const isLackingInfo =
+          !loggedUser?.phone ||
+          !loggedUser?.city ||
+          (!loggedUser?.staff_title && role !== "salon");
+
+        if (isLackingInfo) {
+          showToast(
+            language === "fr"
+              ? "Veuillez compléter vos coordonnées de partenaire avant de continuer."
+              : "Please complete your partner profile details before proceeding.",
+            "warning"
+          );
+          setShowGoogleCompleteModal(true);
+        } else {
+          showToast(
+            language === "fr"
+              ? "Compte créé avec Google avec succès."
+              : "Account created with Google successfully.",
+            "success"
+          );
+          await setActiveMode("barber");
+          router.replace("/(barbers)");
+        }
       } catch (err: any) {
         showToast(err?.message || "Google registration failed.", "error");
       } finally {
         setIsSubmitting(false);
       }
     },
-    [loginWithGoogle, role, router, showToast]
+    [loginWithGoogle, role, router, showToast, language]
   );
 
 
@@ -306,7 +329,15 @@ export default function SignupScreen() {
   };
 
   const handleNextFromStep1 = async () => {
-    if (!validateStep1()) return;
+    if (!validateStep1()) {
+      showToast(
+        language === "fr"
+          ? "Veuillez remplir tous les champs obligatoires avant de continuer."
+          : "Please complete all required fields before proceeding.",
+        "error"
+      );
+      return;
+    }
 
     if (primaryCategory === "salon" && salonSubOption === "manager") {
       setIsVerifyingBarberEmail(true);
@@ -352,9 +383,16 @@ export default function SignupScreen() {
   };
 
   const handleNextFromStep2 = () => {
-    if (validateStep2()) {
-      setCurrentStep(3);
+    if (!validateStep2()) {
+      showToast(
+        language === "fr"
+          ? "Veuillez remplir tous les champs obligatoires avant de continuer."
+          : "Please complete all required fields before proceeding.",
+        "error"
+      );
+      return;
     }
+    setCurrentStep(3);
   };
 
   const handleGoBack = () => {
@@ -374,13 +412,31 @@ export default function SignupScreen() {
   const handleSignUp = async () => {
     if (!validateStep1()) {
       setCurrentStep(1);
+      showToast(
+        language === "fr"
+          ? "Veuillez remplir tous les champs obligatoires avant de continuer."
+          : "Please complete all required fields before proceeding.",
+        "error"
+      );
       return;
     }
     if (!validateStep2()) {
       setCurrentStep(2);
+      showToast(
+        language === "fr"
+          ? "Veuillez remplir tous les champs obligatoires avant de continuer."
+          : "Please complete all required fields before proceeding.",
+        "error"
+      );
       return;
     }
     if (!validateStep3()) {
+      showToast(
+        language === "fr"
+          ? "Veuillez remplir tous les champs obligatoires avant de continuer."
+          : "Please complete all required fields before proceeding.",
+        "error"
+      );
       return;
     }
 
@@ -1730,6 +1786,23 @@ export default function SignupScreen() {
           if (errors.location) {
             setErrors((prev) => ({ ...prev, location: "" }));
           }
+        }}
+      />
+      {/* Complete Profile Modal for Google Signups with Missing Info */}
+      <CompleteProfileModal
+        visible={showGoogleCompleteModal}
+        onClose={() => {
+          showToast(
+            language === "fr"
+              ? "Vous devez renseigner vos coordonnées avant de continuer."
+              : "You must complete your partner profile before proceeding.",
+            "error"
+          );
+        }}
+        onSaved={async () => {
+          setShowGoogleCompleteModal(false);
+          await setActiveMode("barber");
+          router.replace("/(barbers)");
         }}
       />
     </SafeAreaView>

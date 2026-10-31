@@ -101,11 +101,21 @@ function formatTime12h(time24: string): string {
   return `${h}:${m} ${ampm}`;
 }
 
+const DAY_NAMES_FR: Record<string, string> = {
+  Monday: "Lundi",
+  Tuesday: "Mardi",
+  Wednesday: "Mercredi",
+  Thursday: "Jeudi",
+  Friday: "Vendredi",
+  Saturday: "Samedi",
+  Sunday: "Dimanche",
+};
+
 export default function BarberAvailabilityScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { showToast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [schedule, setSchedule] = useState<DaySlot[]>(INITIAL_SCHEDULE);
   const [selectedBuffer, setSelectedBuffer] = useState<string>("15 min");
@@ -159,8 +169,13 @@ export default function BarberAvailabilityScreen() {
     setRefreshing(true);
     await fetchSchedule();
     setRefreshing(false);
-    showToast("Working hours refreshed.", "info");
-  }, [fetchSchedule, showToast]);
+    showToast(
+      language === "fr"
+        ? "Horaires de travail actualisés."
+        : "Working hours refreshed.",
+      "info"
+    );
+  }, [fetchSchedule, showToast, language]);
 
   const toggleDay = (index: number) => {
     const updated = [...schedule];
@@ -183,29 +198,49 @@ export default function BarberAvailabilityScreen() {
         close,
       }))
     );
-    showToast(`Applied ${label} (${formatTime12h(open)} - ${formatTime12h(close)}) to all days.`, "success");
+    showToast(
+      language === "fr"
+        ? `Appliqué ${label} (${formatTime12h(open)} - ${formatTime12h(close)}) à tous les jours.`
+        : `Applied ${label} (${formatTime12h(open)} - ${formatTime12h(close)}) to all days.`,
+      "success"
+    );
   };
 
   const removeBlockedDate = (id: string) => {
     setBlockedDates(blockedDates.filter((b) => b.id !== id));
-    showToast("Blocked date removed from calendar.", "info");
+    showToast(
+      language === "fr"
+        ? "Date bloquée retirée du calendrier."
+        : "Blocked date removed from calendar.",
+      "info"
+    );
   };
 
   const handleAddBlockedDate = () => {
     if (!newBlockDate.trim()) {
-      showToast("Please enter a date (e.g. Dec 25).", "warning");
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer une date (ex. 25 déc.)."
+          : "Please enter a date (e.g. Dec 25).",
+        "warning"
+      );
       return;
     }
     const newBlock: BlockedDate = {
       id: Date.now().toString(),
       date: newBlockDate.trim(),
-      reason: newBlockReason.trim() || "Unavailable / Personal Time",
+      reason: newBlockReason.trim() || (language === "fr" ? "Indisponible / Temps personnel" : "Unavailable / Personal Time"),
     };
     setBlockedDates([...blockedDates, newBlock]);
     setNewBlockDate("");
     setNewBlockReason("");
     setBlockModalVisible(false);
-    showToast(`${newBlock.date} marked as blocked.`, "success");
+    showToast(
+      language === "fr"
+        ? `${newBlock.date} marquée comme bloquée.`
+        : `${newBlock.date} marked as blocked.`,
+      "success"
+    );
   };
 
   const handleSave = async () => {
@@ -464,7 +499,7 @@ export default function BarberAvailabilityScreen() {
                         },
                       ]}
                     >
-                      {slot.day}
+                      {language === "fr" ? (DAY_NAMES_FR[slot.day] || slot.day) : slot.day}
                     </Text>
                     {!slot.enabled && (
                       <View
@@ -706,10 +741,16 @@ export default function BarberAvailabilityScreen() {
           >
             <View style={styles.timePickerHeader}>
               <Text style={[styles.timePickerTitle, { color: colors.primarytext }]}>
-                Select {editingTimeSlot?.field === "open" ? "Opening" : "Closing"} Time
+                {language === "fr"
+                  ? `Sélectionnez l'heure ${editingTimeSlot?.field === "open" ? "d'ouverture" : "de fermeture"}`
+                  : `Select ${editingTimeSlot?.field === "open" ? "Opening" : "Closing"} Time`}
               </Text>
               <Text style={[styles.timePickerSub, { color: colors.secondarytext }]}>
-                {editingTimeSlot ? schedule[editingTimeSlot.dayIndex]?.day : ""}
+                {editingTimeSlot
+                  ? (language === "fr"
+                      ? (DAY_NAMES_FR[schedule[editingTimeSlot.dayIndex]?.day] || schedule[editingTimeSlot.dayIndex]?.day)
+                      : schedule[editingTimeSlot.dayIndex]?.day)
+                  : ""}
               </Text>
             </View>
 

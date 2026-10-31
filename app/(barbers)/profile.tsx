@@ -96,8 +96,8 @@ export default function BarberProfileSettingsScreen() {
       await refreshUser().catch(() => null);
     }
     setRefreshing(false);
-    showToast("Profile refreshed.", "info");
-  }, [refreshUser, showToast]);
+    showToast(language === "fr" ? "Profil actualisé." : "Profile refreshed.", "info");
+  }, [refreshUser, showToast, language]);
 
   const handleDutyChange = async (newStatus: DutyStatus) => {
     if (dutyStatus === newStatus || isUpdatingDuty) return;
@@ -113,10 +113,10 @@ export default function BarberProfileSettingsScreen() {
       }
       const label =
         newStatus === "active"
-          ? "On Duty & Ready for Cuts"
+          ? language === "fr" ? "En service & prêt pour les coupes" : "On Duty & Ready for Cuts"
           : newStatus === "on_break"
-          ? "Currently on Break"
-          : "Off Duty for Today";
+          ? language === "fr" ? "Actuellement en pause" : "Currently on Break"
+          : language === "fr" ? "Hors service pour aujourd'hui" : "Off Duty for Today";
       showToast(label, "info");
     } catch {
       // Keep optimistic status
@@ -128,7 +128,7 @@ export default function BarberProfileSettingsScreen() {
   const handleLogOutConfirm = () => {
     setLogoutModalVisible(false);
     logout();
-    showToast("You have been logged out.", "info");
+    showToast(language === "fr" ? "Vous avez été déconnecté." : "You have been logged out.", "info");
     router.replace("/(auth)/login");
   };
 
@@ -137,14 +137,24 @@ export default function BarberProfileSettingsScreen() {
     if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(idToCopy);
     }
-    showToast(`Salon ID #${idToCopy} copied! Barbers & hairdressers can use this to register under your salon.`, "success");
+    showToast(
+      language === "fr"
+        ? `ID Salon #${idToCopy} copié ! Vos coiffeurs peuvent l'utiliser pour s'inscrire.`
+        : `Salon ID #${idToCopy} copied! Barbers & hairdressers can use this to register under your salon.`,
+      "success"
+    );
   };
 
   const handleVerifySalon = async (idToVerify?: string) => {
     const raw = (idToVerify !== undefined ? idToVerify : salonIdInput).trim();
     const cleanNum = parseInt(raw.replace(/[^0-9]/g, ""), 10);
     if (!cleanNum || isNaN(cleanNum)) {
-      showToast("Please enter a valid numeric Salon ID (e.g. 4 or SALON-04).", "warning");
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer un ID de salon numérique valide (ex. 4)."
+          : "Please enter a valid numeric Salon ID (e.g. 4 or SALON-04).",
+        "warning"
+      );
       return;
     }
     setIsVerifyingSalon(true);
@@ -153,7 +163,7 @@ export default function BarberProfileSettingsScreen() {
       const salon = await barberService.getSalonById(cleanNum);
       if (salon && salon.id) {
         setVerifiedSalon(salon);
-        showToast(`Found: ${salon.name}`, "success");
+        showToast(language === "fr" ? `Trouvé : ${salon.name}` : `Found: ${salon.name}`, "success");
       } else {
         const fallback = {
           id: cleanNum,
@@ -161,7 +171,7 @@ export default function BarberProfileSettingsScreen() {
           city: "Douala, Cameroon",
         };
         setVerifiedSalon(fallback);
-        showToast(`Salon #${cleanNum} found.`, "info");
+        showToast(language === "fr" ? `Salon #${cleanNum} trouvé.` : `Salon #${cleanNum} found.`, "info");
       }
     } catch {
       const fallback = {
@@ -170,7 +180,7 @@ export default function BarberProfileSettingsScreen() {
         city: "Douala, Cameroon",
       };
       setVerifiedSalon(fallback);
-      showToast(`Salon #${cleanNum} found.`, "info");
+      showToast(language === "fr" ? `Salon #${cleanNum} trouvé.` : `Salon #${cleanNum} found.`, "info");
     } finally {
       setIsVerifyingSalon(false);
     }
@@ -179,7 +189,12 @@ export default function BarberProfileSettingsScreen() {
   const handleConnectSalon = async () => {
     const targetSalonId = verifiedSalon?.id || parseInt(salonIdInput.replace(/[^0-9]/g, ""), 10);
     if (!targetSalonId) {
-      showToast("Please verify a valid Salon ID first.", "warning");
+      showToast(
+        language === "fr"
+          ? "Veuillez d'abord vérifier un ID de salon valide."
+          : "Please verify a valid Salon ID first.",
+        "warning"
+      );
       return;
     }
     setIsLinkingSalon(true);
@@ -200,9 +215,14 @@ export default function BarberProfileSettingsScreen() {
       setShowChangeSalonInput(false);
       setVerifiedSalon(null);
       setSalonIdInput("");
-      showToast(`Successfully linked to ${salonName}! Your chair is active on their salon floor.`, "success");
+      showToast(
+        language === "fr"
+          ? `Rattaché avec succès à ${salonName} ! Votre fauteuil est actif dans le salon.`
+          : `Successfully linked to ${salonName}! Your chair is active on their salon floor.`,
+        "success"
+      );
     } catch (err: any) {
-      showToast(err?.message || "Failed to link salon. Please try again.", "error");
+      showToast(err?.message || (language === "fr" ? "Échec du rattachement au salon." : "Failed to link salon. Please try again."), "error");
     } finally {
       setIsLinkingSalon(false);
     }
@@ -224,9 +244,14 @@ export default function BarberProfileSettingsScreen() {
         await refreshUser().catch(() => null);
       }
       setUnlinkModalVisible(false);
-      showToast("Unlinked from salon. You are now operating as an independent stylist.", "info");
+      showToast(
+        language === "fr"
+          ? "Détaché du salon. Vous opérez désormais en tant que coiffeur indépendant."
+          : "Unlinked from salon. You are now operating as an independent stylist.",
+        "info"
+      );
     } catch (err: any) {
-      showToast(err?.message || "Could not unlink from salon.", "error");
+      showToast(err?.message || (language === "fr" ? "Impossible de se détacher du salon." : "Could not unlink from salon."), "error");
     } finally {
       setIsUnlinkingSalon(false);
     }

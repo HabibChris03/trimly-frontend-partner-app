@@ -1,6 +1,5 @@
 import { CustomModal } from "@/components/ui/CustomModal";
 import { AddServiceModal } from "@/components/barber/AddServiceModal";
-import CompleteProfileModal from "@/components/ui/CompleteProfileModal";
 import { PageTutorialModal } from "@/components/barber/PageTutorialModal";
 import { BARBER_DASHBOARD_TUTORIAL } from "@/constants/barberTutorials";
 import { FontFamily } from "@/constants/theme";
@@ -109,20 +108,6 @@ export default function BarberDashboardScreen() {
   const barberImg4 = barberAvatar;
   const { showToast } = useToast();
   const { unreadCount } = useNotifications();
-  const [showProfilePrompt, setShowProfilePrompt] = useState(false);
-  const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
-
-  useEffect(() => {
-    if (user && !profilePromptDismissed) {
-      const isLackingInfo = !user.phone || !user.city || (!user.staff_title && user.role !== "salon");
-      if (isLackingInfo) {
-        const timer = setTimeout(() => {
-          setShowProfilePrompt(true);
-        }, 800);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [user, profilePromptDismissed]);
 
   const barberId = user?.id || 4;
   let salonDisplayName = "";
@@ -1950,20 +1935,6 @@ export default function BarberDashboardScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Complete Profile Modal for Google Login / Incomplete Profiles */}
-      <CompleteProfileModal
-        visible={showProfilePrompt}
-        onClose={() => {
-          setShowProfilePrompt(false);
-          setProfilePromptDismissed(true);
-        }}
-        onSaved={() => {
-          setShowProfilePrompt(false);
-          setProfilePromptDismissed(true);
-          refreshUser?.();
-        }}
-      />
 
       {/* Full-Screen Add / Edit Service Modal */}
       <AddServiceModal

@@ -140,11 +140,26 @@ const CATEGORY_DEFAULT_DURATIONS: Record<string, string> = {
 const DURATION_PRESETS = [15, 30, 45, 60, 75, 90, 120, 150, 180];
 const PRICE_PRESETS = [1000, 2000, 3500, 5000, 10000, 15000, 20000, 30000, 50000];
 
-function formatDurationDisplay(mins: number): string {
-  if (mins <= 0) return "Add-on";
-  if (mins < 60) return `${mins} mins`;
+const CATEGORY_NAMES_FR: Record<string, string> = {
+  All: "Tous",
+  "Haircuts & Styling": "Coupes & Coiffures",
+  "Braids & Locs": "Tresses & Locks",
+  "Weaves & Extensions": "Tissages & Extensions",
+  "Silk Press & Natural Hair": "Silk Press & Cheveux Naturels",
+  "Color & Treatments": "Coloration & Soins",
+  "Beard & Shave": "Barbe & Rasage",
+  "Skincare & Facials": "Soins du Visage",
+  "Extra Services": "Services Supplémentaires",
+};
+
+function formatDurationDisplay(mins: number, lang: string = "en"): string {
+  if (mins <= 0) return lang === "fr" ? "Supplément" : "Add-on";
+  if (mins < 60) return lang === "fr" ? `${mins} min` : `${mins} mins`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
+  if (lang === "fr") {
+    return m === 0 ? `${h} h` : `${h}h ${m}m`;
+  }
   return m === 0 ? `${h} hr${h > 1 ? "s" : ""}` : `${h}h ${m}m`;
 }
 
@@ -153,7 +168,7 @@ export default function ManageServicesScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const barberId = user?.id || 4;
 
@@ -221,9 +236,14 @@ export default function ManageServicesScreen() {
         // Fallback
       }
     } catch {
-      showToast("Unable to load services catalog.", "error");
+      showToast(
+        language === "fr"
+          ? "Impossible de charger le catalogue de services."
+          : "Unable to load services catalog.",
+        "error"
+      );
     }
-  }, [barberId, showToast]);
+  }, [barberId, showToast, language]);
 
   useEffect(() => {
     async function load() {
@@ -238,8 +258,13 @@ export default function ManageServicesScreen() {
     setRefreshing(true);
     await fetchServices();
     setRefreshing(false);
-    showToast("Services catalog updated.", "info");
-  }, [fetchServices, showToast]);
+    showToast(
+      language === "fr"
+        ? "Catalogue de services mis à jour."
+        : "Services catalog updated.",
+      "info"
+    );
+  }, [fetchServices, showToast, language]);
 
   const handleOpenAddModal = () => {
     setEditingServiceId(null);
@@ -283,7 +308,12 @@ export default function ManageServicesScreen() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        showToast("Please allow photo access to upload service designs.", "warning");
+        showToast(
+          language === "fr"
+            ? "Veuillez autoriser l'accès aux photos pour télécharger des modèles."
+            : "Please allow photo access to upload service designs.",
+          "warning"
+        );
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -296,14 +326,24 @@ export default function ManageServicesScreen() {
         setImageUrl(result.assets[0].uri);
       }
     } catch {
-      showToast("Failed to open image picker.", "error");
+      showToast(
+        language === "fr"
+          ? "Échec de l'ouverture de la galerie photo."
+          : "Failed to open image picker.",
+        "error"
+      );
     }
   };
 
   const handleAddNewCategory = () => {
     const trimmed = newCategoryInput.trim();
     if (!trimmed) {
-      showToast("Please enter a category name.", "warning");
+      showToast(
+        language === "fr"
+          ? "Veuillez saisir un nom de catégorie."
+          : "Please enter a category name.",
+        "warning"
+      );
       return;
     }
     const alreadyExists = modalCategories.some(
@@ -317,7 +357,12 @@ export default function ManageServicesScreen() {
     } else {
       setCustomCategories((prev) => [...prev, trimmed]);
       setServiceCategory(trimmed);
-      showToast(`Category "${trimmed}" added.`, "success");
+      showToast(
+        language === "fr"
+          ? `Catégorie "${trimmed}" ajoutée.`
+          : `Category "${trimmed}" added.`,
+        "success"
+      );
     }
     setIsAddingNewCategory(false);
     setNewCategoryInput("");
@@ -325,7 +370,12 @@ export default function ManageServicesScreen() {
 
   const handleSaveService = async () => {
     if (!serviceName.trim()) {
-      showToast("Please enter a service name.", "error");
+      showToast(
+        language === "fr"
+          ? "Veuillez saisir un nom de service."
+          : "Please enter a service name.",
+        "error"
+      );
       return;
     }
     const rawPrice = parseFloat(servicePrice.replace(/[^0-9.]/g, ""));
@@ -351,14 +401,29 @@ export default function ManageServicesScreen() {
         setServices((prev) =>
           prev.map((s) => (s.id === editingServiceId ? { ...s, ...saved } : s))
         );
-        showToast(`"${serviceName}" updated successfully.`, "success");
+        showToast(
+          language === "fr"
+            ? `"${serviceName}" mis à jour avec succès.`
+            : `"${serviceName}" updated successfully.`,
+          "success"
+        );
       } else {
         setServices((prev) => [saved, ...prev]);
-        showToast(`"${serviceName}" added to services catalog.`, "success");
+        showToast(
+          language === "fr"
+            ? `"${serviceName}" ajouté au catalogue.`
+            : `"${serviceName}" added to services catalog.`,
+          "success"
+        );
       }
       setModalVisible(false);
     } catch {
-      showToast("Failed to save service. Please try again.", "error");
+      showToast(
+        language === "fr"
+          ? "Échec de l'enregistrement du service. Veuillez réessayer."
+          : "Failed to save service. Please try again.",
+        "error"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -369,9 +434,19 @@ export default function ManageServicesScreen() {
       try {
         await barberService.deleteService(serviceToDelete.id, barberId);
         setServices((prev) => prev.filter((s) => s.id !== serviceToDelete.id));
-        showToast(`Service "${serviceToDelete.name}" deleted.`, "info");
+        showToast(
+          language === "fr"
+            ? `Service "${serviceToDelete.name}" supprimé.`
+            : `Service "${serviceToDelete.name}" deleted.`,
+          "info"
+        );
       } catch {
-        showToast("Failed to delete service.", "error");
+        showToast(
+          language === "fr"
+            ? "Échec de la suppression du service."
+            : "Failed to delete service.",
+          "error"
+        );
       } finally {
         setServiceToDelete(null);
       }
@@ -416,10 +491,10 @@ export default function ManageServicesScreen() {
 
         <View style={styles.headerTitleWrap}>
           <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-            Services & Pricing
+            {language === "fr" ? "Services & Tarifs" : "Services & Pricing"}
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
-            {services.length} services • Avg {avgPrice.toLocaleString()} CFA
+            {services.length} services • {language === "fr" ? "Moy." : "Avg"} {avgPrice.toLocaleString()} CFA
           </Text>
         </View>
 
@@ -442,7 +517,7 @@ export default function ManageServicesScreen() {
           >
             <Ionicons name="add" size={18} color={colors.onBrand} />
             <Text style={[styles.addServiceBtnText, { color: colors.onBrand }]}>
-              Add Service
+              {language === "fr" ? "Ajouter" : "Add Service"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -473,7 +548,7 @@ export default function ManageServicesScreen() {
                 {services.length}
               </Text>
               <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-                Total Catalog
+                {language === "fr" ? "Total Catalogue" : "Total Catalog"}
               </Text>
             </View>
 
@@ -484,7 +559,7 @@ export default function ManageServicesScreen() {
                 {haircutsCount}
               </Text>
               <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-                Core Styles
+                {language === "fr" ? "Coupes Principales" : "Core Styles"}
               </Text>
             </View>
 
@@ -495,7 +570,7 @@ export default function ManageServicesScreen() {
                 {extrasCount}
               </Text>
               <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-                Add-ons
+                {language === "fr" ? "Suppléments" : "Add-ons"}
               </Text>
             </View>
 
@@ -543,7 +618,7 @@ export default function ManageServicesScreen() {
                 { color: catalogTab === "hairstyles" ? colors.onBrand : colors.primarytext },
               ]}
             >
-              Core Hairstyles ({haircutsCount})
+              {language === "fr" ? "Coupes Principales" : "Core Hairstyles"} ({haircutsCount})
             </Text>
           </TouchableOpacity>
 
@@ -571,7 +646,7 @@ export default function ManageServicesScreen() {
                 { color: catalogTab === "extras" ? colors.onBrand : colors.primarytext },
               ]}
             >
-              Add-ons & Extras ({extrasCount})
+              {language === "fr" ? "Suppléments & Extras" : "Add-ons & Extras"} ({extrasCount})
             </Text>
           </TouchableOpacity>
         </View>
@@ -611,7 +686,7 @@ export default function ManageServicesScreen() {
                     },
                   ]}
                 >
-                  {cat}
+                  {language === "fr" ? (CATEGORY_NAMES_FR[cat] || cat) : cat}
                 </Text>
               </TouchableOpacity>
             );
@@ -640,7 +715,7 @@ export default function ManageServicesScreen() {
               <Ionicons name="cut-outline" size={32} color={colors.primary} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-              No Services Found
+              {language === "fr" ? "Aucun service trouvé" : "No Services Found"}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
               {t("manageServices.tapAddServiceFirst") || "Tap \"Add Service\" above to add your first hairstyle or grooming service."}
@@ -719,7 +794,9 @@ export default function ManageServicesScreen() {
                           { color: service.is_extra ? "#F59E0B" : colors.primary },
                         ]}
                       >
-                        {service.is_extra ? "Extra Add-on" : (service.category || "General")}
+                        {service.is_extra
+                          ? (language === "fr" ? "Supplément" : "Extra Add-on")
+                          : (language === "fr" ? (CATEGORY_NAMES_FR[service.category || ""] || service.category || "Général") : (service.category || "General"))}
                       </Text>
                     </View>
 
@@ -730,7 +807,7 @@ export default function ManageServicesScreen() {
                         color={colors.secondarytext}
                       />
                       <Text style={[styles.durationText, { color: colors.secondarytext }]}>
-                        {formatDurationDisplay(service.duration_minutes || 0)}
+                        {formatDurationDisplay(service.duration_minutes || 0, language)}
                       </Text>
                     </View>
                   </View>
@@ -797,15 +874,21 @@ export default function ManageServicesScreen() {
 
             <View style={styles.headerTitleWrap}>
               <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-                {editingServiceId ? "Edit Service" : "Add New Service"}
+                {editingServiceId
+                  ? (language === "fr" ? "Modifier le service" : "Edit Service")
+                  : (language === "fr" ? "Nouveau service" : "Add New Service")}
               </Text>
               <Text
                 style={[styles.headerSubtitle, { color: colors.secondarytext }]}
                 numberOfLines={1}
               >
                 {editingServiceId
-                  ? "Update duration, pricing & catalog details"
-                  : "Set custom price, duration, category & design photo"}
+                  ? (language === "fr"
+                      ? "Mettre à jour la durée, le prix et les détails"
+                      : "Update duration, pricing & catalog details")
+                  : (language === "fr"
+                      ? "Définir le prix, la durée, la catégorie et la photo"
+                      : "Set custom price, duration, category & design photo")}
               </Text>
             </View>
 
@@ -820,7 +903,7 @@ export default function ManageServicesScreen() {
               style={styles.fullScreenResetBtn}
             >
               <Text style={[styles.fullScreenResetText, { color: colors.primary }]}>
-                Reset
+                {language === "fr" ? "Réinitialiser" : "Reset"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -842,7 +925,7 @@ export default function ManageServicesScreen() {
                 <View style={styles.sectionTitleWithIcon}>
                   <Ionicons name="camera-outline" size={17} color={colors.primary} />
                   <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
-                    Hairstyle Cut Photo
+                    {language === "fr" ? "Photo de la coupe" : "Hairstyle Cut Photo"}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -850,7 +933,9 @@ export default function ManageServicesScreen() {
                   onPress={() => setShowUrlInput(!showUrlInput)}
                 >
                   <Text style={[styles.toggleUrlText, { color: colors.primary }]}>
-                    {showUrlInput ? "Hide Link" : "Paste URL"}
+                    {showUrlInput
+                      ? (language === "fr" ? "Masquer le lien" : "Hide Link")
+                      : (language === "fr" ? "Coller l'URL" : "Paste URL")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -881,7 +966,7 @@ export default function ManageServicesScreen() {
                     >
                       <Ionicons name="image-outline" size={14} color={colors.primarytext} />
                       <Text style={[styles.photoActionText, { color: colors.primarytext }]}>
-                        Change Photo
+                        {language === "fr" ? "Changer la photo" : "Change Photo"}
                       </Text>
                     </TouchableOpacity>
 
@@ -898,7 +983,7 @@ export default function ManageServicesScreen() {
                     >
                       <Ionicons name="trash-outline" size={14} color="#EF4444" />
                       <Text style={[styles.photoActionText, { color: "#EF4444" }]}>
-                        Remove
+                        {language === "fr" ? "Supprimer" : "Remove"}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -924,7 +1009,7 @@ export default function ManageServicesScreen() {
                     <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
                   </View>
                   <Text style={[styles.uploadBoxTitle, { color: colors.primarytext }]}>
-                    Upload Cut Design Photo
+                    {language === "fr" ? "Téléverser la photo du modèle" : "Upload Cut Design Photo"}
                   </Text>
                   <Text style={[styles.uploadBoxSubtitle, { color: colors.secondarytext }]}>
                     {t("manageServices.tapSelectLibrary") || "Tap to select an image from your library"}
@@ -962,7 +1047,7 @@ export default function ManageServicesScreen() {
                 <View style={styles.sectionTitleWithIcon}>
                   <Ionicons name="pricetags-outline" size={17} color={colors.primary} />
                   <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
-                    Service Category
+                    {language === "fr" ? "Catégorie de service" : "Service Category"}
                   </Text>
                 </View>
 
@@ -1066,7 +1151,7 @@ export default function ManageServicesScreen() {
                         ]}
                         numberOfLines={2}
                       >
-                        {cat}
+                        {language === "fr" ? (CATEGORY_NAMES_FR[cat] || cat) : cat}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -1107,7 +1192,9 @@ export default function ManageServicesScreen() {
                   ]}
                   numberOfLines={1}
                 >
-                  {serviceName ? `Selected: ${serviceName}` : "Choose popular service name..."}
+                  {serviceName
+                    ? `${language === "fr" ? "Sélectionné" : "Selected"}: ${serviceName}`
+                    : (language === "fr" ? "Choisir un service populaire..." : "Choose popular service name...")}
                 </Text>
                 <Ionicons
                   name={dropdownOpen ? "chevron-up" : "chevron-down"}
@@ -1200,7 +1287,7 @@ export default function ManageServicesScreen() {
                   <View style={styles.sectionTitleWithIcon}>
                     <Ionicons name="time-outline" size={17} color={colors.primary} />
                     <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
-                      Service Duration
+                      {language === "fr" ? "Durée du service" : "Service Duration"}
                     </Text>
                   </View>
                   <View
@@ -1213,7 +1300,7 @@ export default function ManageServicesScreen() {
                     ]}
                   >
                     <Text style={[styles.durationBadgePillText, { color: colors.primary }]}>
-                      {formatDurationDisplay(parseInt(serviceDuration, 10) || 45)}
+                      {formatDurationDisplay(parseInt(serviceDuration, 10) || 45, language)}
                     </Text>
                   </View>
                 </View>
@@ -1248,7 +1335,7 @@ export default function ManageServicesScreen() {
                             },
                           ]}
                         >
-                          {formatDurationDisplay(d)}
+                          {formatDurationDisplay(d, language)}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -1339,7 +1426,7 @@ export default function ManageServicesScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 }}>
                   <Ionicons name="sparkles" size={16} color="#F59E0B" />
                   <Text style={[styles.extraToggleTitle, { color: colors.primarytext }]}>
-                    Extra / Add-on Service
+                    {language === "fr" ? "Service supplémentaire / Extra" : "Extra / Add-on Service"}
                   </Text>
                 </View>
                 <Text style={[styles.extraToggleSub, { color: colors.secondarytext }]}>
@@ -1373,7 +1460,9 @@ export default function ManageServicesScreen() {
                 <>
                   <Ionicons name="checkmark-circle" size={19} color={colors.onBrand} />
                   <Text style={[styles.saveServiceCTAText, { color: colors.onBrand }]}>
-                    {editingServiceId ? "Save Service Changes" : "Publish to Salon Catalog"}
+                    {editingServiceId
+                      ? (language === "fr" ? "Enregistrer les modifications" : "Save Service Changes")
+                      : (language === "fr" ? "Publier au catalogue" : "Publish to Salon Catalog")}
                   </Text>
                 </>
               )}
@@ -1386,16 +1475,18 @@ export default function ManageServicesScreen() {
       <CustomModal
         visible={!!serviceToDelete}
         onClose={() => setServiceToDelete(null)}
-        title={t("manageServices.deleteServiceTitle") || "Delete Service"}
+        title={t("manageServices.deleteServiceTitle") || (language === "fr" ? "Supprimer le service" : "Delete Service")}
         description={
           serviceToDelete
-            ? `Are you sure you want to remove "${serviceToDelete.name}" from your service catalog? This action cannot be undone.`
+            ? (language === "fr"
+                ? `Êtes-vous sûr de vouloir retirer "${serviceToDelete.name}" de votre catalogue de services ? Cette action est irréversible.`
+                : `Are you sure you want to remove "${serviceToDelete.name}" from your service catalog? This action cannot be undone.`)
             : ""
         }
         icon="trash-outline"
-        primaryText="Delete Service"
+        primaryText={language === "fr" ? "Supprimer le service" : "Delete Service"}
         primaryDanger={true}
-        secondaryText="Keep Service"
+        secondaryText={language === "fr" ? "Conserver" : "Keep Service"}
         onPrimary={confirmDeleteService}
       />
 

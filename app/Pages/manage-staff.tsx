@@ -57,7 +57,7 @@ const ROLES = [
 export default function ManageStaffScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const themeImages = useThemeImages();
   const profilePic = themeImages.profilePic;
   const { user } = useAuth();
@@ -124,9 +124,14 @@ export default function ManageStaffScreen() {
       setJoinRequests(Array.isArray(requests) ? requests : []);
       setClientsDirectory(Array.isArray(clients) ? clients : []);
     } catch {
-      showToast("Unable to refresh staff roster.", "error");
+      showToast(
+        language === "fr"
+          ? "Impossible d'actualiser la liste du personnel."
+          : "Unable to refresh staff roster.",
+        "error"
+      );
     }
-  }, [salonId, showToast]);
+  }, [salonId, showToast, language]);
 
   const handleRespondJoinRequest = async (requestId: number, action: "accept" | "reject") => {
     setIsRespondingToRequest(requestId);
@@ -134,13 +139,16 @@ export default function ManageStaffScreen() {
       await barberService.respondToJoinRequest(salonId, requestId, action);
       showToast(
         action === "accept"
-          ? "Stylist accepted onto salon floor!"
-          : "Stylist join request declined.",
+          ? (language === "fr" ? "Coiffeur accepté dans le salon !" : "Stylist accepted onto salon floor!")
+          : (language === "fr" ? "Demande d'adhésion refusée." : "Stylist join request declined."),
         action === "accept" ? "success" : "info"
       );
       await fetchStaffAndClients();
     } catch (e: any) {
-      showToast(e?.message || "Failed to respond to join request.", "error");
+      showToast(
+        e?.message || (language === "fr" ? "Échec de réponse à la demande." : "Failed to respond to join request."),
+        "error"
+      );
     } finally {
       setIsRespondingToRequest(null);
     }
@@ -159,8 +167,13 @@ export default function ManageStaffScreen() {
     setRefreshing(true);
     await fetchStaffAndClients();
     setRefreshing(false);
-    showToast("Staff directory & invites refreshed.", "info");
-  }, [fetchStaffAndClients, showToast]);
+    showToast(
+      language === "fr"
+        ? "Répertoire du personnel et invitations actualisés."
+        : "Staff directory & invites refreshed.",
+      "info"
+    );
+  }, [fetchStaffAndClients, showToast, language]);
 
   const handleSearchClients = async (query: string) => {
     setClientSearchQuery(query);
@@ -170,7 +183,12 @@ export default function ManageStaffScreen() {
 
   const handleSendInvite = async (isDraft: boolean = false) => {
     if (!selectedClient) {
-      showToast("Please select a registered stylist from the directory.", "warning");
+      showToast(
+        language === "fr"
+          ? "Veuillez sélectionner un coiffeur inscrit dans l'annuaire."
+          : "Please select a registered stylist from the directory.",
+        "warning"
+      );
       return;
     }
 
@@ -178,7 +196,12 @@ export default function ManageStaffScreen() {
       (s) => s.id === selectedClient.id || s.name.toLowerCase() === selectedClient.name.toLowerCase()
     );
     if (isAlreadyStaff) {
-      showToast(`${selectedClient.name} is already an active staff member.`, "info");
+      showToast(
+        language === "fr"
+          ? `${selectedClient.name} est déjà un membre actif du personnel.`
+          : `${selectedClient.name} is already an active staff member.`,
+        "info"
+      );
       return;
     }
 
@@ -186,7 +209,12 @@ export default function ManageStaffScreen() {
       (inv) => inv.clientId === selectedClient.id || inv.clientEmail === selectedClient.email
     );
     if (isAlreadyPending && !isDraft) {
-      showToast(`An invitation has already been sent to ${selectedClient.name}.`, "info");
+      showToast(
+        language === "fr"
+          ? `Une invitation a déjà été envoyée à ${selectedClient.name}.`
+          : `An invitation has already been sent to ${selectedClient.name}.`,
+        "info"
+      );
       return;
     }
 
@@ -202,19 +230,34 @@ export default function ManageStaffScreen() {
 
       if (isDraft) {
         setStillToSendInvites((prev) => [invite, ...prev]);
-        showToast(`Invitation for ${selectedClient.name} saved to drafts.`, "success");
+        showToast(
+          language === "fr"
+            ? `Invitation pour ${selectedClient.name} enregistrée dans les brouillons.`
+            : `Invitation for ${selectedClient.name} saved to drafts.`,
+          "success"
+        );
         setSelectedClient(null);
         setClientSearchQuery("");
         setActiveTab("still_to_send");
       } else {
         setPendingInvites((prev) => [invite, ...prev]);
-        showToast(`Invitation sent to ${selectedClient.name}!`, "success");
+        showToast(
+          language === "fr"
+            ? `Invitation envoyée à ${selectedClient.name} !`
+            : `Invitation sent to ${selectedClient.name}!`,
+          "success"
+        );
         setSelectedClient(null);
         setClientSearchQuery("");
         setActiveTab("pending");
       }
     } catch {
-      showToast("Failed to process invitation. Please try again.", "error");
+      showToast(
+        language === "fr"
+          ? "Échec de l'envoi de l'invitation. Veuillez réessayer."
+          : "Failed to process invitation. Please try again.",
+        "error"
+      );
     } finally {
       setIsInviting(false);
     }
@@ -225,25 +268,42 @@ export default function ManageStaffScreen() {
       await barberService.updateStaffInviteStatus(salonId, invite.id, "pending");
       setStillToSendInvites((prev) => prev.filter((i) => i.id !== invite.id));
       setPendingInvites((prev) => [{ ...invite, status: "Pending", rawStatus: "pending" }, ...prev]);
-      showToast(`Invitation sent to ${invite.clientName}!`, "success");
+      showToast(
+        language === "fr"
+          ? `Invitation envoyée à ${invite.clientName} !`
+          : `Invitation sent to ${invite.clientName}!`,
+        "success"
+      );
     } catch {
-      showToast("Failed to send draft invitation.", "error");
+      showToast(
+        language === "fr"
+          ? "Échec de l'envoi de l'invitation brouillon."
+          : "Failed to send draft invitation.",
+        "error"
+      );
     }
   };
 
   const handleDeleteDraft = (invite: any) => {
     Alert.alert(
-      "Delete Draft",
-      `Delete the draft invite for ${invite.clientName}?`,
+      language === "fr" ? "Supprimer le brouillon" : "Delete Draft",
+      language === "fr"
+        ? `Supprimer le brouillon d'invitation pour ${invite.clientName} ?`
+        : `Delete the draft invite for ${invite.clientName}?`,
       [
-        { text: "Keep Draft", style: "cancel" },
+        { text: language === "fr" ? "Garder" : "Keep Draft", style: "cancel" },
         {
-          text: "Delete",
+          text: language === "fr" ? "Supprimer" : "Delete",
           style: "destructive",
           onPress: async () => {
             await barberService.cancelStaffInvite(salonId, invite.id);
             setStillToSendInvites((prev) => prev.filter((i) => i.id !== invite.id));
-            showToast(`Draft for ${invite.clientName} deleted.`, "info");
+            showToast(
+              language === "fr"
+                ? `Brouillon pour ${invite.clientName} supprimé.`
+                : `Draft for ${invite.clientName} deleted.`,
+              "info"
+            );
           },
         },
       ]
@@ -252,17 +312,24 @@ export default function ManageStaffScreen() {
 
   const handleCancelInvite = (inviteId: string | number, clientName: string) => {
     Alert.alert(
-      "Revoke Invitation",
-      `Are you sure you want to cancel the staff invite for ${clientName}?`,
+      language === "fr" ? "Révoquer l'invitation" : "Revoke Invitation",
+      language === "fr"
+        ? `Êtes-vous sûr de vouloir annuler l'invitation de ${clientName} ?`
+        : `Are you sure you want to cancel the staff invite for ${clientName}?`,
       [
-        { text: "Keep Invite", style: "cancel" },
+        { text: language === "fr" ? "Garder" : "Keep Invite", style: "cancel" },
         {
-          text: "Revoke",
+          text: language === "fr" ? "Révoquer" : "Revoke",
           style: "destructive",
           onPress: async () => {
             await barberService.cancelStaffInvite(salonId, inviteId);
             setPendingInvites((prev) => prev.filter((i) => i.id !== inviteId));
-            showToast(`Invitation for ${clientName} revoked.`, "info");
+            showToast(
+              language === "fr"
+                ? `Invitation pour ${clientName} révoquée.`
+                : `Invitation for ${clientName} revoked.`,
+              "info"
+            );
           },
         },
       ]
@@ -277,20 +344,30 @@ export default function ManageStaffScreen() {
       );
       setStatusModalVisible(false);
       setSelectedStaff(null);
-      showToast(`${member.name}'s status changed to ${nextStatus}.`, "success");
+      showToast(
+        language === "fr"
+          ? `Statut de ${member.name} modifié en ${nextStatus}.`
+          : `${member.name}'s status changed to ${nextStatus}.`,
+        "success"
+      );
     } catch {
-      showToast("Failed to update staff status.", "error");
+      showToast(
+        language === "fr" ? "Échec de mise à jour du statut." : "Failed to update staff status.",
+        "error"
+      );
     }
   };
 
   const handleRemoveStaff = async (member: StaffMember) => {
     Alert.alert(
-      "Remove Staff Member",
-      `Are you sure you want to remove ${member.name} from ${salonName}? They will revert to a standard profile.`,
+      language === "fr" ? "Retirer un membre du personnel" : "Remove Staff Member",
+      language === "fr"
+        ? `Êtes-vous sûr de vouloir retirer ${member.name} de ${salonName} ? Il reviendra à un profil standard.`
+        : `Are you sure you want to remove ${member.name} from ${salonName}? They will revert to a standard profile.`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: language === "fr" ? "Annuler" : "Cancel", style: "cancel" },
         {
-          text: "Remove",
+          text: language === "fr" ? "Retirer" : "Remove",
           style: "destructive",
           onPress: async () => {
             try {
@@ -298,9 +375,17 @@ export default function ManageStaffScreen() {
               setStaffList((prev) => prev.filter((s) => s.id !== member.id));
               setStatusModalVisible(false);
               setSelectedStaff(null);
-              showToast(`${member.name} removed from salon staff.`, "info");
+              showToast(
+                language === "fr"
+                  ? `${member.name} retiré du personnel du salon.`
+                  : `${member.name} removed from salon staff.`,
+                "info"
+              );
             } catch {
-              showToast("Failed to remove staff member.", "error");
+              showToast(
+                language === "fr" ? "Échec du retrait du membre." : "Failed to remove staff member.",
+                "error"
+              );
             }
           },
         },
@@ -357,7 +442,7 @@ export default function ManageStaffScreen() {
             {t("manageStaff.staffManagement") || "Staff Management"}
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
-            {salonName} • {staffList.length} stylists registered
+            {salonName} • {staffList.length} {language === "fr" ? "coiffeurs enregistrés" : "stylists registered"}
           </Text>
         </View>
 
@@ -550,7 +635,7 @@ export default function ManageStaffScreen() {
                     {staffList.length}
                   </Text>
                   <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-                    Total Stylists
+                    {language === "fr" ? "Total Coiffeurs" : "Total Stylists"}
                   </Text>
                 </View>
 
@@ -572,7 +657,7 @@ export default function ManageStaffScreen() {
                     {suspendedCount}
                   </Text>
                   <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-                    Suspended
+                    {language === "fr" ? "Suspendus" : "Suspended"}
                   </Text>
                 </View>
 
@@ -583,7 +668,7 @@ export default function ManageStaffScreen() {
                     {pendingInvites.length}
                   </Text>
                   <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-                    Invites Sent
+                    {language === "fr" ? "Invitations envoyées" : "Invites Sent"}
                   </Text>
                 </View>
               </View>
@@ -630,8 +715,8 @@ export default function ManageStaffScreen() {
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
                   {activeStaffSearch
-                    ? `No staff matches "${activeStaffSearch}".`
-                    : "No staff barbers registered under your salon yet."}
+                    ? (language === "fr" ? `Aucun coiffeur ne correspond à "${activeStaffSearch}".` : `No staff matches "${activeStaffSearch}".`)
+                    : (language === "fr" ? "Aucun coiffeur enregistré sous votre salon pour le moment." : "No staff barbers registered under your salon yet.")}
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.85}
@@ -703,7 +788,7 @@ export default function ManageStaffScreen() {
                         </View>
 
                         <Text style={[styles.staffRoleText, { color: colors.secondarytext }]}>
-                          {member.role || "Salon Stylist"}
+                          {member.role || (language === "fr" ? "Coiffeur du salon" : "Salon Stylist")}
                         </Text>
                         {member.phone && (
                           <Text style={[styles.staffPhoneText, { color: colors.secondarytext }]}>
@@ -942,7 +1027,7 @@ export default function ManageStaffScreen() {
                 <View style={styles.formCardHeader}>
                   <Ionicons name="ribbon-outline" size={18} color={colors.primary} />
                   <Text style={[styles.formCardTitle, { color: colors.primarytext }]}>
-                    Assign Staff Title for {selectedClient.name}
+                    {language === "fr" ? `Attribuer un titre à ${selectedClient.name}` : `Assign Staff Title for ${selectedClient.name}`}
                   </Text>
                 </View>
 
@@ -1009,7 +1094,7 @@ export default function ManageStaffScreen() {
                       <>
                         <Ionicons name="paper-plane" size={16} color={colors.onBrand} />
                         <Text style={[styles.sendInviteCTAText, { color: colors.onBrand }]}>
-                          Send Official Invite
+                          {language === "fr" ? "Envoyer l'invitation officielle" : "Send Official Invite"}
                         </Text>
                       </>
                     )}
@@ -1052,7 +1137,7 @@ export default function ManageStaffScreen() {
                       {inv.clientName || inv.clientEmail}
                     </Text>
                     <Text style={[styles.inviteRoleText, { color: colors.secondarytext }]}>
-                      Role: {inv.role || "Stylist"}
+                      {language === "fr" ? "Rôle" : "Role"}: {inv.role || (language === "fr" ? "Coiffeur" : "Stylist")}
                     </Text>
                     <Text style={[styles.inviteStatusBadgeText, { color: "#F59E0B" }]}>
                       {t("manageStaff.pendingStylistAcceptance") || "Pending Stylist Acceptance"}
@@ -1070,7 +1155,7 @@ export default function ManageStaffScreen() {
                       },
                     ]}
                   >
-                    <Text style={styles.revokeBtnText}>Revoke</Text>
+                    <Text style={styles.revokeBtnText}>{language === "fr" ? "Révoquer" : "Revoke"}</Text>
                   </TouchableOpacity>
                 </View>
               ))
@@ -1090,7 +1175,7 @@ export default function ManageStaffScreen() {
               >
                 <Ionicons name="document-text-outline" size={40} color={colors.secondarytext} />
                 <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-                  No Saved Drafts
+                  {language === "fr" ? "Aucun brouillon enregistré" : "No Saved Drafts"}
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
                   {t("manageStaff.noUnissuedDrafts") || "You don't have any unissued draft invitations pending."}
@@ -1110,7 +1195,7 @@ export default function ManageStaffScreen() {
                       {draft.clientName}
                     </Text>
                     <Text style={[styles.inviteRoleText, { color: colors.secondarytext }]}>
-                      Role: {draft.role || "Stylist"}
+                      {language === "fr" ? "Rôle" : "Role"}: {draft.role || (language === "fr" ? "Coiffeur" : "Stylist")}
                     </Text>
                     <Text style={[styles.inviteStatusBadgeText, { color: colors.primary }]}>
                       {t("manageStaff.draftStillToSend") || "Draft • Still to Send"}
@@ -1138,7 +1223,7 @@ export default function ManageStaffScreen() {
                       style={[styles.sendNowBtn, { backgroundColor: colors.primary }]}
                     >
                       <Text style={[styles.sendNowBtnText, { color: colors.onBrand }]}>
-                        Send Now
+                        {language === "fr" ? "Envoyer" : "Send Now"}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1181,16 +1266,30 @@ export default function ManageStaffScreen() {
                   <View style={[styles.statusOptionDot, { backgroundColor: col }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.statusOptionTitle, { color: colors.primarytext }]}>
-                      {st}
+                      {st === "Active"
+                        ? (language === "fr" ? "Actif" : "Active")
+                        : st === "Suspended"
+                        ? (language === "fr" ? "Suspendu" : "Suspended")
+                        : st === "On Break"
+                        ? (language === "fr" ? "En pause" : "On Break")
+                        : (language === "fr" ? "Hors service" : "Off Duty")}
                     </Text>
                     <Text style={[styles.statusOptionDesc, { color: colors.secondarytext }]}>
                       {st === "Active"
-                        ? "Stylist is taking bookings and active on chair."
+                        ? (language === "fr"
+                            ? "Le coiffeur prend des rendez-vous et est actif sur son fauteuil."
+                            : "Stylist is taking bookings and active on chair.")
                         : st === "Suspended"
-                        ? "Temporarily paused from accepting bookings."
+                        ? (language === "fr"
+                            ? "Temporairement mis en pause pour la prise de rendez-vous."
+                            : "Temporarily paused from accepting bookings.")
                         : st === "On Break"
-                        ? "Midday pause or temporary meal break."
-                        : "Offline and not available for walk-ins."}
+                        ? (language === "fr"
+                            ? "Pause repas ou courte pause de mi-journée."
+                            : "Midday pause or temporary meal break.")
+                        : (language === "fr"
+                            ? "Hors ligne et non disponible pour les sans rendez-vous."
+                            : "Offline and not available for walk-ins.")}
                     </Text>
                   </View>
                   {isCurrent && (
