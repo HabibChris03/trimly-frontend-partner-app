@@ -543,9 +543,9 @@ export const fr = {
   },
   "onboarding": {
     "selectLanguageTitle": "Choisissez Votre Langue",
-    "selectLanguageSubtitle": "Select your preferred language to continue",
-    "continueInEnglish": "Continue in English",
-    "continueInFrench": "Continuer en Français",
+    "selectLanguageSubtitle": "Choisissez votre langue préférée pour continuer",
+    "continueInEnglish": "Continuer en anglais",
+    "continueInFrench": "Continuer en français",
     "slide1Title": "Votre Coupe Parfaite,\nÀ la Demande",
     "slide1Subtitle": "Trouvez les meilleurs coiffeurs près de chez vous. Réservez en quelques secondes, sans attente.",
     "slide2Title": "Parcourez les Styles &\nRéservez Instantanément",

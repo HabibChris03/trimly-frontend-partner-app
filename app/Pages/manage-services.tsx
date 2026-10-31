@@ -695,7 +695,7 @@ export default function ManageServicesScreen() {
                       {service.name}
                     </Text>
                     <Text style={[styles.servicePrice, { color: colors.primary }]}>
-                      {service.price.toLocaleString()} CFA
+                      {(Number(service.price) > 0 ? Number(service.price) : 1000).toLocaleString()} CFA
                     </Text>
                   </View>
 

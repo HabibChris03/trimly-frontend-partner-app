@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import useColors from "@/hooks/usecolor";
 import { useTheme } from "@/context/ThemeContext";
+import { useLanguage } from "@/context/LanguageContext";
+import { translateToastText } from "@/locales/toastTranslations";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 
@@ -34,6 +36,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  let currentLanguage = "en";
+  try {
+    const langCtx = useLanguage();
+    if (langCtx?.language) currentLanguage = langCtx.language;
+  } catch {
+    // Graceful fallback
+  }
   const [toastData, setToastData] = useState<ToastOptions | null>(null);
 
   const translateY = useRef(new Animated.Value(-100)).current;
@@ -64,8 +73,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       const parsed: ToastOptions =
         typeof options === "string"
-          ? { message: options, type }
-          : { ...options, type: options.type || type };
+          ? { message: translateToastText(options, currentLanguage), type }
+          : {
+              ...options,
+              title: options.title ? translateToastText(options.title, currentLanguage) : undefined,
+              message: translateToastText(options.message, currentLanguage),
+              type: options.type || type,
+            };
 
       setToastData(parsed);
 
@@ -90,7 +104,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         hideToast();
       }, duration);
     },
-    [hideToast, insets.top, opacity, translateY]
+    [hideToast, insets.top, opacity, translateY, currentLanguage]
   );
 
   const getAccent = () => {
