@@ -59,8 +59,8 @@ export default function LoginScreen() {
 
         const isSubBarber = Boolean(
           res?.user?.parent_salon_id ||
-            res?.user?.is_sub_barber ||
-            (res?.user as any)?.staff_title
+          res?.user?.is_sub_barber ||
+          (res?.user as any)?.staff_title
         );
 
         showToast("Signed in successfully.", "success");
@@ -116,8 +116,8 @@ export default function LoginScreen() {
 
         const isSubBarber = Boolean(
           res?.user?.parent_salon_id ||
-            res?.user?.is_sub_barber ||
-            (res?.user as any)?.staff_title
+          res?.user?.is_sub_barber ||
+          (res?.user as any)?.staff_title
         );
 
         if (isSubBarber) {
@@ -274,16 +274,6 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          <AuthDivider text="or" />
-
-          <SocialButton
-            provider="google"
-            onPress={() => handleSocialAuth("google")}
-          />
-          <SocialButton
-            provider="apple"
-            onPress={() => handleSocialAuth("apple")}
-          />
 
           <View style={styles.footerRow}>
             <Text

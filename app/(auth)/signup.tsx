@@ -505,25 +505,7 @@ export default function SignupScreen() {
     }
   };
 
-  const handleSocialAuth = async (provider: "google" | "apple") => {
-    if (provider === "google") {
-      try {
-        setIsSubmitting(true);
-        const res = await promptGoogleAuth();
-        if (res.type === "success" && (res.idToken || res.accessToken)) {
-          await processGoogleLogin(res.idToken || res.accessToken!, res.accessToken);
-        } else if (res.type === "error" && res.error) {
-          showToast(res.error, "error");
-        }
-      } catch (e: any) {
-        showToast(e?.message || "Could not launch Google Sign-In", "error");
-      } finally {
-        setIsSubmitting(false);
-      }
-      return;
-    }
-    showToast("Apple sign-up is currently unavailable. Please use Google or email.", "info");
-  };
+
 
   const getStepTitles = () => {
     switch (currentStep) {
@@ -1255,19 +1237,6 @@ export default function SignupScreen() {
                 />
               </TouchableOpacity>
 
-              {/* Social Auth Divider */}
-              <AuthDivider text={t("auth.orSignUpFast") || "or sign up fast"} />
-
-              <SocialButton
-                provider="google"
-                onPress={() => handleSocialAuth("google")}
-                title={t("auth.continueWithGoogle")}
-              />
-              <SocialButton
-                provider="apple"
-                onPress={() => handleSocialAuth("apple")}
-                title={t("auth.continueWithApple")}
-              />
 
               {/* Footer to Login */}
               <View style={styles.footerRow}>
@@ -1443,88 +1412,88 @@ export default function SignupScreen() {
               {/* Mandatory Primary Service for Lead Stylist and Solo Barbers */}
               {((primaryCategory === "salon" && salonSubOption === "manager_lead") ||
                 (primaryCategory === "barber" && barberSubOption === "solo")) && (
-                <View
-                  style={[
-                    styles.primaryServiceContainer,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: "rgba(37, 41, 38, 0.38)",
-                    },
-                  ]}
-                >
-                  <View style={styles.serviceHeaderRow}>
-                    <Text
-                      style={[
-                        styles.sectionTitle,
-                        { color: colors.primaryText },
-                      ]}
-                    >
-                      {primaryCategory === "salon"
-                        ? (t("auth.leadStylistServiceRequired") || "Lead Stylist Primary Service (Required)")
-                        : (t("auth.primaryServiceRequired") || "Primary Service (Required)")}
-                    </Text>
-                    <View
-                      style={[
-                        styles.serviceRequiredBadge,
-                        {
-                          backgroundColor: colors.brandSoft,
-                          borderColor: colors.brandBorder,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.serviceRequiredBadgeText,
-                          { color: colors.brand },
-                        ]}
-                      >{t("auth.atLeastOneService") || "At least 1 service"}</Text>
-                    </View>
-                  </View>
-                  <Text
+                  <View
                     style={[
-                      styles.serviceHelperText,
-                      { color: colors.secondaryText },
+                      styles.primaryServiceContainer,
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: "rgba(37, 41, 38, 0.38)",
+                      },
                     ]}
                   >
-                    {t("auth.serviceMinPriceNotice") || "Every active stylist on Trimly must offer at least 1 service. The default minimum price is 1,000 CFA."}
-                  </Text>
+                    <View style={styles.serviceHeaderRow}>
+                      <Text
+                        style={[
+                          styles.sectionTitle,
+                          { color: colors.primaryText },
+                        ]}
+                      >
+                        {primaryCategory === "salon"
+                          ? (t("auth.leadStylistServiceRequired") || "Lead Stylist Primary Service (Required)")
+                          : (t("auth.primaryServiceRequired") || "Primary Service (Required)")}
+                      </Text>
+                      <View
+                        style={[
+                          styles.serviceRequiredBadge,
+                          {
+                            backgroundColor: colors.brandSoft,
+                            borderColor: colors.brandBorder,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.serviceRequiredBadgeText,
+                            { color: colors.brand },
+                          ]}
+                        >{t("auth.atLeastOneService") || "At least 1 service"}</Text>
+                      </View>
+                    </View>
+                    <Text
+                      style={[
+                        styles.serviceHelperText,
+                        { color: colors.secondaryText },
+                      ]}
+                    >
+                      {t("auth.serviceMinPriceNotice") || "Every active stylist on Trimly must offer at least 1 service. The default minimum price is 1,000 CFA."}
+                    </Text>
 
-                  <InputField
-                    label={t("auth.primaryServiceName")}
-                    iconName="cut-outline"
-                    placeholder="e.g. Signature Salon Haircut"
-                    value={initialServiceName}
-                    onChangeText={(val) => {
-                      setInitialServiceName(val);
-                      if (errors.initialServiceName) {
-                        setErrors((prev) => ({
-                          ...prev,
-                          initialServiceName: "",
-                        }));
-                      }
-                    }}
-                    error={errors.initialServiceName}
-                  />
+                    <InputField
+                      label={t("auth.primaryServiceName")}
+                      iconName="cut-outline"
+                      placeholder="e.g. Signature Salon Haircut"
+                      value={initialServiceName}
+                      onChangeText={(val) => {
+                        setInitialServiceName(val);
+                        if (errors.initialServiceName) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            initialServiceName: "",
+                          }));
+                        }
+                      }}
+                      error={errors.initialServiceName}
+                    />
 
-                  <InputField
-                    label={t("auth.primaryServicePrice")}
-                    iconName="pricetag-outline"
-                    placeholder="1000"
-                    value={initialServicePrice}
-                    onChangeText={(val) => {
-                      setInitialServicePrice(val);
-                      if (errors.initialServicePrice) {
-                        setErrors((prev) => ({
-                          ...prev,
-                          initialServicePrice: "",
-                        }));
-                      }
-                    }}
-                    keyboardType="numeric"
-                    error={errors.initialServicePrice}
-                  />
-                </View>
-              )}
+                    <InputField
+                      label={t("auth.primaryServicePrice")}
+                      iconName="pricetag-outline"
+                      placeholder="1000"
+                      value={initialServicePrice}
+                      onChangeText={(val) => {
+                        setInitialServicePrice(val);
+                        if (errors.initialServicePrice) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            initialServicePrice: "",
+                          }));
+                        }
+                      }}
+                      keyboardType="numeric"
+                      error={errors.initialServicePrice}
+                    />
+                  </View>
+                )}
 
               {/* Action Buttons Row */}
               <View style={styles.stepButtonRow}>
@@ -1716,19 +1685,7 @@ export default function SignupScreen() {
                 </TouchableOpacity>
               </View>
 
-              {/* Social Auth Divider */}
-              <AuthDivider text="or register with" />
 
-              <SocialButton
-                provider="google"
-                onPress={() => handleSocialAuth("google")}
-                title={t("auth.signUpWithGoogle")}
-              />
-              <SocialButton
-                provider="apple"
-                onPress={() => handleSocialAuth("apple")}
-                title={t("auth.signUpWithApple")}
-              />
 
               {/* Footer */}
               <View style={styles.footerRow}>
