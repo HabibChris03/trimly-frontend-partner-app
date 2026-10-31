@@ -1224,10 +1224,12 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="log-out" size={32} color="#EF4444" />
             </View>
             <Text style={[styles.modalWarningTitle, { color: colors.primaryText }]}>
-              Are you sure you want to log out?
+              {t("common.logoutConfirmMsg") || "Are you sure you want to log out?"}
             </Text>
             <Text style={[styles.modalWarningText, { color: colors.secondaryText }]}>
-              You will need your password or Google credentials to log back in. Your active bookings and schedule remain securely preserved.
+              {language === "fr"
+                ? "Vous aurez besoin de votre mot de passe ou compte Google pour vous reconnecter. Vos réservations actives et votre planning restent sécurisés."
+                : "You will need your password or Google credentials to log back in. Your active bookings and schedule remain securely preserved."}
             </Text>
 
             <View style={styles.modalActionRow}>
@@ -1237,7 +1239,7 @@ export default function BarberProfileSettingsScreen() {
                 style={[styles.modalCancelBtn, { backgroundColor: colors.elevated, borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelBtnText, { color: colors.primaryText }]}>
-                  Cancel
+                  {t("common.cancel") || "Cancel"}
                 </Text>
               </TouchableOpacity>
 
@@ -1246,7 +1248,7 @@ export default function BarberProfileSettingsScreen() {
                 onPress={handleLogOutConfirm}
                 style={[styles.modalDangerBtn, { backgroundColor: "#EF4444" }]}
               >
-                <Text style={styles.modalDangerBtnText}>Log Out</Text>
+                <Text style={styles.modalDangerBtnText}>{t("common.logout") || "Log Out"}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1408,10 +1410,12 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="business" size={32} color="#EF4444" />
             </View>
             <Text style={[styles.modalWarningTitle, { color: colors.primaryText }]}>
-              Operate as Independent Stylist?
+              {language === "fr" ? "Opérer en tant que coiffeur indépendant ?" : "Operate as Independent Stylist?"}
             </Text>
             <Text style={[styles.modalWarningText, { color: colors.secondaryText }]}>
-              You will be disconnected from {user?.parent_salon_name || "your current salon"} and will operate as a solo barber. Your appointments and portfolio remain safe.
+              {language === "fr"
+                ? `Vous serez dissocié(e) de ${user?.parent_salon_name || "votre salon actuel"} et opérerez en solo. Vos rendez-vous et votre portfolio restent conservés.`
+                : `You will be disconnected from ${user?.parent_salon_name || "your current salon"} and will operate as a solo barber. Your appointments and portfolio remain safe.`}
             </Text>
 
             <View style={styles.modalActionRow}>
@@ -1421,7 +1425,7 @@ export default function BarberProfileSettingsScreen() {
                 style={[styles.modalCancelBtn, { backgroundColor: colors.elevated, borderColor: colors.border }]}
               >
                 <Text style={[styles.modalCancelBtnText, { color: colors.primaryText }]}>
-                  Cancel
+                  {t("common.cancel") || "Cancel"}
                 </Text>
               </TouchableOpacity>
 
@@ -1434,7 +1438,7 @@ export default function BarberProfileSettingsScreen() {
                 {isUnlinkingSalon ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.modalDangerBtnText}>Unlink Salon</Text>
+                  <Text style={styles.modalDangerBtnText}>{language === "fr" ? "Dissocier du salon" : "Unlink Salon"}</Text>
                 )}
               </TouchableOpacity>
             </View>
