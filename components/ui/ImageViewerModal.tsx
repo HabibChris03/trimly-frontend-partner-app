@@ -39,7 +39,7 @@ export default function ImageViewerModal({
   price,
   onBookStyle,
 }: ImageViewerModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const colors = useColors();
 
   if (!visible || !imageUrl) return null;
@@ -66,7 +66,7 @@ export default function ImageViewerModal({
                 style={[styles.headerSubtitle, { color: colors.brand }]}
                 numberOfLines={1}
               >
-                by {barberName}
+                {language === "fr" ? "par" : "by"} {barberName}
               </Text>
             )}
           </View>
@@ -115,7 +115,7 @@ export default function ImageViewerModal({
             {price !== undefined && price > 0 && (
               <View style={styles.priceBadge}>
                 <Text style={styles.priceBadgeText}>
-                  {price.toLocaleString()} XAF
+                  {(Number(price) > 0 ? Number(price) : 1000).toLocaleString()} {t("common.cfa")}
                 </Text>
               </View>
             )}
@@ -123,7 +123,7 @@ export default function ImageViewerModal({
             {likesCount !== undefined && likesCount > 0 && (
               <View style={styles.likesBadge}>
                 <Ionicons name="heart" size={14} color="#EF4444" />
-                <Text style={styles.likesText}>{likesCount} likes</Text>
+                <Text style={styles.likesText}>{likesCount} {language === "fr" ? "j'aime" : "likes"}</Text>
               </View>
             )}
           </View>
@@ -139,7 +139,7 @@ export default function ImageViewerModal({
             >
               <Ionicons name="calendar-outline" size={18} color="#171918" />
               <Text style={styles.bookStyleButtonText}>
-                Book This Style {price ? `• ${price.toLocaleString()} XAF` : ""}
+                Book This Style {price ? `• ${(Number(price) > 0 ? Number(price) : 1000).toLocaleString()} {t("common.cfa")}` : ""}
               </Text>
             </TouchableOpacity>
           )}

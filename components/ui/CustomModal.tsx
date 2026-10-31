@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import useColors from "@/hooks/usecolor";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface CustomModalProps {
   visible: boolean;
@@ -67,19 +68,28 @@ export function CustomModal({
 
   if (!visible) return null;
 
+  let currentLang = "en";
+  try {
+    const langCtx = useLanguage();
+    if (langCtx?.language) currentLang = langCtx.language;
+  } catch {}
+
+  const defaultConfirm = currentLang === "fr" ? "Confirmer" : "Confirm";
+  const defaultCancel = currentLang === "fr" ? "Annuler" : "Cancel";
+
   const effectivePrimaryText =
     primaryText !== undefined
       ? primaryText
       : children && !onPrimary
       ? null
-      : "Confirm";
+      : defaultConfirm;
 
   const effectiveSecondaryText =
     secondaryText !== undefined
       ? secondaryText
       : children && !onSecondary
       ? null
-      : "Cancel";
+      : defaultCancel;
 
   const shouldShowClose = showCloseButton || scrollable;
 

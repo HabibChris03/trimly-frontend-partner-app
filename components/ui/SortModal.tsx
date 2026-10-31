@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import useColors from "@/hooks/usecolor";
+import { useLanguage } from "@/context/LanguageContext";
 
 export interface SortOption {
   id: string;
@@ -28,12 +29,18 @@ interface SortModalProps {
 export default function SortModal({
   visible,
   onClose,
-  title = "Sort Results",
+  title,
   options,
   selectedOption,
   onSelectOption,
 }: SortModalProps) {
   const colors = useColors();
+  let currentLang = "en";
+  try {
+    const langCtx = useLanguage();
+    if (langCtx?.language) currentLang = langCtx.language;
+  } catch {}
+  const resolvedTitle = title || (currentLang === "fr" ? "Trier les résultats" : "Sort Results");
 
   return (
     <Modal
@@ -56,7 +63,7 @@ export default function SortModal({
                 <View style={styles.headerTitleWrap}>
                   <Ionicons name="swap-vertical" size={20} color={colors.accent} />
                   <Text style={[styles.title, { color: colors.primaryText }]}>
-                    {title}
+                    {resolvedTitle}
                   </Text>
                 </View>
                 <TouchableOpacity
