@@ -30,7 +30,7 @@ export default function BarberBookingDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const params = useLocalSearchParams<{
     bookingId?: string;
@@ -168,7 +168,12 @@ export default function BarberBookingDetailScreen() {
 
   const handleStartService = async () => {
     if (!isBypassingPin && arrivalPinInput.trim().length !== 4) {
-      showToast("Please enter the 4-digit client arrival PIN", "error");
+      showToast(
+        language === "fr"
+          ? "Veuillez saisir le code d'arrivée à 4 chiffres du client"
+          : "Please enter the 4-digit client arrival PIN",
+        "error"
+      );
       return;
     }
     setIsSubmittingPin(true);
@@ -185,13 +190,24 @@ export default function BarberBookingDetailScreen() {
       }
       setCurrentStatus("shaving...");
       setBooking((prev) => ({ ...(prev || {}), status: "shaving..." } as any));
-      showToast("Service started: shaving...", "success");
+      showToast(
+        language === "fr"
+          ? "Prestation démarrée : coupe en cours..."
+          : "Service started: shaving...",
+        "success"
+      );
       setPinModalVisible(false);
       setArrivalPinInput("");
       setIsBypassingPin(false);
       setBypassReason("");
     } catch (err: any) {
-      showToast(err?.message || "Invalid Arrival PIN. Ask the client for their code.", "error");
+      showToast(
+        err?.message ||
+          (language === "fr"
+            ? "Code d'arrivée invalide. Demandez son code au client."
+            : "Invalid Arrival PIN. Ask the client for their code."),
+        "error"
+      );
     } finally {
       setIsSubmittingPin(false);
     }
@@ -199,7 +215,12 @@ export default function BarberBookingDetailScreen() {
 
   const handleEndService = async () => {
     if (!isBypassingCompletionPin && completionPinInput.trim().length !== 4) {
-      showToast("Please enter the 4-digit ending code provided by the client", "error");
+      showToast(
+        language === "fr"
+          ? "Veuillez saisir le code de fin à 4 chiffres fourni par le client"
+          : "Please enter the 4-digit ending code provided by the client",
+        "error"
+      );
       return;
     }
     setIsSubmittingCompletion(true);
@@ -217,7 +238,9 @@ export default function BarberBookingDetailScreen() {
       setCurrentStatus("Completed");
       setBooking((prev) => ({ ...(prev || {}), status: "Completed" } as any));
       showToast(
-        `Service Ended! ${priceVal.toLocaleString()} CFA credited to your balance.`,
+        language === "fr"
+          ? `Prestation terminée ! ${priceVal.toLocaleString()} CFA crédités sur votre solde.`
+          : `Service Ended! ${priceVal.toLocaleString()} CFA credited to your balance.`,
         "success"
       );
       setCompletionModalVisible(false);
@@ -225,7 +248,13 @@ export default function BarberBookingDetailScreen() {
       setIsBypassingCompletionPin(false);
       setBypassCompletionReason("");
     } catch (err: any) {
-      showToast(err?.message || "Invalid Ending Code. Ask the client for their code.", "error");
+      showToast(
+        err?.message ||
+          (language === "fr"
+            ? "Code de fin invalide. Demandez son code au client."
+            : "Invalid Ending Code. Ask the client for their code."),
+        "error"
+      );
     } finally {
       setIsSubmittingCompletion(false);
     }

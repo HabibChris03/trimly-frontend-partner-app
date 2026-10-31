@@ -37,7 +37,7 @@ const CATEGORIES = [
 ];
 
 export default function SupportChatScreen() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
@@ -86,7 +86,12 @@ export default function SupportChatScreen() {
       }
     } catch {
       if (!isSilent) {
-        showToast("Could not load message history.", "error");
+        showToast(
+          language === "fr"
+            ? "Impossible de charger l'historique des messages."
+            : "Could not load message history.",
+          "error"
+        );
       }
     }
   }, [showToast]);
@@ -148,7 +153,12 @@ export default function SupportChatScreen() {
 
   const handleCreateTicket = async () => {
     if (!newSubject.trim() || !newMessage.trim()) {
-      showToast("Please provide both a subject and an issue description.", "error");
+      showToast(
+        language === "fr"
+          ? "Veuillez renseigner le motif et la description du problème."
+          : "Please provide both a subject and an issue description.",
+        "error"
+      );
       return;
     }
     setIsCreating(true);
@@ -159,7 +169,12 @@ export default function SupportChatScreen() {
         category: newCategory,
       });
 
-      showToast("Issue report filed! Admin team will assist you.", "success");
+      showToast(
+        language === "fr"
+          ? "Signalement enregistré ! L'équipe d'administration va vous aider."
+          : "Issue report filed! Admin team will assist you.",
+        "success"
+      );
       setShowNewModal(false);
       setNewSubject("");
       setNewMessage("");
@@ -169,7 +184,13 @@ export default function SupportChatScreen() {
         setActiveTicketId(res.ticket.id);
       }
     } catch (err: any) {
-      showToast(err?.message || "Could not submit issue report.", "error");
+      showToast(
+        err?.message ||
+          (language === "fr"
+            ? "Impossible d'envoyer le signalement."
+            : "Could not submit issue report."),
+        "error"
+      );
     } finally {
       setIsCreating(false);
     }
@@ -440,10 +461,25 @@ export default function SupportChatScreen() {
             </View>
 
             {/* Category presets */}
-            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>Category</Text>
+            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>
+              {language === "fr" ? "Catégorie" : "Category"}
+            </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
               {CATEGORIES.map((cat) => {
                 const isSelected = cat === newCategory;
+                const catLabel =
+                  language === "fr"
+                    ? cat === "Payout & Earnings"
+                      ? "Versement & Revenus"
+                      : cat === "Booking & Client Dispute"
+                      ? "Litige réservation / Client"
+                      : cat === "App Bug / Technical Issue"
+                      ? "Bug technique"
+                      : cat === "Salon / Staff Account"
+                      ? "Compte Salon / Équipe"
+                      : "Assistance générale"
+                    : cat;
+
                 return (
                   <TouchableOpacity
                     key={cat}
@@ -463,7 +499,7 @@ export default function SupportChatScreen() {
                         { color: isSelected ? "#FFFFFF" : colors.secondarytext },
                       ]}
                     >
-                      {cat}
+                      {catLabel}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -471,7 +507,9 @@ export default function SupportChatScreen() {
             </ScrollView>
 
             {/* Subject */}
-            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>Subject / Topic</Text>
+            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>
+              {language === "fr" ? "Objet / Motif" : "Subject / Topic"}
+            </Text>
             <TextInput
               style={[
                 styles.modalInput,
@@ -481,14 +519,20 @@ export default function SupportChatScreen() {
                   color: colors.primarytext,
                 },
               ]}
-              placeholder="e.g. Problem withdrawing earnings / booking dispute"
+              placeholder={
+                language === "fr"
+                  ? "Ex: Problème de retrait de gains / litige de réservation"
+                  : "e.g. Problem withdrawing earnings / booking dispute"
+              }
               placeholderTextColor={colors.inputPlaceholder}
               value={newSubject}
               onChangeText={setNewSubject}
             />
 
             {/* Message */}
-            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>Details</Text>
+            <Text style={[styles.fieldLabel, { color: colors.primarytext }]}>
+              {language === "fr" ? "Détails" : "Details"}
+            </Text>
             <TextInput
               style={[
                 styles.modalTextArea,
@@ -498,7 +542,12 @@ export default function SupportChatScreen() {
                   color: colors.primarytext,
                 },
               ]}
-              placeholder={t("supportChat.ticketDetailsPlaceholder") || "Provide complete details (booking numbers, client names, timestamps, error messages)..."}
+              placeholder={
+                language === "fr"
+                  ? "Fournissez des détails complets (numéros de réservation, noms de clients, dates, messages d'erreur)..."
+                  : (t("supportChat.ticketDetailsPlaceholder") ||
+                    "Provide complete details (booking numbers, client names, timestamps, error messages)...")
+              }
               placeholderTextColor={colors.inputPlaceholder}
               value={newMessage}
               onChangeText={setNewMessage}
@@ -514,7 +563,7 @@ export default function SupportChatScreen() {
                 style={[styles.modalCancelBtn, { backgroundColor: colors.surfacevariant }]}
               >
                 <Text style={[styles.modalCancelText, { color: colors.secondarytext }]}>
-                  Cancel
+                  {language === "fr" ? "Annuler" : "Cancel"}
                 </Text>
               </TouchableOpacity>
 
@@ -534,7 +583,7 @@ export default function SupportChatScreen() {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={[styles.modalSubmitText, { color: "#FFFFFF" }]}>
-                    Submit Report & Chat
+                    {language === "fr" ? "Envoyer le signalement" : "Submit Report & Chat"}
                   </Text>
                 )}
               </TouchableOpacity>
