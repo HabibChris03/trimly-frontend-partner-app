@@ -54,7 +54,7 @@ const PREF_STYLES = [
 export default function EditProfileScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, updateUser, refreshUser } = useAuth();
   const { showToast } = useToast();
 
@@ -858,7 +858,7 @@ export default function EditProfileScreen() {
             >
               <Ionicons name="camera-outline" size={20} color={colors.brand} />
               <Text style={[styles.photoOptionText, { color: colors.primaryText }]}>
-                Take Photo with Camera
+                {language === "fr" ? "Prendre une photo" : "Take Photo with Camera"}
               </Text>
             </TouchableOpacity>
 
@@ -869,7 +869,7 @@ export default function EditProfileScreen() {
             >
               <Ionicons name="images-outline" size={20} color={colors.brand} />
               <Text style={[styles.photoOptionText, { color: colors.primaryText }]}>
-                Choose from Gallery
+                {language === "fr" ? "Choisir dans la galerie" : "Choose from Gallery"}
               </Text>
             </TouchableOpacity>
 
@@ -885,7 +885,7 @@ export default function EditProfileScreen() {
               >
                 <Ionicons name="trash-outline" size={20} color="#EF4444" />
                 <Text style={[styles.photoOptionText, { color: "#EF4444" }]}>
-                  Remove Current Avatar
+                  {language === "fr" ? "Supprimer l'avatar actuel" : "Remove Current Avatar"}
                 </Text>
               </TouchableOpacity>
             )}
