@@ -110,7 +110,7 @@ export default function ImageViewerModal({
             ) : (
               <View style={styles.categoryBadge}>
                 <Ionicons name="sparkles-outline" size={13} color="#C7F36B" />
-                <Text style={styles.categoryBadgeText}>Custom Cut</Text>
+                <Text style={styles.categoryBadgeText}>{language === "fr" ? "Coupe sur mesure" : "Custom Cut"}</Text>
               </View>
             )}
 
@@ -125,7 +125,7 @@ export default function ImageViewerModal({
             {duration_minutes !== undefined && duration_minutes > 0 && (
               <View style={styles.durationBadge}>
                 <Ionicons name="time-outline" size={13} color="#C7F36B" />
-                <Text style={styles.durationBadgeText}>{duration_minutes} mins</Text>
+                <Text style={styles.durationBadgeText}>{duration_minutes} {language === "fr" ? "min" : "mins"}</Text>
               </View>
             )}
 

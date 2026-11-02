@@ -59,7 +59,7 @@ export default function BarberPortfolioScreen() {
   const params = useLocalSearchParams<{ action?: string }>();
   const { colors, isDark } = useTheme();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
 
   const barberId = user?.id || 4;
@@ -484,7 +484,7 @@ export default function BarberPortfolioScreen() {
             >
               <Ionicons name="camera-outline" size={18} color={colors.onBrand} />
               <Text style={[styles.emptyUploadBtnText, { color: colors.onBrand }]}>
-                Add First Cut
+                {language === "fr" ? "Ajouter une première coupe" : "Add First Cut"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -519,7 +519,7 @@ export default function BarberPortfolioScreen() {
                     ]}
                   >
                     <Text style={[styles.priceOverlayText, { color: colors.onBrand }]}>
-                      {item.price ? `${item.price.toLocaleString()} CFA` : "1,000 CFA"}
+                      {item.price ? `${item.price.toLocaleString()} ${t("common.cfa") || "CFA"}` : `1,000 ${t("common.cfa") || "CFA"}`}
                     </Text>
                   </View>
 
@@ -541,7 +541,7 @@ export default function BarberPortfolioScreen() {
                   <View style={styles.durationRow}>
                     <Ionicons name="time-outline" size={12} color={colors.primary} />
                     <Text style={[styles.durationText, { color: colors.secondarytext }]}>
-                      {item.duration_minutes || 30} mins
+                      {item.duration_minutes || 30} {language === "fr" ? "min" : "mins"}
                     </Text>
                   </View>
 
@@ -621,13 +621,17 @@ export default function BarberPortfolioScreen() {
       <CustomModal
         visible={!!itemToDelete}
         onClose={() => setItemToDelete(null)}
-        title="Remove Portfolio Cut"
-        description={`Are you sure you want to remove "${itemToDelete?.title}" from your public portfolio?`}
+        title={language === "fr" ? "Supprimer la coupe" : "Remove Portfolio Cut"}
+        description={
+          language === "fr"
+            ? `Êtes-vous sûr de vouloir retirer "${itemToDelete?.title}" de votre portfolio public ?`
+            : `Are you sure you want to remove "${itemToDelete?.title}" from your public portfolio?`
+        }
         icon="trash-outline"
-        primaryText="Delete Cut"
+        primaryText={language === "fr" ? "Supprimer" : "Delete Cut"}
         primaryDanger={true}
         onPrimary={confirmDeleteCut}
-        secondaryText="Cancel"
+        secondaryText={t("common.cancel") || (language === "fr" ? "Annuler" : "Cancel")}
         onSecondary={() => setItemToDelete(null)}
       />
 
@@ -673,7 +677,7 @@ export default function BarberPortfolioScreen() {
             </View>
 
             <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>
-              Style / Cut Title
+              {language === "fr" ? "Nom ou titre de la coupe" : "Style / Cut Title"}
             </Text>
             <TextInput
               style={[
@@ -684,7 +688,7 @@ export default function BarberPortfolioScreen() {
                   color: colors.primarytext,
                 },
               ]}
-              placeholder="e.g. Sharp Taper Fade"
+              placeholder={language === "fr" ? "Ex: Dégradé à blanc américain" : "e.g. Sharp Taper Fade"}
               placeholderTextColor={colors.inputPlaceholder}
               value={cutTitle}
               onChangeText={setCutTitle}
@@ -798,7 +802,7 @@ export default function BarberPortfolioScreen() {
 
             {/* Estimated Duration Input & Presets */}
             <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>
-              Estimated Duration (minutes)
+              {language === "fr" ? "Durée estimée (minutes)" : "Estimated Duration (minutes)"}
             </Text>
             <View
               style={[
@@ -867,7 +871,7 @@ export default function BarberPortfolioScreen() {
 
             {/* Photo Selection Preview & Buttons */}
             <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>
-              Hairstyle Photo
+              {language === "fr" ? "Photo de la coupe" : "Hairstyle Photo"}
             </Text>
 
             {pickedImageUri ? (
@@ -887,7 +891,7 @@ export default function BarberPortfolioScreen() {
                   onPress={handlePickFromGallery}
                 >
                   <Ionicons name="refresh-outline" size={12} color="#F5F5F2" />
-                  <Text style={styles.changePhotoText}>Change</Text>
+                  <Text style={styles.changePhotoText}>{language === "fr" ? "Changer" : "Change"}</Text>
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -906,7 +910,7 @@ export default function BarberPortfolioScreen() {
               >
                 <Ionicons name="image-outline" size={17} color={colors.primary} />
                 <Text style={[styles.photoActionText, { color: colors.primarytext }]}>
-                  Gallery
+                  {t("common.gallery") || (language === "fr" ? "Galerie" : "Gallery")}
                 </Text>
               </TouchableOpacity>
 
@@ -923,7 +927,7 @@ export default function BarberPortfolioScreen() {
               >
                 <Ionicons name="camera-outline" size={17} color={colors.primary} />
                 <Text style={[styles.photoActionText, { color: colors.primarytext }]}>
-                  Take Photo
+                  {t("common.camera") || (language === "fr" ? "Prendre photo" : "Take Photo")}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -946,7 +950,7 @@ export default function BarberPortfolioScreen() {
                     { color: colors.secondarytext },
                   ]}
                 >
-                  Cancel
+                  {t("common.cancel") || (language === "fr" ? "Annuler" : "Cancel")}
                 </Text>
               </TouchableOpacity>
 
@@ -973,6 +977,288 @@ export default function BarberPortfolioScreen() {
                     />
                     <Text style={[styles.modalSaveBtnText, { color: colors.onBrand }]}>
                       {t("portfolio.uploadToPortfolio") || "Upload to Portfolio"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Cut Modal */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isSavingEdit) {
+            setEditModalVisible(false);
+            setEditingItem(null);
+          }
+        }}
+      >
+        <View style={[styles.modalBackdrop, { backgroundColor: colors.overlay }]}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={styles.modalHeaderRow}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.modalTitle, { color: colors.primarytext }]}>
+                  {language === "fr" ? "Modifier la coupe" : "Edit Style Cut"}
+                </Text>
+                <Text style={[styles.modalSubtitle, { color: colors.secondarytext }]}>
+                  {language === "fr"
+                    ? "Ajustez le nom, le tarif et la durée de la prestation"
+                    : "Update style name, price, and estimated duration."}
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                disabled={isSavingEdit}
+                onPress={() => {
+                  setEditModalVisible(false);
+                  setEditingItem(null);
+                }}
+                style={[
+                  styles.modalCloseBtn,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Ionicons name="close" size={18} color={colors.primarytext} />
+              </TouchableOpacity>
+            </View>
+
+            {editingItem?.uri ? (
+              <View
+                style={[
+                  styles.previewImageWrap,
+                  { borderColor: colors.border, height: 110, marginBottom: 6 },
+                ]}
+              >
+                <Image
+                  source={{ uri: editingItem.uri }}
+                  style={styles.previewImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
+
+            {/* Cut Name */}
+            <Text style={[styles.inputLabel, { color: colors.secondarytext, marginTop: 4 }]}>
+              {language === "fr" ? "Nom de la coupe" : "Style / Cut Title"}
+            </Text>
+            <TextInput
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                  color: colors.primarytext,
+                },
+              ]}
+              placeholder={language === "fr" ? "Ex: Dégradé à blanc américain" : "e.g. Sharp Taper Fade"}
+              placeholderTextColor={colors.inputPlaceholder}
+              value={editTitle}
+              onChangeText={setEditTitle}
+            />
+
+            {/* Price Input & Presets */}
+            <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>
+              {t("portfolio.bookingPriceCFA") || (language === "fr" ? "Tarif de réservation (CFA)" : "Booking Price (CFA)")}
+            </Text>
+            <View
+              style={[
+                styles.priceInputWrap,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
+              <TextInput
+                style={[styles.priceTextInput, { color: colors.primarytext }]}
+                placeholder="1000"
+                placeholderTextColor={colors.inputPlaceholder}
+                value={editPrice}
+                onChangeText={setEditPrice}
+                keyboardType="numeric"
+              />
+              <View
+                style={[
+                  styles.currencyBadge,
+                  {
+                    backgroundColor: colors.brandSoft,
+                    borderColor: colors.brandBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.currencyBadgeText, { color: colors.primary }]}>
+                  {t("common.cfa") || "CFA"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.presetsRow}>
+              {PRICE_PRESETS.map((p) => {
+                const isSel = editPrice === String(p);
+                return (
+                  <TouchableOpacity
+                    key={p}
+                    activeOpacity={0.8}
+                    onPress={() => setEditPrice(String(p))}
+                    style={[
+                      styles.presetPill,
+                      {
+                        backgroundColor: isSel ? colors.primary : colors.background,
+                        borderColor: isSel ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.presetPillText,
+                        {
+                          color: isSel ? colors.onBrand : colors.primarytext,
+                          fontWeight: isSel ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {p.toLocaleString()} {t("common.cfa") || "CFA"}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Duration Input & Presets */}
+            <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>
+              {language === "fr" ? "Durée estimée (minutes)" : "Estimated Duration (minutes)"}
+            </Text>
+            <View
+              style={[
+                styles.priceInputWrap,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Ionicons name="time-outline" size={16} color={colors.primary} />
+              <TextInput
+                style={[styles.priceTextInput, { color: colors.primarytext }]}
+                placeholder="30"
+                placeholderTextColor={colors.inputPlaceholder}
+                value={editDuration}
+                onChangeText={setEditDuration}
+                keyboardType="numeric"
+              />
+              <View
+                style={[
+                  styles.currencyBadge,
+                  {
+                    backgroundColor: colors.brandSoft,
+                    borderColor: colors.brandBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.currencyBadgeText, { color: colors.primary }]}>
+                  {language === "fr" ? "min" : "mins"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.presetsRow}>
+              {[15, 30, 45, 60, 90, 120].map((d) => {
+                const isSel = editDuration === String(d);
+                return (
+                  <TouchableOpacity
+                    key={d}
+                    activeOpacity={0.8}
+                    onPress={() => setEditDuration(String(d))}
+                    style={[
+                      styles.presetPill,
+                      {
+                        backgroundColor: isSel ? colors.primary : colors.background,
+                        borderColor: isSel ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.presetPillText,
+                        {
+                          color: isSel ? colors.onBrand : colors.primarytext,
+                          fontWeight: isSel ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {d} min
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                disabled={isSavingEdit}
+                onPress={() => {
+                  setEditModalVisible(false);
+                  setEditingItem(null);
+                }}
+                style={[
+                  styles.modalCancelBtn,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modalCancelBtnText,
+                    { color: colors.secondarytext },
+                  ]}
+                >
+                  {t("common.cancel") || (language === "fr" ? "Annuler" : "Cancel")}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleSaveEdit}
+                disabled={isSavingEdit}
+                style={[
+                  styles.modalSaveBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: isSavingEdit ? 0.7 : 1,
+                  },
+                ]}
+              >
+                {isSavingEdit ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={17}
+                      color={colors.onBrand}
+                    />
+                    <Text style={[styles.modalSaveBtnText, { color: colors.onBrand }]}>
+                      {language === "fr" ? "Enregistrer" : "Save Changes"}
                     </Text>
                   </>
                 )}

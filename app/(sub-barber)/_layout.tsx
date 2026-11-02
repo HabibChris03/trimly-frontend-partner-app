@@ -3,9 +3,11 @@ import { Tabs, Redirect } from "expo-router";
 import React from "react";
 import AnimatedTabBar from "@/components/navigation/AnimatedTabBar";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function SubBarberTabLayout() {
   const { user } = useAuth();
+  const { language } = useLanguage();
 
   const isSubBarber = Boolean(
     user?.parent_salon_id ||
@@ -30,7 +32,7 @@ export default function SubBarberTabLayout() {
       <Tabs.Screen
         name="bookings"
         options={{
-          title: "Appointments",
+          title: language === "fr" ? "Rendez-vous" : "Appointments",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               size={23}
@@ -43,7 +45,7 @@ export default function SubBarberTabLayout() {
       <Tabs.Screen
         name="services"
         options={{
-          title: "My Services",
+          title: language === "fr" ? "Mes Services" : "My Services",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               size={23}
@@ -56,7 +58,7 @@ export default function SubBarberTabLayout() {
       <Tabs.Screen
         name="portfolio"
         options={{
-          title: "Style Portfolio",
+          title: language === "fr" ? "Mon Portfolio" : "Style Portfolio",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               size={23}
@@ -69,7 +71,7 @@ export default function SubBarberTabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "My Profile",
+          title: language === "fr" ? "Mon Profil" : "My Profile",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               size={23}
