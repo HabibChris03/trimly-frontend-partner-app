@@ -36,15 +36,24 @@ export const availabilityService = {
    * Endpoint: POST /api/v1/availability/weekly-schedule
    */
   async setWeeklySchedule(
-    days: { day_of_week: number; enabled: boolean; start_time: string; end_time: string }[]
+    days: { day_of_week: number; enabled: boolean; start_time: string; end_time: string }[],
+    staffId?: number,
+    resetToSalon?: boolean
   ): Promise<{ status: string; message: string; availability: AvailabilityWindow[] }> {
     return apiRequest<{ status: string; message: string; availability: AvailabilityWindow[] }>(
       "/api/v1/availability/weekly-schedule",
       {
         method: "POST",
-        body: JSON.stringify({ days }),
+        body: JSON.stringify({ days, staff_id: staffId, reset_to_salon: resetToSalon }),
       }
     );
+  },
+
+  /**
+   * Reset an individual staff member's working hours to inherit salon opening hours.
+   */
+  async resetStaffToSalonSchedule(staffId: number): Promise<any> {
+    return this.setWeeklySchedule([], staffId, true);
   },
 
   /**

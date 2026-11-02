@@ -873,6 +873,17 @@ export default function ManageStaffScreen() {
 
                         <TouchableOpacity
                           activeOpacity={0.8}
+                          onPress={() => router.push(`/Pages/availability?staffId=${member.id}`)}
+                          style={[
+                            styles.actionIconBtn,
+                            { backgroundColor: "rgba(59, 130, 246, 0.12)", borderColor: "#3B82F6" },
+                          ]}
+                        >
+                          <Ionicons name="time-outline" size={16} color="#3B82F6" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          activeOpacity={0.8}
                           onPress={() => {
                             setSelectedStaff(member);
                             setStatusModalVisible(true);
