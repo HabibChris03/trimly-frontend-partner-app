@@ -277,7 +277,7 @@ export function AddServiceModal({
       return;
     }
     const rawPrice = parseFloat(servicePrice.replace(/[^0-9.]/g, ""));
-    const priceNum = !isNaN(rawPrice) && rawPrice > 0 ? rawPrice : 1000;
+    const priceNum = !isNaN(rawPrice) && rawPrice >= 1000 ? rawPrice : 1000;
     const durNum = isExtra
       ? 0
       : parseInt(serviceDuration.replace(/[^0-9]/g, ""), 10) || 30;

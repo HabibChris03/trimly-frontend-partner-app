@@ -26,7 +26,7 @@ export default function SubBarberProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
 
   const [staffStatus, setStaffStatus] = useState<
@@ -338,6 +338,102 @@ export default function SubBarberProfileScreen() {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* My Craft & Services */}
+        <View
+          style={[
+            styles.sectionCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.secondarytext }]}>
+            {language === "fr" ? "MON ACTIVITÉ & SERVICES" : "MY CRAFT & SERVICES"}
+          </Text>
+
+          {/* Manage My Services */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => router.push("/Pages/manage-services")}
+            style={styles.menuRow}
+          >
+            <View style={styles.menuLeft}>
+              <View
+                style={[
+                  styles.menuIconSquare,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="cut-outline"
+                  size={17}
+                  color={colors.primary}
+                />
+              </View>
+              <View>
+                <Text style={[styles.menuLabel, { color: colors.primarytext }]}>
+                  {language === "fr" ? "Mes Services & Tarifs" : "My Services & Prices"}
+                </Text>
+                <Text style={[styles.menuSublabel, { color: colors.secondarytext }]}>
+                  {language === "fr"
+                    ? "Gérer vos prestations personnelles, durées et prix"
+                    : "Manage your personal menu, duration and prices"}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.secondarytext}
+            />
+          </TouchableOpacity>
+
+          <View
+            style={[styles.divider, { backgroundColor: colors.border }]}
+          />
+
+          {/* Manage My Portfolio */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => router.push("/Pages/portfolio")}
+            style={styles.menuRow}
+          >
+            <View style={styles.menuLeft}>
+              <View
+                style={[
+                  styles.menuIconSquare,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="images-outline"
+                  size={17}
+                  color={colors.primary}
+                />
+              </View>
+              <View>
+                <Text style={[styles.menuLabel, { color: colors.primarytext }]}>
+                  {language === "fr" ? "Mon Portfolio de Coupes" : "My Style Portfolio"}
+                </Text>
+                <Text style={[styles.menuSublabel, { color: colors.secondarytext }]}>
+                  {language === "fr"
+                    ? "Publier des photos de vos réalisations avec prix et durée"
+                    : "Post pictures of your cuts with price and duration"}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.secondarytext}
+            />
+          </TouchableOpacity>
         </View>
 
         {/* App Settings */}

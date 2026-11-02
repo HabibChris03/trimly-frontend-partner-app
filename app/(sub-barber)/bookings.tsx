@@ -31,7 +31,7 @@ import { bookingService, BookingReceipt } from "@/services/bookingService";
 export default function SubBarberBookingsScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, refreshUser } = useAuth();
   const { showToast } = useToast();
   const { unreadCount } = useNotifications();
@@ -54,6 +54,31 @@ export default function SubBarberBookingsScreen() {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isVerifyingNewSalon, setIsVerifyingNewSalon] = useState(false);
   const [verifiedNewSalonName, setVerifiedNewSalonName] = useState<string | null>(null);
+
+  // Worst-Case & Handshake PIN Modals for Sub-Barber
+  const [selectedBooking, setSelectedBooking] = useState<BookingReceipt | null>(null);
+
+  // Arrival PIN Handshake Modal State
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [arrivalPinInput, setArrivalPinInput] = useState("");
+  const [isBypassingPin, setIsBypassingPin] = useState(false);
+  const [bypassReason, setBypassReason] = useState("");
+  const [isSubmittingPin, setIsSubmittingPin] = useState(false);
+
+  // Ending Service Handshake Modal State
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [completionPinInput, setCompletionPinInput] = useState("");
+  const [isRequestingPin, setIsRequestingPin] = useState(false);
+  const [pinSentSuccess, setPinSentSuccess] = useState(false);
+  const [isBypassingCompletionPin, setIsBypassingCompletionPin] = useState(false);
+  const [bypassCompletionReason, setBypassCompletionReason] = useState("");
+  const [isSubmittingCompletion, setIsSubmittingCompletion] = useState(false);
+
+  // Payment Verification Modal State
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "momo" | "unpaid">("cash");
+  const [unpaidDisputeNote, setUnpaidDisputeNote] = useState("");
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   const handleSwitchToSolo = async () => {
     setIsSwitchingToSolo(true);
@@ -187,21 +212,138 @@ export default function SubBarberBookingsScreen() {
     );
   };
 
-  const handleUpdateStatus = async (
-    booking: BookingReceipt,
-    newStatus: "In Progress" | "Completed"
-  ) => {
-    const id = booking.booking_id || booking.id;
-    if (!id) return;
-    setActionLoadingId(id);
+  const openArrivalPinModal = (booking: BookingReceipt) => {
+    setSelectedBooking(booking);
+    setArrivalPinInput("");
+    setIsBypassingPin(false);
+    setBypassReason("");
+    setPinModalVisible(true);
+  };
+
+  const handleConfirmStartService = async () => {
+    if (!selectedBooking) return;
+    if (!isBypassingPin && arrivalPinInput.trim().length !== 4) {
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer le code d'arrivée à 4 chiffres du client"
+          : "Please enter the 4-digit client arrival PIN",
+        "error"
+      );
+      return;
+    }
+
+    setIsSubmittingPin(true);
     try {
-      await bookingService.updateBookingStatus(id, newStatus);
-      showToast(`Appointment marked as ${newStatus}`, "success");
+      const id = selectedBooking.booking_id || selectedBooking.id;
+      if (!id) return;
+      await bookingService.updateBookingStatus(id, "shaving...", {
+        arrival_pin: isBypassingPin ? undefined : arrivalPinInput.trim(),
+        bypass_pin: isBypassingPin,
+        bypass_reason: isBypassingPin
+          ? bypassReason.trim() || (language === "fr" ? "Client vérifié en personne" : "Client verified in person")
+          : undefined,
+      });
+
+      showToast(
+        language === "fr"
+          ? "Service démarré : coupe en cours..."
+          : "Service started: in progress...",
+        "success"
+      );
+      setPinModalVisible(false);
+      setSelectedBooking(null);
+      setArrivalPinInput("");
+      setIsBypassingPin(false);
+      setBypassReason("");
       await fetchBookings();
     } catch (err: any) {
-      showToast(err.message || t("common.error"), "error");
+      showToast(
+        err?.message || (language === "fr" ? "Code d'arrivée invalide. Demandez le code au client." : "Invalid Arrival PIN. Ask the client for their code."),
+        "error"
+      );
     } finally {
-      setActionLoadingId(null);
+      setIsSubmittingPin(false);
+    }
+  };
+
+  const openEndServiceModal = (booking: BookingReceipt) => {
+    setSelectedBooking(booking);
+    setCompletionPinInput("");
+    setPinSentSuccess(false);
+    setIsBypassingCompletionPin(false);
+    setBypassCompletionReason("");
+    setCompletionModalVisible(true);
+  };
+
+  const handleSendEndingCode = async (targetBooking?: BookingReceipt) => {
+    const b = targetBooking || selectedBooking;
+    if (!b) return;
+    setIsRequestingPin(true);
+    try {
+      const id = b.booking_id || b.id;
+      if (!id) return;
+      await bookingService.requestCompletionPin(id);
+      setPinSentSuccess(true);
+      showToast(
+        language === "fr"
+          ? `Code de fin envoyé sur l'application Trimly du client !`
+          : `Ending code sent to client's Trimly app!`,
+        "success"
+      );
+    } catch (err: any) {
+      showToast(
+        err?.message || (language === "fr" ? "Échec de l'envoi du code au client." : "Failed to send ending code to client."),
+        "error"
+      );
+    } finally {
+      setIsRequestingPin(false);
+    }
+  };
+
+  const handleConfirmEndService = async () => {
+    if (!selectedBooking) return;
+    if (!isBypassingCompletionPin && completionPinInput.trim().length !== 4) {
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer le code à 4 chiffres fourni par le client"
+          : "Please enter the 4-digit code provided by the client",
+        "error"
+      );
+      return;
+    }
+
+    setIsSubmittingCompletion(true);
+    try {
+      const id = selectedBooking.booking_id || selectedBooking.id;
+      if (!id) return;
+      await bookingService.updateBookingStatus(id, "Completed", {
+        completion_pin: isBypassingCompletionPin ? undefined : completionPinInput.trim(),
+        bypass_pin: isBypassingCompletionPin,
+        bypass_reason: isBypassingCompletionPin
+          ? bypassCompletionReason.trim() || (language === "fr" ? "Fin de service vérifiée en personne" : "Service completion verified in person")
+          : undefined,
+      });
+
+      showToast(
+        language === "fr"
+          ? `Service terminé ! ${(selectedBooking.total_price || 1000).toLocaleString()} CFA crédités.`
+          : `Service completed! ${(selectedBooking.total_price || 1000).toLocaleString()} CFA credited.`,
+        "success"
+      );
+      setCompletionModalVisible(false);
+      setSelectedBooking(null);
+      setCompletionPinInput("");
+      setPinSentSuccess(false);
+      setIsBypassingCompletionPin(false);
+      setBypassCompletionReason("");
+      await fetchBookings();
+    } catch (err: any) {
+      showToast(
+        err?.message || (language === "fr" ? "Code de fin invalide. Veuillez vérifier le code avec le client." : "Invalid ending code. Please check with client."),
+        "error"
+      );
+    } finally {
+      setIsSubmittingCompletion(false);
     }
   };
 
@@ -228,6 +370,13 @@ export default function SubBarberBookingsScreen() {
   );
   const completedCount = useMemo(
     () => bookings.filter((b) => b.status === "Completed").length,
+    [bookings]
+  );
+  const personalEarnings = useMemo(
+    () =>
+      bookings
+        .filter((b) => b.status === "Completed")
+        .reduce((sum, b) => sum + (Number(b.total_price) || 0), 0),
     [bookings]
   );
 
@@ -480,8 +629,63 @@ export default function SubBarberBookingsScreen() {
               Done
             </Text>
           </View>
+          <View
+            style={[styles.summaryDivider, { backgroundColor: colors.border }]}
+          />
+          <View style={styles.summaryCell}>
+            <Text style={[styles.summaryNum, { color: colors.primary, fontSize: 13 }]}>
+              {personalEarnings.toLocaleString()}
+            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.secondarytext }]}>
+              My CFA
+            </Text>
+          </View>
         </View>
       </View>
+
+      {/* Active In-Chair Ongoing Service Banner */}
+      {(() => {
+        const inChairBooking = bookings.find(
+          (b) => b.status === "In Progress" || b.status === "shaving..." || b.status === "shaving"
+        );
+        if (!inChairBooking) return null;
+        return (
+          <View
+            style={[
+              styles.inChairBanner,
+              { backgroundColor: colors.surface, borderColor: colors.primary },
+            ]}
+          >
+            <View style={styles.inChairHeaderRow}>
+              <View style={[styles.inChairLiveDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.inChairTitle, { color: colors.primary }]}>
+                {language === "fr" ? "EN COURS AU FAUTEUIL" : "CLIENT CURRENTLY IN CHAIR"}
+              </Text>
+              <Text style={[styles.inChairPrice, { color: colors.primarytext }]}>
+                {(inChairBooking.total_price || 1000).toLocaleString()} CFA
+              </Text>
+            </View>
+            <Text style={[styles.inChairClientName, { color: colors.primarytext }]}>
+              {inChairBooking.client_name || (inChairBooking as any).client || "Client"}
+            </Text>
+            <Text style={[styles.inChairServiceName, { color: colors.secondarytext }]}>
+              {inChairBooking.services && inChairBooking.services[0]?.name
+                ? inChairBooking.services.map((s: any) => s.name).join(", ")
+                : inChairBooking.custom_hairstyle_name || "Hairstyle Service"}
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => openEndServiceModal(inChairBooking)}
+              style={[styles.inChairCompleteBtn, { backgroundColor: colors.primary }]}
+            >
+              <Ionicons name="checkmark-done" size={17} color={colors.onBrand} />
+              <Text style={[styles.inChairCompleteBtnText, { color: colors.onBrand }]}>
+                {language === "fr" ? "Entrer le code de fin & terminer" : "Enter Ending Code & Complete"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        );
+      })()}
 
       {/* Filter Tabs */}
       <View style={styles.filterWrap}>
@@ -789,76 +993,28 @@ export default function SubBarberBookingsScreen() {
                 {isConfirmed && (
                   <View style={styles.actionRow}>
                     <TouchableOpacity
-                      activeOpacity={0.82}
-                      onPress={() => handleUpdateStatus(b, "In Progress")}
-                      disabled={isActionLoading}
-                      style={[
-                        styles.actionBtn,
-                        {
-                          backgroundColor: colors.background,
-                          borderWidth: 1,
-                          borderColor: colors.border,
-                          opacity: isActionLoading ? 0.75 : 1,
-                        },
-                      ]}
-                    >
-                      {isActionLoading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.primary}
-                        />
-                      ) : (
-                        <>
-                          <Ionicons
-                            name="play-outline"
-                            size={16}
-                            color={colors.primary}
-                          />
-                          <Text
-                            style={[
-                              styles.acceptBtnText,
-                              { color: colors.primarytext },
-                            ]}
-                          >
-                            {t("subBarber.startService")}
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
                       activeOpacity={0.85}
-                      onPress={() => handleUpdateStatus(b, "Completed")}
-                      disabled={isActionLoading}
+                      onPress={() => openArrivalPinModal(b)}
                       style={[
                         styles.actionBtn,
                         {
                           backgroundColor: colors.primary,
-                          opacity: isActionLoading ? 0.75 : 1,
                         },
                       ]}
                     >
-                      {isActionLoading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.onBrand}
-                        />
-                      ) : (
-                        <>
-                          <Ionicons
-                            name="checkmark-done"
-                            size={16}
-                            color={colors.onBrand}
-                          />
-                          <Text
-                            style={[
-                              styles.acceptBtnText,
-                              { color: colors.onBrand },
-                            ]}
-                          >
-                            {t("common.completed")}
-                          </Text>
-                        </>
-                      )}
+                      <Ionicons
+                        name="key-outline"
+                        size={16}
+                        color={colors.onBrand}
+                      />
+                      <Text
+                        style={[
+                          styles.acceptBtnText,
+                          { color: colors.onBrand },
+                        ]}
+                      >
+                        {language === "fr" ? "Entrer code d'arrivée" : "Enter Arrival PIN"}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -867,39 +1023,28 @@ export default function SubBarberBookingsScreen() {
                   <View style={styles.actionRow}>
                     <TouchableOpacity
                       activeOpacity={0.85}
-                      onPress={() => handleUpdateStatus(b, "Completed")}
-                      disabled={isActionLoading}
+                      onPress={() => openEndServiceModal(b)}
                       style={[
                         styles.actionBtn,
                         {
                           backgroundColor: colors.primary,
                           flex: 1,
-                          opacity: isActionLoading ? 0.75 : 1,
                         },
                       ]}
                     >
-                      {isActionLoading ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.onBrand}
-                        />
-                      ) : (
-                        <>
-                          <Ionicons
-                            name="checkmark-done"
-                            size={16}
-                            color={colors.onBrand}
-                          />
-                          <Text
-                            style={[
-                              styles.acceptBtnText,
-                              { color: colors.onBrand },
-                            ]}
-                          >
-                            {t("subBarber.completeAppointment")}
-                          </Text>
-                        </>
-                      )}
+                      <Ionicons
+                        name="checkmark-done-outline"
+                        size={16}
+                        color={colors.onBrand}
+                      />
+                      <Text
+                        style={[
+                          styles.acceptBtnText,
+                          { color: colors.onBrand },
+                        ]}
+                      >
+                        {language === "fr" ? "Entrer code de fin & terminer" : "Enter Ending PIN & Complete"}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -971,6 +1116,274 @@ export default function SubBarberBookingsScreen() {
               )}
             </TouchableOpacity>
           </View>
+        </View>
+      </CustomModal>
+
+      {/* 1. ARRIVAL PIN HANDSHAKE MODAL */}
+      <CustomModal
+        visible={pinModalVisible}
+        onClose={() => setPinModalVisible(false)}
+        title={language === "fr" ? "Code d'arrivée client" : "Enter Arrival PIN"}
+        description={
+          language === "fr"
+            ? "Pour démarrer la coupe et valider l'assise du client, demandez et saisissez son code à 4 chiffres."
+            : "To start the haircut and confirm the client is in your chair, ask for the 4-digit code shown on their Trimly screen."
+        }
+        icon="key-outline"
+        iconBg="rgba(199, 243, 107, 0.15)"
+        iconColor={colors.primary}
+        primaryText={null}
+        secondaryText={null}
+      >
+        <View style={{ width: "100%", marginTop: 8 }}>
+          {!isBypassingPin ? (
+            <View>
+              <TextInput
+                value={arrivalPinInput}
+                onChangeText={(val) => setArrivalPinInput(val.replace(/\D/g, "").slice(0, 4))}
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="• • • •"
+                placeholderTextColor={colors.secondarytext}
+                style={[
+                  styles.handshakePinInput,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: arrivalPinInput.length === 4 ? colors.primary : colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={isSubmittingPin || arrivalPinInput.length !== 4}
+                onPress={handleConfirmStartService}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor: arrivalPinInput.length === 4 ? colors.primary : colors.border,
+                    marginTop: 14,
+                  },
+                ]}
+              >
+                {isSubmittingPin ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <Text style={[styles.modalConfirmBtnText, { color: arrivalPinInput.length === 4 ? colors.onBrand : colors.secondarytext }]}>
+                    {language === "fr" ? "Valider & Démarrer la coupe" : "Verify & Start Service"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setIsBypassingPin(true)}
+                style={{ marginTop: 12, alignItems: "center" }}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>
+                  {language === "fr" ? "Batterie à plat / Hors ligne ? Contourner" : "Client phone offline / dead? Bypass"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              <Text style={{ fontSize: 12, color: "#F59E0B", fontWeight: "700", marginBottom: 6 }}>
+                {language === "fr" ? "Mode Contournement (Note requise)" : "Bypass Mode (Verification Note Required)"}
+              </Text>
+              <TextInput
+                value={bypassReason}
+                onChangeText={setBypassReason}
+                placeholder={language === "fr" ? "Ex: Client vérifié en fauteuil" : "e.g. Verified client in chair"}
+                placeholderTextColor={colors.secondarytext}
+                style={[
+                  styles.noteInputBox,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={isSubmittingPin}
+                onPress={handleConfirmStartService}
+                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary, marginTop: 14 }]}
+              >
+                {isSubmittingPin ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <Text style={[styles.modalConfirmBtnText, { color: colors.onBrand }]}>
+                    {language === "fr" ? "Confirmer le démarrage" : "Confirm Start"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setIsBypassingPin(false)}
+                style={{ marginTop: 10, alignItems: "center" }}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>
+                  {language === "fr" ? "Retour à la saisie du code" : "Back to PIN entry"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </CustomModal>
+
+      {/* 2. ENDING SERVICE HANDSHAKE COMPLETION MODAL */}
+      <CustomModal
+        visible={completionModalVisible}
+        onClose={() => setCompletionModalVisible(false)}
+        title={language === "fr" ? "Valider la fin de la coupe" : "Complete Service"}
+        description={
+          language === "fr"
+            ? "Pour finaliser la prestation et créditer vos gains, demandez au client son code de fin à 4 chiffres."
+            : "To finish the appointment and release payment, enter the client's 4-digit ending code."
+        }
+        icon="checkmark-done-circle-outline"
+        iconBg="rgba(199, 243, 107, 0.15)"
+        iconColor={colors.primary}
+        primaryText={null}
+        secondaryText={null}
+      >
+        <View style={{ width: "100%", marginTop: 8 }}>
+          {!isBypassingCompletionPin ? (
+            <View>
+              {pinSentSuccess ? (
+                <View
+                  style={{
+                    backgroundColor: "rgba(199, 243, 107, 0.12)",
+                    borderRadius: 12,
+                    padding: 10,
+                    marginBottom: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.primary }}>
+                    {language === "fr" ? "CODE TRANSMIS AU CLIENT" : "CODE SENT TO CLIENT"}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: colors.secondarytext, marginTop: 2 }}>
+                    {language === "fr" ? "Demandez au client le code affiché sur son téléphone." : "Ask the client for the code displayed on their screen."}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={isRequestingPin}
+                  onPress={() => handleSendEndingCode()}
+                  style={{
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    padding: 10,
+                    marginBottom: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  {isRequestingPin ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>
+                      {language === "fr" ? "📲 Envoyer le code sur le téléphone du client" : "📲 Send Ending Code to Client's Phone"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+
+              <TextInput
+                value={completionPinInput}
+                onChangeText={(val) => setCompletionPinInput(val.replace(/\D/g, "").slice(0, 4))}
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="• • • •"
+                placeholderTextColor={colors.secondarytext}
+                style={[
+                  styles.handshakePinInput,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: completionPinInput.length === 4 ? colors.primary : colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={isSubmittingCompletion || completionPinInput.length !== 4}
+                onPress={handleConfirmEndService}
+                style={[
+                  styles.modalConfirmBtn,
+                  {
+                    backgroundColor: completionPinInput.length === 4 ? colors.primary : colors.border,
+                    marginTop: 14,
+                  },
+                ]}
+              >
+                {isSubmittingCompletion ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <Text style={[styles.modalConfirmBtnText, { color: completionPinInput.length === 4 ? colors.onBrand : colors.secondarytext }]}>
+                    {language === "fr" ? "Valider le code & Terminer" : "Verify Code & Complete"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setIsBypassingCompletionPin(true)}
+                style={{ marginTop: 12, alignItems: "center" }}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>
+                  {language === "fr" ? "Téléphone déchargé ? Contourner" : "Client phone dead? Bypass"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              <Text style={{ fontSize: 12, color: "#F59E0B", fontWeight: "700", marginBottom: 6 }}>
+                {language === "fr" ? "Contourner le code de fin (Note requise)" : "Bypass Mode (Verification Note Required)"}
+              </Text>
+              <TextInput
+                value={bypassCompletionReason}
+                onChangeText={setBypassCompletionReason}
+                placeholder={language === "fr" ? "Ex: Prestation terminée et payée en espèces" : "e.g. Service finished and paid cash"}
+                placeholderTextColor={colors.secondarytext}
+                style={[
+                  styles.noteInputBox,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    color: colors.primarytext,
+                  },
+                ]}
+              />
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={isSubmittingCompletion}
+                onPress={handleConfirmEndService}
+                style={[styles.modalConfirmBtn, { backgroundColor: colors.primary, marginTop: 14 }]}
+              >
+                {isSubmittingCompletion ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <Text style={[styles.modalConfirmBtnText, { color: colors.onBrand }]}>
+                    {language === "fr" ? "Confirmer la fin du service" : "Confirm Completion"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setIsBypassingCompletionPin(false)}
+                style={{ marginTop: 10, alignItems: "center" }}
+              >
+                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>
+                  {language === "fr" ? "Retour à la saisie du code" : "Back to PIN entry"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </CustomModal>
     </SafeAreaView>
@@ -1380,5 +1793,92 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     fontFamily: FontFamily.bold,
     fontWeight: "700",
+  },
+  inChairBanner: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 8,
+  },
+  inChairHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  inChairLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  inChairTitle: {
+    fontSize: 11.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  inChairPrice: {
+    fontSize: 13.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  inChairClientName: {
+    fontSize: 16,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  inChairServiceName: {
+    fontSize: 12.5,
+    fontFamily: FontFamily.medium,
+  },
+  inChairCompleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    height: 42,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  inChairCompleteBtnText: {
+    fontSize: 13,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  handshakePinInput: {
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    fontSize: 24,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 10,
+  },
+  modalConfirmBtn: {
+    height: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalConfirmBtnText: {
+    fontSize: 13.5,
+    fontFamily: FontFamily.bold,
+    fontWeight: "700",
+  },
+  bypassLinkText: {
+    fontSize: 12,
+    fontFamily: FontFamily.medium,
+    textDecorationLine: "underline",
+  },
+  noteInputBox: {
+    height: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontFamily: FontFamily.regular,
   },
 });

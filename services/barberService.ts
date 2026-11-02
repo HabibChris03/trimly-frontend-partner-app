@@ -72,6 +72,14 @@ export interface PortfolioItemUpload {
   hairstyle_or_service_name: string;
   linked_service_id?: number | null;
   price?: number;
+  duration_minutes?: number;
+  category?: string;
+}
+
+export interface PortfolioItemUpdate {
+  hairstyle_or_service_name?: string;
+  price?: number;
+  duration_minutes?: number;
   category?: string;
 }
 
@@ -451,6 +459,19 @@ export const barberService = {
   async deletePortfolioItem(portfolioItemId: number): Promise<any> {
     return apiRequest(`/api/v1/profiles/portfolio/${portfolioItemId}`, {
       method: "DELETE",
+    });
+  },
+
+  /**
+   * Update an existing portfolio cut (title, price, duration, category).
+   */
+  async updatePortfolioItem(
+    portfolioItemId: number,
+    data: PortfolioItemUpdate
+  ): Promise<any> {
+    return apiRequest(`/api/v1/profiles/portfolio/${portfolioItemId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
     });
   },
 

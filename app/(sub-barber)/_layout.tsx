@@ -30,11 +30,37 @@ export default function SubBarberTabLayout() {
       <Tabs.Screen
         name="bookings"
         options={{
-          title: "My Appointments",
+          title: "Appointments",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
               size={23}
               name={focused ? "calendar" : "calendar-outline"}
+              color={typeof color === "string" ? color : undefined}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: "My Services",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              size={23}
+              name={focused ? "cut" : "cut-outline"}
+              color={typeof color === "string" ? color : undefined}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="portfolio"
+        options={{
+          title: "Style Portfolio",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              size={23}
+              name={focused ? "images" : "images-outline"}
               color={typeof color === "string" ? color : undefined}
             />
           ),

@@ -25,6 +25,7 @@ interface ImageViewerModalProps {
   serviceCategory?: string;
   likesCount?: number;
   price?: number;
+  duration_minutes?: number;
   onBookStyle?: () => void;
 }
 
@@ -37,6 +38,7 @@ export default function ImageViewerModal({
   serviceCategory,
   likesCount,
   price,
+  duration_minutes,
   onBookStyle,
 }: ImageViewerModalProps) {
   const { t, language } = useLanguage();
@@ -117,6 +119,13 @@ export default function ImageViewerModal({
                 <Text style={styles.priceBadgeText}>
                   {(Number(price) > 0 ? Number(price) : 1000).toLocaleString()} {t("common.cfa")}
                 </Text>
+              </View>
+            )}
+
+            {duration_minutes !== undefined && duration_minutes > 0 && (
+              <View style={styles.durationBadge}>
+                <Ionicons name="time-outline" size={13} color="#C7F36B" />
+                <Text style={styles.durationBadgeText}>{duration_minutes} mins</Text>
               </View>
             )}
 
@@ -251,6 +260,22 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "rgba(199, 243, 107, 0.35)",
+  },
+  durationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(199, 243, 107, 0.14)",
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(199, 243, 107, 0.35)",
+  },
+  durationBadgeText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#C7F36B",
   },
   priceBadgeText: {
     fontSize: 13,

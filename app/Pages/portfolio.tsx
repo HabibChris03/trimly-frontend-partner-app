@@ -1,4 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
+import { FontFamily } from "@/constants/theme";
 import { barberService } from "@/services/barberService";
 import { CustomModal } from "@/components/ui/CustomModal";
 import ImageViewerModal from "@/components/ui/ImageViewerModal";
@@ -47,7 +48,10 @@ export interface PortfolioItem {
   title: string;
   uri: string;
   likes: number;
-  price?: number;
+  price: number;
+  duration_minutes: number;
+  category?: string;
+  barber_id?: number;
 }
 
 export default function BarberPortfolioScreen() {
@@ -65,9 +69,20 @@ export default function BarberPortfolioScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [cutTitle, setCutTitle] = useState("");
   const [cutPrice, setCutPrice] = useState("1000");
+  const [cutDuration, setCutDuration] = useState("30");
+  const [cutCategory, setCutCategory] = useState("Haircuts & Styling");
   const [pickedImageUri, setPickedImageUri] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Edit Cut Modal State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<PortfolioItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editPrice, setEditPrice] = useState("1000");
+  const [editDuration, setEditDuration] = useState("30");
+  const [editCategory, setEditCategory] = useState("Haircuts & Styling");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   // Telemetry metrics
   const totalCuts = portfolio.length;
@@ -91,11 +106,27 @@ export default function BarberPortfolioScreen() {
     }
   }, [params.action]);
 
+  const isSubBarber = Boolean(
+    user?.parent_salon_id ||
+      user?.is_sub_barber ||
+      (user as any)?.staff_title
+  );
+
   const fetchPortfolio = useCallback(async () => {
     try {
       const items = await barberService.getBarberPortfolio(barberId);
       if (Array.isArray(items)) {
-        const mapped: PortfolioItem[] = items
+        // Sub-barbers strictly see ONLY their own cuts; salons see cuts uploaded under their salon
+        const filtered = isSubBarber
+          ? items.filter(
+              (item) =>
+                !item.barber_id ||
+                item.barber_id === user?.id ||
+                String(item.barber_id) === String(user?.id)
+            )
+          : items;
+
+        const mapped: PortfolioItem[] = filtered
           .filter((item) => item.media_url || item.uri)
           .map((item, idx) => ({
             id: (item.id || idx + 1).toString(),
@@ -105,7 +136,10 @@ export default function BarberPortfolioScreen() {
               "Hairstyle Cut",
             uri: item.media_url || item.uri,
             likes: item.likes || 0,
-            price: item.price !== undefined ? Number(item.price) : 1000,
+            price: Number(item.price) > 0 ? Number(item.price) : 1000,
+            duration_minutes: Number(item.duration_minutes) > 0 ? Number(item.duration_minutes) : 30,
+            category: item.category || "Haircuts & Styling",
+            barber_id: item.barber_id,
           }));
         setPortfolio(mapped);
       } else {
@@ -116,7 +150,7 @@ export default function BarberPortfolioScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [barberId]);
+  }, [barberId, isSubBarber, user?.id]);
 
   useEffect(() => {
     fetchPortfolio();
@@ -171,34 +205,97 @@ export default function BarberPortfolioScreen() {
       return;
     }
 
+    const rawPrice = parseInt(cutPrice.replace(/[^0-9]/g, ""), 10);
+    const finalPrice = !isNaN(rawPrice) && rawPrice >= 1000 ? rawPrice : 1000;
+    const rawDur = parseInt(cutDuration.replace(/[^0-9]/g, ""), 10);
+    const finalDur = !isNaN(rawDur) && rawDur > 0 ? rawDur : 30;
+
     setIsUploading(true);
     try {
-      const parsedPrice = parseInt(cutPrice.replace(/[^0-9]/g, ""), 10) || 1000;
       const res = await barberService.uploadPortfolio({
         media_url: pickedImageUri,
         media_type: "image",
         hairstyle_or_service_name: cutTitle.trim(),
-        price: parsedPrice,
+        price: finalPrice,
+        duration_minutes: finalDur,
+        category: cutCategory,
       });
 
       const newItem: PortfolioItem = {
-        id: (res?.id || Date.now()).toString(),
+        id: (res?.portfolio_item?.id || res?.id || Date.now()).toString(),
         title: cutTitle.trim(),
-        uri: res?.media_url || pickedImageUri,
+        uri: res?.portfolio_item?.media_url || res?.media_url || pickedImageUri,
         likes: 0,
-        price: parsedPrice,
+        price: finalPrice,
+        duration_minutes: finalDur,
+        category: cutCategory,
+        barber_id: user?.id,
       };
 
       setPortfolio((prev) => [newItem, ...prev]);
       setModalVisible(false);
       setCutTitle("");
       setCutPrice("1000");
+      setCutDuration("30");
       setPickedImageUri(null);
       showToast("New hairstyle cut added to your portfolio.", "success");
     } catch {
       showToast("Failed to upload portfolio cut.", "error");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleOpenEditModal = (item: PortfolioItem) => {
+    setEditingItem(item);
+    setEditTitle(item.title);
+    setEditPrice((item.price || 1000).toString());
+    setEditDuration((item.duration_minutes || 30).toString());
+    setEditCategory(item.category || "Haircuts & Styling");
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    const rawPrice = parseInt(editPrice.replace(/[^0-9]/g, ""), 10);
+    const finalPrice = !isNaN(rawPrice) && rawPrice >= 1000 ? rawPrice : 1000;
+    const rawDur = parseInt(editDuration.replace(/[^0-9]/g, ""), 10);
+    const finalDur = !isNaN(rawDur) && rawDur > 0 ? rawDur : 30;
+    const finalTitle = editTitle.trim() || editingItem.title;
+
+    setIsSavingEdit(true);
+    try {
+      const numId = parseInt(editingItem.id, 10);
+      if (!isNaN(numId)) {
+        await barberService.updatePortfolioItem(numId, {
+          hairstyle_or_service_name: finalTitle,
+          price: finalPrice,
+          duration_minutes: finalDur,
+          category: editCategory,
+        });
+      }
+
+      setPortfolio((prev) =>
+        prev.map((p) =>
+          p.id === editingItem.id
+            ? {
+                ...p,
+                title: finalTitle,
+                price: finalPrice,
+                duration_minutes: finalDur,
+                category: editCategory,
+              }
+            : p
+        )
+      );
+
+      setEditModalVisible(false);
+      setEditingItem(null);
+      showToast("Portfolio cut updated successfully!", "success");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to update cut.", "error");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -440,6 +537,14 @@ export default function BarberPortfolioScreen() {
                     {item.title}
                   </Text>
 
+                  {/* Duration Badge */}
+                  <View style={styles.durationRow}>
+                    <Ionicons name="time-outline" size={12} color={colors.primary} />
+                    <Text style={[styles.durationText, { color: colors.secondarytext }]}>
+                      {item.duration_minutes || 30} mins
+                    </Text>
+                  </View>
+
                   <View style={styles.cardFooter}>
                     <View style={styles.likesRow}>
                       <Ionicons name="heart" size={13} color={colors.error} />
@@ -453,23 +558,45 @@ export default function BarberPortfolioScreen() {
                       </Text>
                     </View>
 
-                    <TouchableOpacity
-                      activeOpacity={0.75}
-                      onPress={() => setItemToDelete(item)}
-                      style={[
-                        styles.deleteBtn,
-                        {
-                          backgroundColor: colors.background,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                    >
-                      <Ionicons
-                        name="trash-outline"
-                        size={14}
-                        color={colors.secondarytext}
-                      />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      {/* Edit Cut Button */}
+                      <TouchableOpacity
+                        activeOpacity={0.75}
+                        onPress={() => handleOpenEditModal(item)}
+                        style={[
+                          styles.deleteBtn,
+                          {
+                            backgroundColor: colors.background,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name="create-outline"
+                          size={14}
+                          color={colors.primary}
+                        />
+                      </TouchableOpacity>
+
+                      {/* Delete Cut Button */}
+                      <TouchableOpacity
+                        activeOpacity={0.75}
+                        onPress={() => setItemToDelete(item)}
+                        style={[
+                          styles.deleteBtn,
+                          {
+                            backgroundColor: colors.background,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={14}
+                          color={colors.secondarytext}
+                        />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -486,6 +613,8 @@ export default function BarberPortfolioScreen() {
         title={viewerItem?.title}
         barberName={user?.name || "My Portfolio"}
         likesCount={viewerItem?.likes}
+        price={viewerItem?.price}
+        duration_minutes={viewerItem?.duration_minutes || 30}
       />
 
       {/* Delete Cut Custom Modal */}
@@ -661,6 +790,75 @@ export default function BarberPortfolioScreen() {
                       ]}
                     >
                       {p.toLocaleString()} CFA
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Estimated Duration Input & Presets */}
+            <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>
+              Estimated Duration (minutes)
+            </Text>
+            <View
+              style={[
+                styles.priceInputWrap,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Ionicons name="time-outline" size={16} color={colors.primary} />
+              <TextInput
+                style={[styles.priceTextInput, { color: colors.primarytext }]}
+                placeholder="30"
+                placeholderTextColor={colors.inputPlaceholder}
+                value={cutDuration}
+                onChangeText={setCutDuration}
+                keyboardType="numeric"
+              />
+              <View
+                style={[
+                  styles.currencyBadge,
+                  {
+                    backgroundColor: colors.brandSoft,
+                    borderColor: colors.brandBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.currencyBadgeText, { color: colors.primary }]}>
+                  mins
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.presetsRow}>
+              {[15, 30, 45, 60, 90, 120].map((d) => {
+                const isSel = cutDuration === String(d);
+                return (
+                  <TouchableOpacity
+                    key={d}
+                    activeOpacity={0.8}
+                    onPress={() => setCutDuration(String(d))}
+                    style={[
+                      styles.presetPill,
+                      {
+                        backgroundColor: isSel ? colors.primary : colors.background,
+                        borderColor: isSel ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.presetPillText,
+                        {
+                          color: isSel ? colors.onBrand : colors.primarytext,
+                          fontWeight: isSel ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {d} min
                     </Text>
                   </TouchableOpacity>
                 );
@@ -949,6 +1147,16 @@ const styles = StyleSheet.create({
   },
   cardInfo: {
     padding: 11,
+  },
+  durationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  durationText: {
+    fontSize: 11,
+    fontFamily: FontFamily.medium,
   },
   cardTitle: {
     fontSize: 13.5,
