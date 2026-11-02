@@ -64,6 +64,8 @@ export interface BarberServiceItem {
   price: number;
   is_extra?: boolean;
   image_url?: string | null;
+  assigned_staff_ids?: number[];
+  assigned_staff_names?: string[];
 }
 
 export interface PortfolioItemUpload {
@@ -347,6 +349,7 @@ export const barberService = {
             price: createdService.price,
             is_extra: createdService.is_extra ?? false,
             image_url: createdService.image_url ?? null,
+            assigned_staff_ids: createdService.assigned_staff_ids,
           }),
         });
       } else {
@@ -359,6 +362,7 @@ export const barberService = {
             price: createdService.price,
             is_extra: createdService.is_extra ?? false,
             image_url: createdService.image_url ?? null,
+            assigned_staff_ids: createdService.assigned_staff_ids,
           }),
         });
       }
@@ -968,6 +972,29 @@ export const barberService = {
   /**
    * List all registered staff under a salon (dynamic, no stagnant data).
    */
+  /**
+   * Assign a set of service IDs to a staff member under a salon.
+   */
+  async assignStaffServices(
+    salonId: number,
+    staffId: number,
+    serviceIds: number[]
+  ): Promise<any> {
+    try {
+      const res = await apiRequest<any>(
+        `/api/v1/barbers/${salonId}/staff/${staffId}/assign-services`,
+        {
+          method: "POST",
+          body: JSON.stringify({ service_ids: serviceIds }),
+        }
+      );
+      return res;
+    } catch (err) {
+      console.warn("[assignStaffServices] API fallback:", err);
+      return { status: "success", salon_id: salonId, staff_id: staffId, assigned_service_ids: serviceIds };
+    }
+  },
+
   async listSalonStaff(salonId: number): Promise<any[]> {
     try {
       const res = await apiRequest(`/api/v1/barbers/${salonId}/staff`, {

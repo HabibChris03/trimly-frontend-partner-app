@@ -35,6 +35,8 @@ interface StaffMember {
   status: "Active" | "Off Duty" | "On Break" | "Suspended";
   experience?: string;
   avatarIndex?: number;
+  services?: any[];
+  service_ids?: number[];
 }
 
 interface RegisteredClient {
@@ -89,6 +91,11 @@ export default function ManageStaffScreen() {
   const [activeStaffSearch, setActiveStaffSearch] = useState("");
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [assigningStaff, setAssigningStaff] = useState<StaffMember | null>(null);
+  const [salonServices, setSalonServices] = useState<any[]>([]);
+  const [selectedServiceIdsForStaff, setSelectedServiceIdsForStaff] = useState<number[]>([]);
+  const [isSavingAssignments, setIsSavingAssignments] = useState(false);
 
   const fetchStaffAndClients = useCallback(async () => {
     try {
@@ -334,6 +341,52 @@ export default function ManageStaffScreen() {
         },
       ]
     );
+  };
+
+  const handleOpenAssignServices = async (member: StaffMember) => {
+    setAssigningStaff(member);
+    const existingIds = (member.services || []).map((s: any) => Number(s.id)).filter(Boolean);
+    setSelectedServiceIdsForStaff(existingIds.length > 0 ? existingIds : (member.service_ids || []));
+    try {
+      const list = await barberService.getBarberServices(salonId);
+      setSalonServices(Array.isArray(list) ? list : []);
+    } catch {}
+    setAssignModalVisible(true);
+  };
+
+  const handleSaveStaffServices = async () => {
+    if (!assigningStaff) return;
+    setIsSavingAssignments(true);
+    try {
+      await barberService.assignStaffServices(salonId, assigningStaff.id, selectedServiceIdsForStaff);
+      showToast(
+        language === "fr"
+          ? "Services attribués avec succès !"
+          : "Services assigned to staff successfully!",
+        "success"
+      );
+      setStaffList((prev: StaffMember[]) =>
+        prev.map((sm: StaffMember) => {
+          if (sm.id === assigningStaff.id) {
+            const updated = salonServices.filter((svc) =>
+              selectedServiceIdsForStaff.includes(Number(svc.id))
+            );
+            return {
+              ...sm,
+              services: updated,
+              service_ids: selectedServiceIdsForStaff,
+            };
+          }
+          return sm;
+        })
+      );
+      setAssignModalVisible(false);
+      setAssigningStaff(null);
+    } catch (err: any) {
+      showToast(err?.message || "Failed to assign services.", "error");
+    } finally {
+      setIsSavingAssignments(false);
+    }
   };
 
   const handleToggleStatus = async (member: StaffMember, nextStatus: StaffMember["status"]) => {
@@ -790,6 +843,14 @@ export default function ManageStaffScreen() {
                         <Text style={[styles.staffRoleText, { color: colors.secondarytext }]}>
                           {member.role || (language === "fr" ? "Coiffeur du salon" : "Salon Stylist")}
                         </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 }}>
+                          <Ionicons name="cut" size={12} color={colors.primary} />
+                          <Text style={{ fontSize: 11.5, color: colors.primary, fontWeight: "600" }}>
+                            {member.services && member.services.length > 0
+                              ? `${member.services.length} ${language === "fr" ? (member.services.length > 1 ? "services attribués" : "service attribué") : (member.services.length > 1 ? "services assigned" : "service assigned")}`
+                              : (language === "fr" ? "Aucun service attribué" : "No services assigned")}
+                          </Text>
+                        </View>
                         {member.phone && (
                           <Text style={[styles.staffPhoneText, { color: colors.secondarytext }]}>
                             {member.phone}
@@ -799,6 +860,17 @@ export default function ManageStaffScreen() {
 
                       {/* Action Triggers */}
                       <View style={styles.staffActionsCol}>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => handleOpenAssignServices(member)}
+                          style={[
+                            styles.actionIconBtn,
+                            { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: colors.primary },
+                          ]}
+                        >
+                          <Ionicons name="cut-outline" size={16} color={colors.primary} />
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                           activeOpacity={0.8}
                           onPress={() => {
@@ -1301,6 +1373,150 @@ export default function ManageStaffScreen() {
           </View>
         )}
       </CustomModal>
+
+      {/* ASSIGN SERVICES MODAL */}
+      <CustomModal
+        visible={assignModalVisible}
+        onClose={() => {
+          if (!isSavingAssignments) {
+            setAssignModalVisible(false);
+            setAssigningStaff(null);
+          }
+        }}
+        title={language === "fr" ? `Services pour ${assigningStaff?.name || "le coiffeur"}` : `Assign Services to ${assigningStaff?.name || "Staff"}`}
+        description={
+          language === "fr"
+            ? "Cochez les services et coiffures que ce membre du personnel maîtrise et peut réaliser :"
+            : "Select the specific cuts and services this staff member is certified to perform:"
+        }
+        scrollable={true}
+      >
+        <View style={{ width: "100%", maxHeight: 380, paddingVertical: 4 }}>
+          {salonServices.length === 0 ? (
+            <View style={{ padding: 20, alignItems: "center" }}>
+              <Ionicons name="cut-outline" size={32} color={colors.secondarytext} />
+              <Text style={{ color: colors.secondarytext, fontSize: 13, textAlign: "center", marginTop: 8 }}>
+                {language === "fr"
+                  ? "Aucun service trouvé dans le catalogue du salon. Ajoutez d'abord des services."
+                  : "No salon services found. Please add services to your salon menu first."}
+              </Text>
+            </View>
+          ) : (
+            salonServices.map((svc) => {
+              const numId = Number(svc.id);
+              const isChecked = selectedServiceIdsForStaff.includes(numId);
+              return (
+                <TouchableOpacity
+                  key={svc.id}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setSelectedServiceIdsForStaff((prev) =>
+                      isChecked ? prev.filter((id) => id !== numId) : [...prev, numId]
+                    );
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: isChecked ? colors.primary : colors.border,
+                    backgroundColor: isChecked ? "rgba(199, 243, 107, 0.08)" : colors.background,
+                    marginBottom: 8,
+                  }}
+                >
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primarytext }}>
+                      {svc.name}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 3 }}>
+                      <Text style={{ fontSize: 11.5, color: colors.secondarytext }}>
+                        {svc.category || "General"}
+                      </Text>
+                      <Text style={{ fontSize: 11.5, color: colors.primary, fontWeight: "700" }}>
+                        {(svc.price || 1000).toLocaleString()} CFA
+                      </Text>
+                      <Text style={{ fontSize: 11.5, color: colors.secondarytext }}>
+                        ⏱ {svc.duration_minutes || 30} mins
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      borderWidth: 2,
+                      borderColor: isChecked ? colors.primary : colors.border,
+                      backgroundColor: isChecked ? colors.primary : "transparent",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {isChecked && <Ionicons name="checkmark" size={14} color={colors.onBrand} />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            disabled={isSavingAssignments}
+            onPress={() => {
+              setAssignModalVisible(false);
+              setAssigningStaff(null);
+            }}
+            style={{
+              flex: 1,
+              height: 46,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: colors.background,
+            }}
+          >
+            <Text style={{ fontSize: 13.5, fontWeight: "600", color: colors.secondarytext }}>
+              {t("common.cancel") || (language === "fr" ? "Annuler" : "Cancel")}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            disabled={isSavingAssignments}
+            onPress={handleSaveStaffServices}
+            style={{
+              flex: 1.8,
+              height: 46,
+              borderRadius: 14,
+              backgroundColor: colors.primary,
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "row",
+              gap: 6,
+              opacity: isSavingAssignments ? 0.7 : 1,
+            }}
+          >
+            {isSavingAssignments ? (
+              <ActivityIndicator size="small" color={colors.onBrand} />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={17} color={colors.onBrand} />
+                <Text style={{ fontSize: 13.5, fontWeight: "700", color: colors.onBrand }}>
+                  {language === "fr" ? "Enregistrer les attributions" : "Save Assignments"}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
+
 
       {/* Tutorial Modal */}
       <PageTutorialModal

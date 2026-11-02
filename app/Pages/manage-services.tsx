@@ -181,6 +181,9 @@ export default function ManageServicesScreen() {
   const [tutorialVisible, setTutorialVisible] = useState(false);
 
   // Add / Edit Modal state
+  const isSalon = Boolean(user?.role === "salon" || user?.is_manager || user?.is_lead);
+  const [salonStaff, setSalonStaff] = useState<any[]>([]);
+  const [selectedStaffIds, setSelectedStaffIds] = useState<number[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | number | null>(null);
   const [serviceName, setServiceName] = useState("");
@@ -213,6 +216,13 @@ export default function ManageServicesScreen() {
     try {
       const list = await barberService.getBarberServices(barberId);
       setServices(list);
+
+      if (isSalon) {
+        try {
+          const staffRes = await barberService.listSalonStaff(barberId);
+          setSalonStaff(Array.isArray(staffRes) ? staffRes : (staffRes as any)?.staff || []);
+        } catch {}
+      }
 
       const existingCustom = list
         .map((s) => s.category)
@@ -280,6 +290,7 @@ export default function ManageServicesScreen() {
     }
     setServicePrice("1000");
     setImageUrl("");
+    setSelectedStaffIds([]);
     setDropdownOpen(false);
     setIsAddingNewCategory(false);
     setNewCategoryInput("");
@@ -297,6 +308,7 @@ export default function ManageServicesScreen() {
     setServicePrice(service.price ? service.price.toString() : "1000");
     setIsExtra(!!service.is_extra);
     setImageUrl(service.image_url || "");
+    setSelectedStaffIds(service.assigned_staff_ids || []);
     setDropdownOpen(false);
     setIsAddingNewCategory(false);
     setNewCategoryInput("");
@@ -393,6 +405,7 @@ export default function ManageServicesScreen() {
           price: priceNum,
           is_extra: isExtra,
           image_url: imageUrl.trim() || null,
+          assigned_staff_ids: isSalon ? selectedStaffIds : undefined,
         },
         barberId
       );
@@ -811,6 +824,16 @@ export default function ManageServicesScreen() {
                       </Text>
                     </View>
                   </View>
+                  {isSalon && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 }}>
+                      <Ionicons name="people-outline" size={12} color={colors.primary} />
+                      <Text style={{ fontSize: 11, color: colors.secondarytext }} numberOfLines={1}>
+                        {service.assigned_staff_names && service.assigned_staff_names.length > 0
+                          ? `${language === "fr" ? "Attribué à" : "Assigned"}: ${service.assigned_staff_names.join(", ")}`
+                          : (language === "fr" ? "Attribué à tous les coiffeurs" : "Assigned to all stylists")}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Actions: Edit & Delete */}
@@ -1446,6 +1469,71 @@ export default function ManageServicesScreen() {
                 thumbColor={isDark ? colors.background : "#FFFFFF"}
               />
             </View>
+
+                        {/* Staff Assignment Section (Salon Managers only) */}
+            {isSalon && salonStaff.length > 0 && (
+              <View
+                style={[
+                  styles.modalCardSection,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.sectionTitleWithIcon}>
+                  <Ionicons name="people-outline" size={17} color={colors.primary} />
+                  <Text style={[styles.inputLabel, { color: colors.primarytext }]}>
+                    {language === "fr" ? "Attribuer au personnel individuel" : "Assign to Individual Staff"}
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 12, color: colors.secondarytext, marginBottom: 10 }}>
+                  {language === "fr"
+                    ? "Cochez les coiffeurs de votre salon capables d'effectuer ce service :"
+                    : "Select which stylists in your salon can perform this specific service:"}
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {salonStaff.map((staff) => {
+                    const isSelected = selectedStaffIds.includes(staff.id);
+                    return (
+                      <TouchableOpacity
+                        key={staff.id}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setSelectedStaffIds((prev) =>
+                            isSelected ? prev.filter((id) => id !== staff.id) : [...prev, staff.id]
+                          );
+                        }}
+                        style={[
+                          styles.presetChip,
+                          {
+                            backgroundColor: isSelected ? colors.primary : colors.background,
+                            borderColor: isSelected ? colors.primary : colors.border,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                            paddingHorizontal: 12,
+                            paddingVertical: 7,
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={isSelected ? "checkmark-circle" : "person-outline"}
+                          size={14}
+                          color={isSelected ? colors.onBrand : colors.primary}
+                        />
+                        <Text
+                          style={{
+                            color: isSelected ? colors.onBrand : colors.primarytext,
+                            fontWeight: isSelected ? "700" : "500",
+                            fontSize: 12.5,
+                          }}
+                        >
+                          {staff.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
 
             {/* Submit Action CTA */}
             <TouchableOpacity
