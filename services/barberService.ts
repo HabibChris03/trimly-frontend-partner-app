@@ -1385,4 +1385,60 @@ export const barberService = {
       method: "POST",
     });
   },
+
+  /**
+   * Search salons strictly by salon name only.
+   */
+  async searchSalonsByName(name: string): Promise<any[]> {
+    const trimmed = (name || "").trim();
+    if (!trimmed) return [];
+    try {
+      const res = await apiRequest<any>(
+        `/api/v1/barbers/salons/search?name=${encodeURIComponent(trimmed)}`,
+        { method: "GET" }
+      );
+      if (res?.status === "error" || res?.message === "Salon not found") {
+        const emptyResult: any = [];
+        emptyResult.error = res?.message || "Salon not found";
+        return emptyResult;
+      }
+      return res?.salons || [];
+    } catch (e: any) {
+      const emptyResult: any = [];
+      emptyResult.error = e?.message || "Salon not found";
+      return emptyResult;
+    }
+  },
+
+  /**
+   * Solo barber sends request to join a salon.
+   */
+  async sendJoinRequestToSalon(salonId: number, salonName?: string): Promise<any> {
+    return await apiRequest("/api/v1/barbers/salons/send-join-request", {
+      method: "POST",
+      body: JSON.stringify({ salon_id: salonId, salon_name: salonName }),
+    });
+  },
+
+  /**
+   * Check if current barber has an active pending join request.
+   */
+  async getMyPendingJoinRequest(): Promise<any> {
+    try {
+      return await apiRequest("/api/v1/barbers/me/pending-join-request", {
+        method: "GET",
+      });
+    } catch {
+      return { has_pending_request: false, request: null };
+    }
+  },
+
+  /**
+   * Cancel current barber's pending join request.
+   */
+  async cancelPendingJoinRequest(): Promise<any> {
+    return await apiRequest("/api/v1/barbers/me/cancel-join-request", {
+      method: "DELETE",
+    });
+  },
 };

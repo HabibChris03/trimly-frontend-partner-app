@@ -69,7 +69,7 @@ export default function ManageStaffScreen() {
   const salonName = user?.name ? `${user.name}'s Salon` : "Trimly Salon";
 
   // Navigation Tab State (Search & Invite, Active, Pending, Still To Send)
-  const [activeTab, setActiveTab] = useState<"active" | "requests" | "invite" | "pending" | "still_to_send">("active");
+  const [activeTab, setActiveTab] = useState<"active" | "requests">("active");
 
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
@@ -102,39 +102,16 @@ export default function ManageStaffScreen() {
 
   const fetchStaffAndClients = useCallback(async () => {
     try {
-      const [apiStaff, clients, allInvites, requests, leaveReqs] = await Promise.all([
+      const [apiStaff, requests, leaveReqs] = await Promise.all([
         barberService.listSalonStaff(salonId).catch(() => []),
-        barberService.searchClients("").catch(() => []),
-        barberService.listSalonInvites(salonId).catch(() => []),
         barberService.getSalonJoinRequests(salonId).catch(() => []),
         barberService.getSalonLeaveRequests(salonId).catch(() => []),
       ]);
 
-      const rawInvites = Array.isArray(allInvites) ? allInvites : [];
-      const pending = rawInvites.filter((i: any) => i.rawStatus === "pending" || i.status === "Pending");
-      const drafts = rawInvites.filter((i: any) => i.rawStatus === "still_to_send" || i.status === "Still To Send");
-      const activeFromInvites = rawInvites.filter((i: any) => i.rawStatus === "active" || i.status === "Active");
-
       const baseStaff = Array.isArray(apiStaff) ? apiStaff : [];
-      const combinedActive: StaffMember[] = [
-        ...baseStaff,
-        ...activeFromInvites
-          .filter((inv: any) => !baseStaff.some((s: any) => s.id === inv.clientId || s.name === inv.clientName))
-          .map((inv: any) => ({
-            id: inv.clientId || inv.id,
-            name: inv.clientName,
-            role: inv.role || "Salon Stylist",
-            phone: inv.clientPhone,
-            status: "Active" as const,
-          })),
-      ];
-
-      setStaffList(combinedActive);
-      setPendingInvites(pending);
-      setStillToSendInvites(drafts);
+      setStaffList(baseStaff);
       setJoinRequests(Array.isArray(requests) ? requests : []);
       setLeaveRequests(Array.isArray(leaveReqs) ? leaveReqs : []);
-      setClientsDirectory(Array.isArray(clients) ? clients : []);
     } catch {
       showToast(
         language === "fr"
@@ -565,23 +542,20 @@ export default function ManageStaffScreen() {
         </View>
       </View>
 
-      {/* Segmented Top Navigation Track */}
+      {/* Segmented Top Navigation Track - Active Staff & Incoming Requests Only */}
       <View
         style={[
           styles.tabContainer,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          { backgroundColor: colors.surface, borderColor: colors.border, padding: 4 },
         ]}
       >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabTrack}
-        >
+        <View style={{ flexDirection: "row", width: "100%", gap: 8 }}>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => setActiveTab("active")}
             style={[
               styles.tabItem,
+              { flex: 1, justifyContent: "center" },
               activeTab === "active"
                 ? { backgroundColor: colors.primary }
                 : { backgroundColor: "transparent" },
@@ -589,7 +563,7 @@ export default function ManageStaffScreen() {
           >
             <Ionicons
               name="people"
-              size={14}
+              size={15}
               color={activeTab === "active" ? colors.onBrand : colors.secondarytext}
             />
             <Text
@@ -597,7 +571,9 @@ export default function ManageStaffScreen() {
                 styles.tabText,
                 { color: activeTab === "active" ? colors.onBrand : colors.primarytext },
               ]}
-            >{t("manageStaff.activeStaffTab")} ({staffList.length})</Text>
+            >
+              {language === "fr" ? "Personnel actif" : "Active Staff"} ({staffList.length})
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -605,14 +581,15 @@ export default function ManageStaffScreen() {
             onPress={() => setActiveTab("requests")}
             style={[
               styles.tabItem,
+              { flex: 1, justifyContent: "center" },
               activeTab === "requests"
                 ? { backgroundColor: colors.primary }
                 : { backgroundColor: "transparent" },
             ]}
           >
             <Ionicons
-              name="person-add-outline"
-              size={14}
+              name="git-pull-request-outline"
+              size={15}
               color={activeTab === "requests" ? colors.onBrand : colors.secondarytext}
             />
             <Text
@@ -620,85 +597,18 @@ export default function ManageStaffScreen() {
                 styles.tabText,
                 { color: activeTab === "requests" ? colors.onBrand : colors.primarytext },
               ]}
-            >{t("manageStaff.requestsTab")} ({joinRequests.length})</Text>
-            {joinRequests.length > 0 && activeTab !== "requests" && (
+            >
+              {language === "fr" ? "Demandes" : "Requests"} ({joinRequests.length + leaveRequests.length})
+            </Text>
+            {joinRequests.length + leaveRequests.length > 0 && activeTab !== "requests" && (
               <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
                 <Text style={[styles.tabBadgeText, { color: colors.onBrand }]}>
-                  {joinRequests.length}
+                  {joinRequests.length + leaveRequests.length}
                 </Text>
               </View>
             )}
           </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => setActiveTab("invite")}
-            style={[
-              styles.tabItem,
-              activeTab === "invite"
-                ? { backgroundColor: colors.primary }
-                : { backgroundColor: "transparent" },
-            ]}
-          >
-            <Ionicons
-              name="person-add"
-              size={14}
-              color={activeTab === "invite" ? colors.onBrand : colors.secondarytext}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === "invite" ? colors.onBrand : colors.primarytext },
-              ]}
-            >{t("manageStaff.searchAndInviteTab")}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => setActiveTab("pending")}
-            style={[
-              styles.tabItem,
-              activeTab === "pending"
-                ? { backgroundColor: colors.primary }
-                : { backgroundColor: "transparent" },
-            ]}
-          >
-            <Ionicons
-              name="mail-unread"
-              size={14}
-              color={activeTab === "pending" ? colors.onBrand : colors.secondarytext}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === "pending" ? colors.onBrand : colors.primarytext },
-              ]}
-            >{t("manageStaff.pendingTab")} ({pendingInvites.length})</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => setActiveTab("still_to_send")}
-            style={[
-              styles.tabItem,
-              activeTab === "still_to_send"
-                ? { backgroundColor: colors.primary }
-                : { backgroundColor: "transparent" },
-            ]}
-          >
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color={activeTab === "still_to_send" ? colors.onBrand : colors.secondarytext}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                { color: activeTab === "still_to_send" ? colors.onBrand : colors.primarytext },
-              ]}
-            >{t("manageStaff.draftsTab")} ({stillToSendInvites.length})</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
 
       <ScrollView
@@ -1168,334 +1078,7 @@ export default function ManageStaffScreen() {
           </View>
         )}
 
-        {/* TAB 3: SEARCH & INVITE */}
-        {activeTab === "invite" && (
-          <View style={{ gap: 14 }}>
-            {/* Step 1: Select Stylist */}
-            <View
-              style={[
-                styles.formCard,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-            >
-              <View style={styles.formCardHeader}>
-                <Ionicons name="search-outline" size={18} color={colors.primary} />
-                <Text style={[styles.formCardTitle, { color: colors.primarytext }]}>
-                  {t("manageStaff.findRegisteredBarber") || "Find Registered Barber or Client"}
-                </Text>
-              </View>
-              <Text style={[styles.formCardSubtitle, { color: colors.secondarytext }]}>
-                {t("manageStaff.searchUserBaseDesc") || "Search our registered Trimly user base to send an official salon staff invitation."}
-              </Text>
-
-              <View
-                style={[
-                  styles.searchBox,
-                  {
-                    backgroundColor: colors.background,
-                    borderColor: searchError ? "#EF4444" : colors.border,
-                    marginTop: 10,
-                  },
-                ]}
-              >
-                <Ionicons name="search" size={17} color={searchError ? "#EF4444" : colors.secondarytext} />
-                <TextInput
-                  style={[styles.searchInput, { color: colors.primarytext }]}
-                  placeholder={language === "fr" ? "Rechercher par nom, e-mail ou téléphone..." : "Search barber/stylist by name, email, or phone..."}
-                  placeholderTextColor={colors.secondarytext}
-                  value={clientSearchQuery}
-                  onChangeText={handleSearchClients}
-                />
-                {clientSearchQuery.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => handleSearchClients("")}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <Ionicons name="close-circle" size={17} color={colors.secondarytext} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {searchError ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    marginTop: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    borderRadius: 10,
-                    backgroundColor: "rgba(239, 68, 68, 0.08)",
-                    borderWidth: 1,
-                    borderColor: "rgba(239, 68, 68, 0.3)",
-                  }}
-                >
-                  <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#EF4444" }}>
-                    {searchError}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Directory Results */}
-              {clientsDirectory.length > 0 && (
-                <View style={styles.directoryResultsList}>
-                  {clientsDirectory.slice(0, 5).map((client) => {
-                    const isSelected = selectedClient?.id === client.id;
-                    return (
-                      <TouchableOpacity
-                        key={client.id}
-                        activeOpacity={0.8}
-                        onPress={() => setSelectedClient(client)}
-                        style={[
-                          styles.directoryItem,
-                          {
-                            backgroundColor: isSelected
-                              ? "rgba(199, 243, 107, 0.12)"
-                              : colors.background,
-                            borderColor: isSelected ? colors.primary : colors.border,
-                          },
-                        ]}
-                      >
-                        <View style={styles.dirAvatarWrap}>
-                          <Image source={profilePic} style={styles.dirAvatarImg} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.dirClientName, { color: colors.primarytext }]}>
-                            {client.name}
-                          </Text>
-                          <Text style={[styles.dirClientEmail, { color: colors.secondarytext }]}>
-                            {client.email}
-                          </Text>
-                        </View>
-                        {isSelected && (
-                          <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-
-            {/* Step 2: Assign Specialty Role */}
-            {selectedClient && (
-              <View
-                style={[
-                  styles.formCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                ]}
-              >
-                <View style={styles.formCardHeader}>
-                  <Ionicons name="ribbon-outline" size={18} color={colors.primary} />
-                  <Text style={[styles.formCardTitle, { color: colors.primarytext }]}>
-                    {language === "fr" ? `Attribuer un titre à ${selectedClient.name}` : `Assign Staff Title for ${selectedClient.name}`}
-                  </Text>
-                </View>
-
-                <View style={styles.rolesGrid}>
-                  {ROLES.map((role) => {
-                    const isSelected = staffRole === role.label;
-                    return (
-                      <TouchableOpacity
-                        key={role.label}
-                        activeOpacity={0.8}
-                        onPress={() => setStaffRole(role.label)}
-                        style={[
-                          styles.roleChip,
-                          {
-                            backgroundColor: isSelected ? colors.primary : colors.background,
-                            borderColor: isSelected ? colors.primary : colors.border,
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name={role.icon}
-                          size={15}
-                          color={isSelected ? colors.onBrand : colors.primary}
-                        />
-                        <Text
-                          style={[
-                            styles.roleChipText,
-                            { color: isSelected ? colors.onBrand : colors.primarytext },
-                          ]}
-                        >
-                          {role.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                {/* Actions: Send or Save as Draft */}
-                <View style={styles.inviteActionsRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    disabled={isInviting}
-                    onPress={() => handleSendInvite(true)}
-                    style={[
-                      styles.draftInviteBtn,
-                      { backgroundColor: colors.background, borderColor: colors.border },
-                    ]}
-                  >
-                    <Ionicons name="time-outline" size={16} color={colors.primarytext} />
-                    <Text style={[styles.draftInviteBtnText, { color: colors.primarytext }]}>
-                      {t("manageStaff.saveDraft") || "Save Draft"}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    disabled={isInviting}
-                    onPress={() => handleSendInvite(false)}
-                    style={[styles.sendInviteCTA, { backgroundColor: colors.primary }]}
-                  >
-                    {isInviting ? (
-                      <ActivityIndicator size="small" color={colors.onBrand} />
-                    ) : (
-                      <>
-                        <Ionicons name="paper-plane" size={16} color={colors.onBrand} />
-                        <Text style={[styles.sendInviteCTAText, { color: colors.onBrand }]}>
-                          {language === "fr" ? "Envoyer l'invitation officielle" : "Send Official Invite"}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* TAB 3: PENDING INVITATIONS */}
-        {activeTab === "pending" && (
-          <View style={{ gap: 14 }}>
-            {pendingInvites.length === 0 ? (
-              <View
-                style={[
-                  styles.emptyStateCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                ]}
-              >
-                <Ionicons name="mail-open-outline" size={40} color={colors.secondarytext} />
-                <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-                  {t("manageStaff.noPendingInvites") || "No Pending Invites"}
-                </Text>
-                <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
-                  {t("manageStaff.allStaffResolved") || "All sent staff invitations have been resolved or accepted."}
-                </Text>
-              </View>
-            ) : (
-              pendingInvites.map((inv) => (
-                <View
-                  key={inv.id}
-                  style={[
-                    styles.inviteCard,
-                    { backgroundColor: colors.surface, borderColor: colors.border },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.inviteClientName, { color: colors.primarytext }]}>
-                      {inv.clientName || inv.clientEmail}
-                    </Text>
-                    <Text style={[styles.inviteRoleText, { color: colors.secondarytext }]}>
-                      {language === "fr" ? "Rôle" : "Role"}: {inv.role || (language === "fr" ? "Coiffeur" : "Stylist")}
-                    </Text>
-                    <Text style={[styles.inviteStatusBadgeText, { color: "#F59E0B" }]}>
-                      {t("manageStaff.pendingStylistAcceptance") || "Pending Stylist Acceptance"}
-                    </Text>
-                  </View>
-
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => handleCancelInvite(inv.id, inv.clientName || "Stylist")}
-                    style={[
-                      styles.revokeBtn,
-                      {
-                        backgroundColor: "rgba(239, 68, 68, 0.1)",
-                        borderColor: "rgba(239, 68, 68, 0.3)",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.revokeBtnText}>{language === "fr" ? "Révoquer" : "Revoke"}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-        )}
-
-        {/* TAB 4: STILL TO SEND / DRAFTS */}
-        {activeTab === "still_to_send" && (
-          <View style={{ gap: 14 }}>
-            {stillToSendInvites.length === 0 ? (
-              <View
-                style={[
-                  styles.emptyStateCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                ]}
-              >
-                <Ionicons name="document-text-outline" size={40} color={colors.secondarytext} />
-                <Text style={[styles.emptyTitle, { color: colors.primarytext }]}>
-                  {language === "fr" ? "Aucun brouillon enregistré" : "No Saved Drafts"}
-                </Text>
-                <Text style={[styles.emptySubtitle, { color: colors.secondarytext }]}>
-                  {t("manageStaff.noUnissuedDrafts") || "You don't have any unissued draft invitations pending."}
-                </Text>
-              </View>
-            ) : (
-              stillToSendInvites.map((draft) => (
-                <View
-                  key={draft.id}
-                  style={[
-                    styles.inviteCard,
-                    { backgroundColor: colors.surface, borderColor: colors.border },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.inviteClientName, { color: colors.primarytext }]}>
-                      {draft.clientName}
-                    </Text>
-                    <Text style={[styles.inviteRoleText, { color: colors.secondarytext }]}>
-                      {language === "fr" ? "Rôle" : "Role"}: {draft.role || (language === "fr" ? "Coiffeur" : "Stylist")}
-                    </Text>
-                    <Text style={[styles.inviteStatusBadgeText, { color: colors.primary }]}>
-                      {t("manageStaff.draftStillToSend") || "Draft • Still to Send"}
-                    </Text>
-                  </View>
-
-                  <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleDeleteDraft(draft)}
-                      style={[
-                        styles.revokeBtn,
-                        {
-                          backgroundColor: "rgba(239, 68, 68, 0.1)",
-                          borderColor: "rgba(239, 68, 68, 0.3)",
-                        },
-                      ]}
-                    >
-                      <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={() => handleSendDraftNow(draft)}
-                      style={[styles.sendNowBtn, { backgroundColor: colors.primary }]}
-                    >
-                      <Text style={[styles.sendNowBtnText, { color: colors.onBrand }]}>
-                        {language === "fr" ? "Envoyer" : "Send Now"}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-        )}
-      </ScrollView>
+        </ScrollView>
 
       {/* STAFF STATUS MODAL (Active, Suspended, On Break, Off Duty) */}
       <CustomModal

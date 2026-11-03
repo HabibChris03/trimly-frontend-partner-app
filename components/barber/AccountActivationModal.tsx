@@ -28,7 +28,10 @@ export const AccountActivationModal: React.FC = () => {
   const router = useRouter();
 
   const [isActivatingSolo, setIsActivatingSolo] = useState(false);
-  const [salonEmailInput, setSalonEmailInput] = useState("");
+  const [salonNameSearch, setSalonNameSearch] = useState("");
+  const [isSearchingSalons, setIsSearchingSalons] = useState(false);
+  const [searchedSalons, setSearchedSalons] = useState<any[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [isSendingJoin, setIsSendingJoin] = useState(false);
   const [showJoinInput, setShowJoinInput] = useState(false);
 
@@ -75,21 +78,42 @@ export const AccountActivationModal: React.FC = () => {
     }
   };
 
-  const handleSendJoinRequest = async () => {
-    const cleanEmail = salonEmailInput.trim().toLowerCase();
-    if (!cleanEmail) {
+  const handleSearchSalons = async () => {
+    const trimmed = salonNameSearch.trim();
+    if (!trimmed) {
       showToast(
         language === "fr"
-          ? "Veuillez renseigner l'e-mail du salon."
-          : "Please enter a salon email address.",
+          ? "Veuillez entrer le nom d'un salon."
+          : "Please enter a salon name.",
         "warning"
       );
       return;
     }
 
+    setIsSearchingSalons(true);
+    setSearchError(null);
+    try {
+      const results: any = await barberService.searchSalonsByName(trimmed);
+      if (results?.error || (!results?.length && trimmed)) {
+        const msg = results?.error || (language === "fr" ? "Salon non trouvé." : "Salon not found.");
+        setSearchError(msg);
+        setSearchedSalons([]);
+      } else {
+        setSearchedSalons(Array.isArray(results) ? results : []);
+        setSearchError(null);
+      }
+    } catch (e: any) {
+      setSearchError(e?.message || (language === "fr" ? "Erreur lors de la recherche." : "Search failed."));
+      setSearchedSalons([]);
+    } finally {
+      setIsSearchingSalons(false);
+    }
+  };
+
+  const handleJoinSelectedSalon = async (salon: { id: number; name: string }) => {
     setIsSendingJoin(true);
     try {
-      const res = await barberService.retrySalonRequest(cleanEmail);
+      const res = await barberService.sendJoinRequestToSalon(salon.id, salon.name);
       updateUser({
         account_status: "pending_salon_approval",
         staff_status: "Pending",
@@ -98,19 +122,20 @@ export const AccountActivationModal: React.FC = () => {
       showToast(
         res?.message ||
           (language === "fr"
-            ? "Demande d'adhésion envoyée au salon !"
-            : "Join request sent to salon!"),
+            ? `Demande d'adhésion envoyée à ${salon.name} !`
+            : `Join request sent to ${salon.name}!`),
         "success"
       );
       setShowJoinInput(false);
-      setSalonEmailInput("");
+      setSalonNameSearch("");
+      setSearchedSalons([]);
       router.replace("/(sub-barber)/bookings" as any);
     } catch (e: any) {
       showToast(
         e?.message ||
           (language === "fr"
-            ? "Impossible d'envoyer la demande. Vérifiez l'e-mail du salon."
-            : "Failed to send join request. Please verify salon email."),
+            ? "Impossible d'envoyer la demande."
+            : "Failed to send join request."),
         "error"
       );
     } finally {
@@ -275,8 +300,8 @@ export const AccountActivationModal: React.FC = () => {
 
               <Text style={[styles.optionDesc, { color: colors.secondarytext }]}>
                 {language === "fr"
-                  ? "Envoyez une demande d'adhésion au gérant d'un autre salon. Une fois acceptée, vous intégrerez le salon floor."
-                  : "Submit a join request to another salon manager. Once approved, you will join their salon floor and take appointments."}
+                  ? "Recherchez un salon par son nom uniquement pour envoyer une demande d'adhésion. Une fois acceptée, vous intégrerez l'équipe du salon sans droits d'administrateur."
+                  : "Search for a salon strictly by name only to submit a join request. Once accepted, you will join their floor as staff without admin rights."}
               </Text>
 
               {!showJoinInput ? (
@@ -288,65 +313,126 @@ export const AccountActivationModal: React.FC = () => {
                     { borderColor: "#3B82F6", backgroundColor: "rgba(59, 130, 246, 0.08)" },
                   ]}
                 >
-                  <Ionicons name="paper-plane-outline" size={16} color="#3B82F6" />
+                  <Ionicons name="search-outline" size={16} color="#3B82F6" />
                   <Text style={[styles.secondaryActionBtnText, { color: "#3B82F6" }]}>
-                    {language === "fr" ? "Rejoindre un salon" : "Request to Join a Salon"}
+                    {language === "fr" ? "Rechercher un salon par nom" : "Search Salon by Name"}
                   </Text>
                 </TouchableOpacity>
               ) : (
                 <View style={{ gap: 8, marginTop: 4 }}>
-                  <TextInput
-                    style={[
-                      styles.salonInput,
-                      {
-                        backgroundColor: colors.background,
-                        borderColor: colors.border,
-                        color: colors.primarytext,
-                      },
-                    ]}
-                    placeholder={
-                      language === "fr"
-                        ? "E-mail du salon (ex: salon@trimly.com)"
-                        : "Salon email (e.g. salon@trimly.com)"
-                    }
-                    placeholderTextColor={colors.secondarytext}
-                    value={salonEmailInput}
-                    onChangeText={setSalonEmailInput}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
                   <View style={{ flexDirection: "row", gap: 8 }}>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => setShowJoinInput(false)}
+                    <TextInput
                       style={[
-                        styles.cancelInputBtn,
-                        { borderColor: colors.border, backgroundColor: colors.background },
+                        styles.salonInput,
+                        {
+                          flex: 1,
+                          backgroundColor: colors.background,
+                          borderColor: colors.border,
+                          color: colors.primarytext,
+                        },
                       ]}
-                    >
-                      <Text style={{ fontSize: 13, color: colors.secondarytext, fontWeight: "600" }}>
-                        {language === "fr" ? "Annuler" : "Cancel"}
-                      </Text>
-                    </TouchableOpacity>
+                      placeholder={
+                        language === "fr"
+                          ? "Nom du salon uniquement (ex: Kactus Bastos)"
+                          : "Salon name only (e.g. Kactus Bastos)"
+                      }
+                      placeholderTextColor={colors.secondarytext}
+                      value={salonNameSearch}
+                      onChangeText={(val) => {
+                        setSalonNameSearch(val);
+                        if (searchError) setSearchError(null);
+                      }}
+                      autoCapitalize="words"
+                      returnKeyType="search"
+                      onSubmitEditing={handleSearchSalons}
+                    />
 
                     <TouchableOpacity
                       activeOpacity={0.85}
-                      disabled={isSendingJoin || !salonEmailInput.trim()}
-                      onPress={handleSendJoinRequest}
+                      disabled={isSearchingSalons || !salonNameSearch.trim()}
+                      onPress={handleSearchSalons}
                       style={[
                         styles.sendJoinBtn,
-                        { backgroundColor: "#3B82F6", opacity: isSendingJoin || !salonEmailInput.trim() ? 0.6 : 1 },
+                        {
+                          backgroundColor: "#3B82F6",
+                          opacity: isSearchingSalons || !salonNameSearch.trim() ? 0.6 : 1,
+                          paddingHorizontal: 14,
+                        },
                       ]}
                     >
-                      {isSendingJoin ? (
+                      {isSearchingSalons ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
-                        <Text style={{ fontSize: 13, color: "#FFFFFF", fontWeight: "700" }}>
-                          {language === "fr" ? "Envoyer la demande" : "Send Request"}
-                        </Text>
+                        <Ionicons name="search" size={16} color="#FFFFFF" />
                       )}
                     </TouchableOpacity>
                   </View>
+
+                  {searchError && (
+                    <Text style={{ fontSize: 12, color: "#EF4444", marginTop: 2 }}>
+                      {searchError}
+                    </Text>
+                  )}
+
+                  {searchedSalons.length > 0 && (
+                    <View style={{ gap: 8, marginTop: 4 }}>
+                      {searchedSalons.map((salon) => (
+                        <View
+                          key={salon.id}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: 10,
+                            borderRadius: 8,
+                            backgroundColor: colors.background,
+                            borderWidth: 1,
+                            borderColor: colors.border,
+                          }}
+                        >
+                          <View style={{ flex: 1, marginRight: 8 }}>
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primarytext }}>
+                              {salon.name}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: colors.secondarytext }}>
+                              {salon.city || "Cameroon"}
+                            </Text>
+                          </View>
+
+                          <TouchableOpacity
+                            activeOpacity={0.85}
+                            disabled={isSendingJoin}
+                            onPress={() => handleJoinSelectedSalon(salon)}
+                            style={{
+                              backgroundColor: "#3B82F6",
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 6,
+                            }}
+                          >
+                            <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFFFFF" }}>
+                              {language === "fr" ? "Rejoindre" : "Join"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setShowJoinInput(false);
+                      setSalonNameSearch("");
+                      setSearchedSalons([]);
+                      setSearchError(null);
+                    }}
+                    style={{ alignSelf: "center", marginTop: 4 }}
+                  >
+                    <Text style={{ fontSize: 12, color: colors.secondarytext, textDecorationLine: "underline" }}>
+                      {language === "fr" ? "Fermer la recherche" : "Close search"}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>

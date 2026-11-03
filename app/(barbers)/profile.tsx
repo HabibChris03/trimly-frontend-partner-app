@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -62,7 +62,18 @@ export default function BarberProfileSettingsScreen() {
   const [isLinkingSalon, setIsLinkingSalon] = useState(false);
   const [isUnlinkingSalon, setIsUnlinkingSalon] = useState(false);
   const [showChangeSalonInput, setShowChangeSalonInput] = useState(false);
-  const [unlinkModalVisible, setUnlinkModalVisible] = useState(false);
+    const [unlinkModalVisible, setUnlinkModalVisible] = useState(false);
+
+  // Solo barber salon search strictly by name only & join request state
+  const [salonSearchQuery, setSalonSearchQuery] = useState("");
+  const [isSearchingSalons, setIsSearchingSalons] = useState(false);
+  const [searchedSalons, setSearchedSalons] = useState<any[]>([]);
+  const [searchSalonsError, setSearchSalonsError] = useState<string | null>(null);
+  const [pendingJoinRequest, setPendingJoinRequest] = useState<any | null>(null);
+  const [isSendingJoinRequest, setIsSendingJoinRequest] = useState(false);
+  const [isCancellingJoinRequest, setIsCancellingJoinRequest] = useState(false);
+  const [joinModalVisible, setJoinModalVisible] = useState(false);
+  const [selectedSalonToJoin, setSelectedSalonToJoin] = useState<any | null>(null);
   const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
   const [deletePhraseInput, setDeletePhraseInput] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -90,14 +101,124 @@ export default function BarberProfileSettingsScreen() {
     }
   };
 
+  const checkPendingJoinRequest = useCallback(async () => {
+    try {
+      const res = await barberService.getMyPendingJoinRequest();
+      if (res?.has_pending_request && res?.request) {
+        setPendingJoinRequest(res.request);
+      } else {
+        setPendingJoinRequest(null);
+      }
+    } catch {
+      setPendingJoinRequest(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkPendingJoinRequest();
+  }, [checkPendingJoinRequest]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (refreshUser) {
       await refreshUser().catch(() => null);
     }
+    await checkPendingJoinRequest();
     setRefreshing(false);
     showToast(language === "fr" ? "Profil actualisé." : "Profile refreshed.", "info");
-  }, [refreshUser, showToast, language]);
+  }, [refreshUser, checkPendingJoinRequest, showToast, language]);
+
+  const handleSearchSalons = async () => {
+    const trimmed = salonSearchQuery.trim();
+    if (!trimmed) {
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer le nom d'un salon."
+          : "Please enter a salon name to search.",
+        "warning"
+      );
+      return;
+    }
+    setIsSearchingSalons(true);
+    setSearchSalonsError(null);
+    try {
+      const results: any = await barberService.searchSalonsByName(trimmed);
+      if (results?.error || (!results?.length && trimmed)) {
+        const errMsg = results?.error || (language === "fr" ? "Salon non trouvé." : "Salon not found.");
+        setSearchSalonsError(errMsg);
+        setSearchedSalons([]);
+      } else {
+        setSearchedSalons(Array.isArray(results) ? results : []);
+        setSearchSalonsError(null);
+      }
+    } catch (e: any) {
+      setSearchSalonsError(e?.message || (language === "fr" ? "Erreur de recherche." : "Search failed."));
+      setSearchedSalons([]);
+    } finally {
+      setIsSearchingSalons(false);
+    }
+  };
+
+  const handleOpenJoinConfirmation = (salon: any) => {
+    setSelectedSalonToJoin(salon);
+    setJoinModalVisible(true);
+  };
+
+  const handleConfirmSendJoinRequest = async () => {
+    if (!selectedSalonToJoin) return;
+    setIsSendingJoinRequest(true);
+    try {
+      const res = await barberService.sendJoinRequestToSalon(
+        selectedSalonToJoin.id,
+        selectedSalonToJoin.name
+      );
+      setPendingJoinRequest({
+        id: res?.request_id,
+        salon_id: selectedSalonToJoin.id,
+        salon_name: selectedSalonToJoin.name,
+        created_at: new Date().toISOString(),
+      });
+      setJoinModalVisible(false);
+      setSelectedSalonToJoin(null);
+      setSearchedSalons([]);
+      setSalonSearchQuery("");
+      showToast(
+        res?.message ||
+          (language === "fr"
+            ? `Demande transmise à ${selectedSalonToJoin.name} ! En attente d'approbation.`
+            : `Join request sent to ${selectedSalonToJoin.name}! Awaiting manager approval.`),
+        "success"
+      );
+    } catch (err: any) {
+      showToast(
+        err?.message ||
+          (language === "fr" ? "Impossible d'envoyer la demande." : "Failed to send join request."),
+        "error"
+      );
+    } finally {
+      setIsSendingJoinRequest(false);
+    }
+  };
+
+  const handleCancelPendingJoinRequest = async () => {
+    setIsCancellingJoinRequest(true);
+    try {
+      await barberService.cancelPendingJoinRequest();
+      setPendingJoinRequest(null);
+      showToast(
+        language === "fr" ? "Demande d'adhésion annulée." : "Join request cancelled successfully.",
+        "info"
+      );
+    } catch (e: any) {
+      showToast(
+        e?.message ||
+          (language === "fr" ? "Échec d'annulation de la demande." : "Failed to cancel join request."),
+        "error"
+      );
+    } finally {
+      setIsCancellingJoinRequest(false);
+    }
+  };
 
   const handleDutyChange = async (newStatus: DutyStatus) => {
     if (dutyStatus === newStatus || isUpdatingDuty) return;
@@ -620,7 +741,7 @@ export default function BarberProfileSettingsScreen() {
             </View>
           </View>
         ) : (
-          // CARD FOR BARBERS & HAIRDRESSERS
+          // CARD FOR SOLO BARBERS & HAIRDRESSERS: JOIN A SALON (SEARCH STRICTLY BY NAME ONLY)
           <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.sectionIconBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
@@ -628,196 +749,274 @@ export default function BarberProfileSettingsScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.cardTitle, { color: colors.primaryText }]}>
-                  Salon Affiliation (Salon ID)
+                  {language === "fr" ? "Rejoindre un salon" : "Join a Salon"}
                 </Text>
                 <Text style={[styles.cardSubtitle, { color: colors.secondaryText }]}>
-                  Register or connect under a particular salon or barbershop
+                  {language === "fr"
+                    ? "Recherchez un salon par nom pour envoyer une demande d'adhésion"
+                    : "Search for a salon strictly by name only to send a join request"}
                 </Text>
               </View>
-              {user?.parent_salon_id && !showChangeSalonInput ? (
-                <View style={[styles.affiliatedBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: "rgba(199, 243, 107, 0.3)" }]}>
-                  <View style={[styles.affiliatedDot, { backgroundColor: colors.brand }]} />
-                  <Text style={[styles.affiliatedBadgeText, { color: colors.brand }]}>
-                    AFFILIATED
-                  </Text>
-                </View>
-              ) : (
-                <View style={[styles.affiliatedBadge, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
-                  <Text style={[styles.affiliatedBadgeText, { color: colors.secondaryText }]}>
-                    SOLO / INDIE
-                  </Text>
-                </View>
-              )}
+              <View style={[styles.affiliatedBadge, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
+                <Text style={[styles.affiliatedBadgeText, { color: colors.secondaryText }]}>
+                  SOLO / INDIE
+                </Text>
+              </View>
             </View>
 
-            {/* State 1: Currently Linked to Salon */}
-            {user?.parent_salon_id && !showChangeSalonInput ? (
-              <View style={styles.linkedSalonCard}>
-                <View style={[styles.linkedSalonInfoBox, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
-                  <View style={[styles.linkedSalonIconWrap, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                    <Ionicons name="business-outline" size={20} color={colors.brand} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.linkedSalonName, { color: colors.primaryText }]} numberOfLines={1}>
-                      {user?.parent_salon_name || salonAffiliation || `Salon #${user.parent_salon_id}`}
-                    </Text>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 }}>
-                      <View style={[styles.salonIdPillSmall, { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: "rgba(199, 243, 107, 0.25)" }]}>
-                        <Text style={[styles.salonIdPillSmallText, { color: colors.brand }]}>
-                          SALON ID: #{user.parent_salon_id}
-                        </Text>
-                      </View>
-                      <Text style={[styles.linkedSalonRole, { color: colors.secondaryText }]}>
-                        {user?.staff_title || "Stylist Chair"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
+            {/* Warning / Informational Callout: Loss of Admin Rights */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "flex-start",
+                gap: 8,
+                backgroundColor: "rgba(245, 158, 11, 0.1)",
+                borderColor: "rgba(245, 158, 11, 0.3)",
+                borderWidth: 1,
+                borderRadius: 8,
+                padding: 10,
+                marginTop: 6,
+              }}
+            >
+              <Ionicons name="warning-outline" size={16} color="#F59E0B" style={{ marginTop: 2 }} />
+              <Text style={{ flex: 1, fontSize: 12, lineHeight: 17, color: colors.primaryText }}>
+                {language === "fr"
+                  ? "Remarque : Lorsque vous rejoignez un salon, vous perdez tous vos droits d'administrateur car vous travaillerez désormais en tant que membre du personnel sous ce salon."
+                  : "Notice: When you join a salon, you will no longer have your admin rights since you will now work under that salon as a staff member."}
+              </Text>
+            </View>
 
-                <View style={styles.linkedSalonActionRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => {
-                      setSalonIdInput(String(user.parent_salon_id));
-                      setShowChangeSalonInput(true);
+            {/* State A: User has a pending join request */}
+            {pendingJoinRequest ? (
+              <View
+                style={{
+                  backgroundColor: colors.elevated,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                  padding: 14,
+                  marginTop: 12,
+                  gap: 10,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Ionicons name="time" size={18} color={colors.brand} />
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryText }}>
+                      {pendingJoinRequest.salon_name || "Trimly Partner Salon"}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      backgroundColor: "rgba(199, 243, 107, 0.15)",
+                      borderColor: "rgba(199, 243, 107, 0.4)",
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
                     }}
-                    style={[styles.changeSalonBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
                   >
-                    <Ionicons name="swap-horizontal-outline" size={14} color={colors.primaryText} />
-                    <Text style={[styles.changeSalonBtnText, { color: colors.primaryText }]}>
-                      Change Salon ID
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: colors.brand }}>
+                      {language === "fr" ? "Demande en attente" : "Pending Approval"}
                     </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => setUnlinkModalVisible(true)}
-                    style={[styles.unlinkSalonBtn, { backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.25)" }]}
-                  >
-                    <Ionicons name="exit-outline" size={14} color="#EF4444" />
-                    <Text style={styles.unlinkSalonBtnText}>
-                      Unlink
-                    </Text>
-                  </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            ) : (
-              // State 2: Input Field to Enter or Change Salon ID
-              <View style={styles.salonInputBlock}>
-                <Text style={[styles.salonInputHelper, { color: colors.secondaryText }]}>
-                  Input the Salon ID provided by your salon manager to register or operate as a stylist under that particular salon.
+
+                <Text style={{ fontSize: 12, color: colors.secondaryText, lineHeight: 17 }}>
+                  {language === "fr"
+                    ? `Votre demande pour rejoindre ${pendingJoinRequest.salon_name} a été envoyée au gérant du salon. Vous serez rattaché à son salon dès approbation.`
+                    : `Your request to join ${pendingJoinRequest.salon_name} has been submitted to the salon manager. You will be onboarded to their salon floor once approved.`}
                 </Text>
 
-                <View style={styles.salonInputRow}>
-                  <View style={[styles.salonInputWrapper, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                    <Ionicons name="key-outline" size={17} color={colors.brand} />
-                    <TextInput
-                      style={[styles.salonTextInput, { color: colors.primaryText }]}
-                      placeholder={t("profile.salonIdPlaceholder") || "e.g. 4 or SALON-04"}
-                      placeholderTextColor={colors.inputPlaceholder}
-                      value={salonIdInput}
-                      onChangeText={(val) => {
-                        setSalonIdInput(val);
-                        setVerifiedSalon(null);
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={isCancellingJoinRequest}
+                  onPress={handleCancelPendingJoinRequest}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    backgroundColor: "rgba(239, 68, 68, 0.1)",
+                    borderColor: "rgba(239, 68, 68, 0.3)",
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    paddingVertical: 8,
+                    marginTop: 2,
+                  }}
+                >
+                  {isCancellingJoinRequest ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <>
+                      <Ionicons name="close-circle-outline" size={15} color="#EF4444" />
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: "#EF4444" }}>
+                        {language === "fr" ? "Annuler la demande" : "Cancel Join Request"}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* State B: Search for a Salon strictly by name only */
+              <View style={{ gap: 10, marginTop: 12 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    paddingHorizontal: 10,
+                  }}
+                >
+                  <Ionicons name="search" size={17} color={colors.secondaryText} style={{ marginRight: 6 }} />
+                  <TextInput
+                    style={{
+                      flex: 1,
+                      height: 42,
+                      fontSize: 14,
+                      color: colors.primaryText,
+                    }}
+                    placeholder={
+                      language === "fr"
+                        ? "Nom du salon uniquement (ex: Prestige Cutz)..."
+                        : "Search salon by name only (e.g. Prestige Cutz)..."
+                    }
+                    placeholderTextColor={colors.inputPlaceholder}
+                    value={salonSearchQuery}
+                    onChangeText={(val) => {
+                      setSalonSearchQuery(val);
+                      if (searchSalonsError) setSearchSalonsError(null);
+                    }}
+                    returnKeyType="search"
+                    onSubmitEditing={handleSearchSalons}
+                    autoCapitalize="words"
+                  />
+                  {salonSearchQuery.length > 0 && (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setSalonSearchQuery("");
+                        setSearchedSalons([]);
+                        setSearchSalonsError(null);
                       }}
-                      keyboardType="numeric"
-                      autoCapitalize="characters"
-                    />
-                    {salonIdInput.length > 0 && (
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          setSalonIdInput("");
-                          setVerifiedSalon(null);
-                        }}
-                      >
-                        <Ionicons name="close-circle" size={16} color={colors.secondaryText} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    disabled={isVerifyingSalon || !salonIdInput.trim()}
-                    onPress={() => handleVerifySalon()}
-                    style={[
-                      styles.verifySalonBtn,
-                      {
-                        backgroundColor: salonIdInput.trim() ? colors.brand : colors.elevated,
-                        borderColor: colors.border,
-                        opacity: isVerifyingSalon ? 0.7 : salonIdInput.trim() ? 1 : 0.6,
-                      },
-                    ]}
-                  >
-                    {isVerifyingSalon ? (
-                      <ActivityIndicator size="small" color={colors.onBrand} />
-                    ) : (
-                      <>
-                        <Ionicons
-                          name="search-outline"
-                          size={15}
-                          color={salonIdInput.trim() ? colors.onBrand : colors.secondaryText}
-                        />
-                        <Text
-                          style={[
-                            styles.verifySalonBtnText,
-                            { color: salonIdInput.trim() ? colors.onBrand : colors.secondaryText },
-                          ]}
-                        >
-                          Verify
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+                      style={{ padding: 4 }}
+                    >
+                      <Ionicons name="close-circle" size={16} color={colors.secondaryText} />
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                {/* Verified Salon Preview Card */}
-                {verifiedSalon && (
-                  <View style={[styles.verifiedSalonBox, { backgroundColor: "rgba(199, 243, 107, 0.08)", borderColor: "rgba(199, 243, 107, 0.3)" }]}>
-                    <View style={styles.verifiedSalonLeft}>
-                      <View style={[styles.verifiedCheckCircle, { backgroundColor: colors.brand }]}>
-                        <Ionicons name="checkmark" size={14} color={colors.onBrand} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.verifiedSalonTitle, { color: colors.primaryText }]}>
-                          {verifiedSalon.name}
-                        </Text>
-                        <Text style={[styles.verifiedSalonSub, { color: colors.secondaryText }]}>
-                          Salon #{verifiedSalon.id} • {verifiedSalon.city || "Cameroon"}
-                        </Text>
-                      </View>
-                    </View>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={isSearchingSalons || !salonSearchQuery.trim()}
+                  onPress={handleSearchSalons}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    backgroundColor: salonSearchQuery.trim() ? colors.brand : colors.elevated,
+                    borderRadius: 8,
+                    paddingVertical: 10,
+                    opacity: isSearchingSalons ? 0.7 : salonSearchQuery.trim() ? 1 : 0.6,
+                  }}
+                >
+                  {isSearchingSalons ? (
+                    <ActivityIndicator size="small" color={colors.onBrand} />
+                  ) : (
+                    <>
+                      <Ionicons
+                        name="search-outline"
+                        size={15}
+                        color={salonSearchQuery.trim() ? colors.onBrand : colors.secondaryText}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: "700",
+                          color: salonSearchQuery.trim() ? colors.onBrand : colors.secondaryText,
+                        }}
+                      >
+                        {language === "fr" ? "Rechercher le salon" : "Search Salon"}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
 
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      disabled={isLinkingSalon}
-                      onPress={handleConnectSalon}
-                      style={[styles.connectSalonBtn, { backgroundColor: colors.brand }]}
-                    >
-                      {isLinkingSalon ? (
-                        <ActivityIndicator size="small" color={colors.onBrand} />
-                      ) : (
-                        <>
-                          <Ionicons name="link-outline" size={15} color={colors.onBrand} />
-                          <Text style={[styles.connectSalonBtnText, { color: colors.onBrand }]}>
-                            Connect to Salon
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                {/* Error / Not Found Display */}
+                {searchSalonsError && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      backgroundColor: "rgba(239, 68, 68, 0.08)",
+                      borderColor: "rgba(239, 68, 68, 0.25)",
+                      borderWidth: 1,
+                      borderRadius: 8,
+                      padding: 10,
+                    }}
+                  >
+                    <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+                    <Text style={{ fontSize: 12, color: "#EF4444", flex: 1 }}>
+                      {searchSalonsError}
+                    </Text>
                   </View>
                 )}
 
-                {showChangeSalonInput && user?.parent_salon_id && (
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => setShowChangeSalonInput(false)}
-                    style={{ alignSelf: "center", marginTop: 8 }}
-                  >
-                    <Text style={{ fontSize: 12, color: colors.secondaryText, textDecorationLine: "underline" }}>
-                      Keep current salon (#{user.parent_salon_id})
+                {/* Search Results List */}
+                {searchedSalons.length > 0 && (
+                  <View style={{ gap: 8, marginTop: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.secondaryText }}>
+                      {language === "fr" ? "Salons trouvés :" : "Salons Found:"}
                     </Text>
-                  </TouchableOpacity>
+                    {searchedSalons.map((salon) => (
+                      <View
+                        key={salon.id}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          backgroundColor: colors.elevated,
+                          borderColor: colors.border,
+                          borderWidth: 1,
+                          borderRadius: 8,
+                          padding: 12,
+                        }}
+                      >
+                        <View style={{ flex: 1, marginRight: 8, gap: 2 }}>
+                          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryText }}>
+                            {salon.name}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: colors.secondaryText }}>
+                            {salon.city || "Cameroon"}
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          activeOpacity={0.85}
+                          onPress={() => handleOpenJoinConfirmation(salon)}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            backgroundColor: colors.brand,
+                            paddingHorizontal: 12,
+                            paddingVertical: 7,
+                            borderRadius: 6,
+                          }}
+                        >
+                          <Ionicons name="paper-plane" size={13} color={colors.onBrand} />
+                          <Text style={{ fontSize: 12, fontWeight: "700", color: colors.onBrand }}>
+                            {language === "fr" ? "Demander" : "Request"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
                 )}
               </View>
             )}
@@ -1423,6 +1622,38 @@ export default function BarberProfileSettingsScreen() {
             </TouchableOpacity>
           </View>
         </CustomModal>
+
+        {/* Join Salon Confirmation Modal (Warning on Admin Rights Loss) */}
+        <CustomModal
+          visible={joinModalVisible}
+          onClose={() => {
+            if (!isSendingJoinRequest) {
+              setJoinModalVisible(false);
+              setSelectedSalonToJoin(null);
+            }
+          }}
+          title={
+            language === "fr"
+              ? `Rejoindre ${selectedSalonToJoin?.name || "le salon"} ?`
+              : `Join ${selectedSalonToJoin?.name || "Salon"}?`
+          }
+          description={
+            language === "fr"
+              ? `Attention : Lorsque vous rejoignez un salon, vous perdez tous vos droits d'administrateur car vous travaillerez désormais en tant que membre du personnel sous ce salon.\n\nSouhaitez-vous envoyer une demande d'adhésion à ${selectedSalonToJoin?.name} ?`
+              : `Attention: When you join a salon, you will no longer have your admin rights since you will now work under that salon as a staff member.\n\nAre you sure you want to send a join request to ${selectedSalonToJoin?.name}?`
+          }
+          primaryText={
+            isSendingJoinRequest
+              ? (language === "fr" ? "Envoi en cours..." : "Sending Request...")
+              : (language === "fr" ? "Confirmer et envoyer la demande" : "Confirm & Send Request")
+          }
+          onPrimary={handleConfirmSendJoinRequest}
+          secondaryText={language === "fr" ? "Annuler" : "Cancel"}
+          onSecondary={() => {
+            setJoinModalVisible(false);
+            setSelectedSalonToJoin(null);
+          }}
+        />
 
         {/* Unlink from Salon Confirmation Modal */}
         <CustomModal
