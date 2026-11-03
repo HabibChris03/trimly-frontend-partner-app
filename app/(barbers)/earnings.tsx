@@ -75,6 +75,12 @@ export default function BarberEarningsScreen() {
     }, [showTabBar])
   );
 
+  const isSalon = Boolean(user?.role === "salon" || user?.is_manager || user?.is_lead);
+  const isStaff = Boolean(user?.parent_salon_id && !isSalon);
+
+  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
+  const [staffList, setStaffList] = useState<any[]>([]);
+
   const [selectedPeriod, setSelectedPeriod] =
     useState<(typeof PERIODS)[number]>("This Week");
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -109,7 +115,10 @@ export default function BarberEarningsScreen() {
         "All Time": "all_time",
       };
 
-      const apiSummary = await barberService.getEarningsSummary(periodMap[selectedPeriod] || "week");
+      const apiSummary = await barberService.getEarningsSummary(
+        periodMap[selectedPeriod] || "week",
+        selectedStaffId || undefined
+      );
       if (apiSummary) {
         setTotalRevenue(apiSummary.total_earnings ?? 0);
         setCompletedEarnings(apiSummary.completed_earnings ?? apiSummary.total_earnings ?? 0);
@@ -139,11 +148,21 @@ export default function BarberEarningsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedPeriod]);
+  }, [selectedPeriod, selectedStaffId]);
 
   useEffect(() => {
     fetchEarningsData();
   }, [fetchEarningsData]);
+
+  useEffect(() => {
+    if (isSalon) {
+      const salonId = user?.id || 4;
+      barberService.listSalonStaff(salonId).then((res) => {
+        const list = Array.isArray(res) ? res : (res as any)?.staff || [];
+        setStaffList(list);
+      }).catch(() => setStaffList([]));
+    }
+  }, [isSalon, user?.id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -202,7 +221,11 @@ export default function BarberEarningsScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.headerTitle, { color: colors.primaryText }]}>{t("earnings.revenueAndPayouts")}</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.secondaryText }]}>{t("earnings.financialAnalytics")}</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.secondaryText }]}>
+            {selectedStaffId
+              ? `${staffList.find((s) => s.id === selectedStaffId)?.name || "Staff"}'s Performance`
+              : (isStaff ? "Your Personal Earnings" : t("earnings.financialAnalytics"))}
+          </Text>
         </View>
 
         <View style={styles.headerActions}>
@@ -238,6 +261,102 @@ export default function BarberEarningsScreen() {
           />
         }
       >
+        {/* Salon Manager Staff Filter Strip */}
+        {isSalon && staffList.length > 0 && (
+          <View style={styles.staffFilterContainer}>
+            <Text style={[styles.staffFilterLabel, { color: colors.secondaryText }]}>
+              {user?.role === "salon" ? "Filter Revenue by Staff:" : "View Performance:"}
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.staffFilterScroll}
+            >
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setSelectedStaffId(null)}
+                style={[
+                  styles.staffFilterChip,
+                  selectedStaffId === null
+                    ? { backgroundColor: colors.brand, borderColor: colors.brand }
+                    : { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name="business"
+                  size={13}
+                  color={selectedStaffId === null ? colors.onBrand : colors.brand}
+                />
+                <Text
+                  style={[
+                    styles.staffFilterChipText,
+                    {
+                      color: selectedStaffId === null ? colors.onBrand : colors.primaryText,
+                      fontWeight: selectedStaffId === null ? "700" : "500",
+                    },
+                  ]}
+                >
+                  All Salon Revenue
+                </Text>
+              </TouchableOpacity>
+
+              {staffList.map((member) => {
+                const isSelected = selectedStaffId === member.id;
+                return (
+                  <TouchableOpacity
+                    key={member.id}
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedStaffId(member.id)}
+                    style={[
+                      styles.staffFilterChip,
+                      isSelected
+                        ? { backgroundColor: colors.brand, borderColor: colors.brand }
+                        : { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                  >
+                    <Ionicons
+                      name="person"
+                      size={12}
+                      color={isSelected ? colors.onBrand : colors.secondaryText}
+                    />
+                    <Text
+                      style={[
+                        styles.staffFilterChipText,
+                        {
+                          color: isSelected ? colors.onBrand : colors.primaryText,
+                          fontWeight: isSelected ? "700" : "500",
+                        },
+                      ]}
+                    >
+                      {member.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Staff Privacy & Personal Earnings Banner */}
+        {isStaff && (
+          <View
+            style={[
+              styles.staffPrivacyBanner,
+              { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: colors.brand },
+            ]}
+          >
+            <Ionicons name="shield-checkmark" size={17} color={colors.brand} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[styles.staffPrivacyTitle, { color: colors.primaryText }]}>
+                Personal Booking Earnings
+              </Text>
+              <Text style={[styles.staffPrivacySub, { color: colors.secondaryText }]}>
+                Showing only your personal earnings and statistics from your client appointments.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Available Balance Command Hero */}
         <View
           style={[
@@ -851,6 +970,50 @@ export default function BarberEarningsScreen() {
 }
 
 const styles = StyleSheet.create({
+  staffFilterContainer: {
+    gap: 6,
+    marginBottom: 4,
+  },
+  staffFilterLabel: {
+    fontSize: 11.5,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  staffFilterScroll: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  staffFilterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  staffFilterChipText: {
+    fontSize: 12,
+  },
+  staffPrivacyBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  staffPrivacyTitle: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  staffPrivacySub: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+
   container: {
     flex: 1,
   },

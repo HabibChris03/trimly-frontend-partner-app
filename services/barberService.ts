@@ -1140,12 +1140,17 @@ export const barberService = {
    * Endpoint: GET /api/v1/barbers/earnings/summary?period=today|week|month|all_time
    */
   async getEarningsSummary(
-    period: "today" | "week" | "month" | "all_time" = "week"
+    period: "today" | "week" | "month" | "all_time" = "week",
+    staffId?: number
   ): Promise<any> {
     try {
+      const params: Record<string, any> = { period };
+      if (staffId) {
+        params.staff_id = staffId;
+      }
       return await apiRequest("/api/v1/barbers/earnings/summary", {
         method: "GET",
-        params: { period },
+        params,
       });
     } catch {
       return null;
