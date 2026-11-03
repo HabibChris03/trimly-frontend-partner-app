@@ -30,6 +30,7 @@ import { LocationProvider } from "@/context/LocationContext";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useOTAUpdates } from "@/hooks/useOTAUpdates";
 import { BarberSuspensionModal } from "@/components/barber/BarberSuspensionModal";
+import { AccountActivationModal } from "@/components/barber/AccountActivationModal";
 
 export const unstable_settings = {
   anchor: "index",
@@ -96,6 +97,7 @@ function RootNavigator() {
         />
       </Stack>
       <BarberSuspensionModal />
+      <AccountActivationModal />
       <StatusBar style={isDark ? "light" : "dark"} />
     </NavThemeProvider>
   );

@@ -486,11 +486,17 @@ export const barberService = {
     const q = (query || "").trim();
 
     try {
-      // Primary: Fetch live registered clients from database endpoint
+      // Fetch live registered barbers & hairdressers from database
       const res = await apiRequest<any>(`/api/v1/barbers/clients/search`, {
         method: "GET",
         params: q ? { q } : undefined,
       });
+
+      if (res?.status === "error" || res?.message === "User not found") {
+        const emptyResult: any = [];
+        emptyResult.error = res?.message || "User not found";
+        return emptyResult;
+      }
 
       let clients: any[] = [];
       if (res?.clients && Array.isArray(res.clients)) {
@@ -501,31 +507,25 @@ export const barberService = {
         clients = res.users;
       }
 
-      if (clients.length > 0) {
-        return clients.map((c) => ({
-          id: c.id,
-          name: c.name || (c.email ? c.email.split("@")[0].charAt(0).toUpperCase() + c.email.split("@")[0].slice(1) : "Client"),
-          email: c.email,
-          phone: c.phone || undefined,
-          role: c.role || "client",
-        }));
+      if (clients.length === 0 && q) {
+        const emptyResult: any = [];
+        emptyResult.error = "User not found";
+        return emptyResult;
       }
-    } catch {
-      // Try secondary user search endpoint
-      try {
-        const res = await apiRequest<any>(`/api/v1/users/search`, {
-          method: "GET",
-          params: q ? { q } : undefined,
-        });
-        if (res?.clients && Array.isArray(res.clients)) return res.clients;
-        if (Array.isArray(res) && res.length > 0) return res;
-        if (res?.users && Array.isArray(res.users)) return res.users;
-      } catch {
-        // Handled below
-      }
-    }
 
-    return [];
+      const mapped: any = clients.map((c) => ({
+        id: c.id,
+        name: c.name || (c.email ? c.email.split("@")[0].charAt(0).toUpperCase() + c.email.split("@")[0].slice(1) : "Stylist"),
+        email: c.email,
+        phone: c.phone || undefined,
+        role: c.role || "barber",
+      }));
+      return mapped;
+    } catch (err: any) {
+      const emptyResult: any = [];
+      emptyResult.error = err?.message || "User not found";
+      return emptyResult;
+    }
   },
 
   /**
@@ -1315,6 +1315,74 @@ export const barberService = {
     return await apiRequest("/api/v1/barbers/retry-salon-request", {
       method: "POST",
       body: JSON.stringify({ salon_email: salonEmail }),
+    });
+  },
+
+  /**
+   * Request to leave the current salon floor (requires manager approval).
+   */
+  async requestLeaveSalon(): Promise<any> {
+    return await apiRequest("/api/v1/barbers/staff/request-leave", {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Cancel a pending leave request.
+   */
+  async cancelLeaveSalonRequest(): Promise<any> {
+    return await apiRequest("/api/v1/barbers/staff/cancel-leave-request", {
+      method: "POST",
+    });
+  },
+
+  /**
+   * Check staff member's current leave request status.
+   */
+  async getMyLeaveStatus(): Promise<any> {
+    try {
+      return await apiRequest("/api/v1/barbers/staff/my-leave-status", {
+        method: "GET",
+      });
+    } catch {
+      return { is_linked_to_salon: false, has_pending_leave: false };
+    }
+  },
+
+  /**
+   * Fetch incoming staff departure requests for a salon manager.
+   */
+  async getSalonLeaveRequests(salonId: number): Promise<any[]> {
+    try {
+      const res = await apiRequest<any>(`/api/v1/barbers/${salonId}/leave-requests`, {
+        method: "GET",
+      });
+      return res?.leave_requests || [];
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Salon manager approves or declines a staff member's leave request.
+   */
+  async respondToLeaveRequest(
+    salonId: number,
+    requestId: number,
+    action: "accept" | "reject"
+  ): Promise<any> {
+    return await apiRequest(`/api/v1/barbers/${salonId}/leave-requests/${requestId}/respond`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+  },
+
+  /**
+   * Activate an unlinked/departed staff member as an independent solo provider with full admin rights.
+   */
+  async activateSolo(): Promise<any> {
+    return await apiRequest("/api/v1/barbers/activate-solo", {
+      method: "POST",
     });
   },
 };

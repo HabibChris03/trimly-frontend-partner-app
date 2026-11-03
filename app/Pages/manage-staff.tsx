@@ -75,13 +75,16 @@ export default function ManageStaffScreen() {
   const [pendingInvites, setPendingInvites] = useState<any[]>([]);
   const [stillToSendInvites, setStillToSendInvites] = useState<any[]>([]);
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
   const [isRespondingToRequest, setIsRespondingToRequest] = useState<number | null>(null);
+  const [isRespondingLeave, setIsRespondingLeave] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tutorialVisible, setTutorialVisible] = useState(false);
 
   // Client Search & Invite State
   const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [clientsDirectory, setClientsDirectory] = useState<RegisteredClient[]>([]);
   const [selectedClient, setSelectedClient] = useState<RegisteredClient | null>(null);
   const [staffRole, setStaffRole] = useState(ROLES[0].label);
@@ -99,11 +102,12 @@ export default function ManageStaffScreen() {
 
   const fetchStaffAndClients = useCallback(async () => {
     try {
-      const [apiStaff, clients, allInvites, requests] = await Promise.all([
+      const [apiStaff, clients, allInvites, requests, leaveReqs] = await Promise.all([
         barberService.listSalonStaff(salonId).catch(() => []),
         barberService.searchClients("").catch(() => []),
         barberService.listSalonInvites(salonId).catch(() => []),
         barberService.getSalonJoinRequests(salonId).catch(() => []),
+        barberService.getSalonLeaveRequests(salonId).catch(() => []),
       ]);
 
       const rawInvites = Array.isArray(allInvites) ? allInvites : [];
@@ -129,6 +133,7 @@ export default function ManageStaffScreen() {
       setPendingInvites(pending);
       setStillToSendInvites(drafts);
       setJoinRequests(Array.isArray(requests) ? requests : []);
+      setLeaveRequests(Array.isArray(leaveReqs) ? leaveReqs : []);
       setClientsDirectory(Array.isArray(clients) ? clients : []);
     } catch {
       showToast(
@@ -184,8 +189,44 @@ export default function ManageStaffScreen() {
 
   const handleSearchClients = async (query: string) => {
     setClientSearchQuery(query);
-    const results = await barberService.searchClients(query);
-    setClientsDirectory(results);
+    setSearchError(null);
+    const trimmed = query.trim();
+    if (!trimmed) {
+      const results = await barberService.searchClients("");
+      setClientsDirectory(Array.isArray(results) ? results : []);
+      return;
+    }
+    const results: any = await barberService.searchClients(trimmed);
+    if (results?.error || (!results?.length && trimmed)) {
+      const err = results?.error || (language === "fr" ? "Utilisateur non trouvé" : "User not found");
+      setSearchError(err);
+      setClientsDirectory([]);
+      showToast(err, "error");
+    } else {
+      setSearchError(null);
+      setClientsDirectory(Array.isArray(results) ? results : []);
+    }
+  };
+
+  const handleRespondLeaveRequest = async (requestId: number, action: "accept" | "reject") => {
+    setIsRespondingLeave(requestId);
+    try {
+      await barberService.respondToLeaveRequest(salonId, requestId, action);
+      showToast(
+        action === "accept"
+          ? (language === "fr" ? "Départ du coiffeur approuvé. Compte dissocié." : "Staff departure approved. Account unlinked.")
+          : (language === "fr" ? "Demande de départ refusée." : "Staff leave request declined."),
+        action === "accept" ? "success" : "info"
+      );
+      await fetchStaffAndClients();
+    } catch (e: any) {
+      showToast(
+        e?.message || (language === "fr" ? "Échec du traitement." : "Failed to process leave request."),
+        "error"
+      );
+    } finally {
+      setIsRespondingLeave(null);
+    }
   };
 
   const handleSendInvite = async (isDraft: boolean = false) => {
@@ -918,10 +959,115 @@ export default function ManageStaffScreen() {
           </View>
         )}
 
-        {/* TAB 2: INCOMING JOIN REQUESTS */}
+        {/* TAB 2: INCOMING REQUESTS (LEAVE & JOIN) */}
         {activeTab === "requests" && (
           <View style={{ gap: 14 }}>
-            {joinRequests.length === 0 ? (
+            {/* Staff Leave Requests Section */}
+            {leaveRequests.length > 0 && (
+              <View style={{ gap: 10, marginBottom: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="exit-outline" size={17} color="#EF4444" />
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: "#EF4444" }}>
+                    {language === "fr" ? `Demandes de départ du salon (${leaveRequests.length})` : `Staff Departure Requests (${leaveRequests.length})`}
+                  </Text>
+                </View>
+
+                {leaveRequests.map((lReq) => (
+                  <View
+                    key={"leave_" + lReq.id}
+                    style={[
+                      styles.joinRequestCard,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: "rgba(239, 68, 68, 0.35)",
+                        borderLeftWidth: 4,
+                        borderLeftColor: "#EF4444",
+                      },
+                    ]}
+                  >
+                    <View style={styles.joinRequestHeader}>
+                      <View
+                        style={[
+                          styles.avatarWrap,
+                          { backgroundColor: "rgba(239, 68, 68, 0.1)", borderColor: "rgba(239, 68, 68, 0.3)" },
+                        ]}
+                      >
+                        <Ionicons name="walk-outline" size={18} color="#EF4444" />
+                      </View>
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Text style={[styles.joinRequestName, { color: colors.primarytext }]}>
+                            {lReq.name}
+                          </Text>
+                          <View
+                            style={[
+                              styles.roleBadge,
+                              { backgroundColor: "rgba(239, 68, 68, 0.12)", borderColor: "rgba(239, 68, 68, 0.25)" },
+                            ]}
+                          >
+                            <Text style={[styles.roleBadgeText, { color: "#EF4444" }]}>
+                              {language === "fr" ? "Demande de départ" : "Leave Request"}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.joinRequestEmail, { color: colors.secondarytext }]}>
+                          {lReq.email || "No email"}
+                        </Text>
+                        {lReq.phone ? (
+                          <Text style={[styles.joinRequestPhone, { color: colors.secondarytext }]}>
+                            {lReq.phone}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    <View style={styles.joinRequestActions}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        disabled={isRespondingLeave === lReq.id}
+                        onPress={() => handleRespondLeaveRequest(lReq.id, "reject")}
+                        style={[
+                          styles.requestDeclineBtn,
+                          { borderColor: colors.border, backgroundColor: colors.background },
+                        ]}
+                      >
+                        {isRespondingLeave === lReq.id ? (
+                          <ActivityIndicator size="small" color={colors.secondarytext} />
+                        ) : (
+                          <>
+                            <Ionicons name="close" size={16} color={colors.secondarytext} />
+                            <Text style={[styles.requestDeclineText, { color: colors.secondarytext }]}>
+                              {language === "fr" ? "Refuser" : "Decline"}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        disabled={isRespondingLeave === lReq.id}
+                        onPress={() => handleRespondLeaveRequest(lReq.id, "accept")}
+                        style={[styles.requestAcceptBtn, { backgroundColor: "#EF4444" }]}
+                      >
+                        {isRespondingLeave === lReq.id ? (
+                          <ActivityIndicator size="small" color="#FFFFFF" />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-done" size={16} color="#FFFFFF" />
+                            <Text style={[styles.requestAcceptText, { color: "#FFFFFF" }]}>
+                              {language === "fr" ? "Approuver le départ" : "Approve Leave"}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Join Requests Section */}
+            {joinRequests.length === 0 && leaveRequests.length === 0 ? (
               <View
                 style={[
                   styles.emptyStateCard,
@@ -1045,18 +1191,52 @@ export default function ManageStaffScreen() {
               <View
                 style={[
                   styles.searchBox,
-                  { backgroundColor: colors.background, borderColor: colors.border, marginTop: 10 },
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: searchError ? "#EF4444" : colors.border,
+                    marginTop: 10,
+                  },
                 ]}
               >
-                <Ionicons name="search" size={17} color={colors.secondarytext} />
+                <Ionicons name="search" size={17} color={searchError ? "#EF4444" : colors.secondarytext} />
                 <TextInput
                   style={[styles.searchInput, { color: colors.primarytext }]}
-                  placeholder={t("manageStaff.searchInvitePlaceholder") || "Search by name, email, or phone..."}
+                  placeholder={language === "fr" ? "Rechercher par nom, e-mail ou téléphone..." : "Search barber/stylist by name, email, or phone..."}
                   placeholderTextColor={colors.secondarytext}
                   value={clientSearchQuery}
                   onChangeText={handleSearchClients}
                 />
+                {clientSearchQuery.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => handleSearchClients("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close-circle" size={17} color={colors.secondarytext} />
+                  </TouchableOpacity>
+                )}
               </View>
+
+              {searchError ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    marginTop: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    backgroundColor: "rgba(239, 68, 68, 0.08)",
+                    borderWidth: 1,
+                    borderColor: "rgba(239, 68, 68, 0.3)",
+                  }}
+                >
+                  <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: "#EF4444" }}>
+                    {searchError}
+                  </Text>
+                </View>
+              ) : null}
 
               {/* Directory Results */}
               {clientsDirectory.length > 0 && (

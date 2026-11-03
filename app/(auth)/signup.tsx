@@ -77,6 +77,7 @@ export default function SignupScreen() {
   const [showMapModal, setShowMapModal] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [specialty, setSpecialty] = useState("");
+  const [specialtyItems, setSpecialtyItems] = useState<Array<{ name: string; price: string }>>([]);
 
   // Step 2: Salon Initial Mandatory Service (Every salon must have at least 1 service)
   const [initialServiceName, setInitialServiceName] = useState(
@@ -277,6 +278,15 @@ export default function SignupScreen() {
 
     if (!location.trim() && (!coords || !coords.latitude)) {
       newErrors.location = "Please pinpoint your location on the map";
+    }
+
+    // Validate specialty & cut prices (min 1,000 CFA default)
+    for (const s of specialtyItems) {
+      const p = parseFloat(s.price.replace(/[^0-9.]/g, "")) || 0;
+      if (p < 1000) {
+        newErrors.specialtyPrice = "All chosen specialties/cuts must have a price of at least 1,000 CFA";
+        break;
+      }
     }
 
     const needsInitialService =
@@ -494,6 +504,28 @@ export default function SignupScreen() {
             longitude: coords.longitude,
           })
           .catch(() => null);
+      }
+
+      // Register all chosen specialties and cuts as bookable services with prices (default 1,000 CFA)
+      if (specialtyItems.length > 0) {
+        for (const item of specialtyItems) {
+          const itemPriceNum = Math.max(
+            1000,
+            parseFloat(item.price.replace(/[^0-9.]/g, "")) || 1000
+          );
+          await barberService
+            .addService({
+              name: item.name.trim(),
+              category:
+                targetRole === "hairdresser"
+                  ? "Hair Styling & Braids"
+                  : "Haircuts & Styling",
+              duration_minutes: 45,
+              price: itemPriceNum,
+              is_extra: false,
+            })
+            .catch(() => null);
+        }
       }
 
       // If salon manager lead or solo barber, register the initial mandatory service
@@ -1463,7 +1495,17 @@ export default function SignupScreen() {
               <SpecialtiesDropdown
                 value={specialty}
                 onChangeValue={(val) => setSpecialty(val)}
+                itemsWithPrice={specialtyItems}
+                onChangeItemsWithPrice={(items) => {
+                  setSpecialtyItems(items);
+                  setSpecialty(items.map((i) => i.name).join(", "));
+                }}
               />
+              {errors.specialtyPrice ? (
+                <Text style={[styles.fieldErrorText, { marginTop: -8, marginBottom: 12 }]}>
+                  {errors.specialtyPrice}
+                </Text>
+              ) : null}
 
               {/* Mandatory Primary Service for Lead Stylist and Solo Barbers */}
               {((primaryCategory === "salon" && salonSubOption === "manager_lead") ||

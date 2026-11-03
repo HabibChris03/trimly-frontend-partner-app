@@ -42,15 +42,24 @@ export const DEFAULT_BARBER_SPECIALTIES = [
   "Perms & Relaxers",
 ];
 
-interface SpecialtiesDropdownProps {
+export interface SpecialtyItemWithPrice {
+  name: string;
+  price: string;
+}
+
+export interface SpecialtiesDropdownProps {
   value: string;
   onChangeValue: (value: string) => void;
+  itemsWithPrice?: SpecialtyItemWithPrice[];
+  onChangeItemsWithPrice?: (items: SpecialtyItemWithPrice[]) => void;
   onDropdownToggle?: (isOpen: boolean) => void;
 }
 
 export default function SpecialtiesDropdown({
   value,
   onChangeValue,
+  itemsWithPrice,
+  onChangeItemsWithPrice,
   onDropdownToggle,
 }: SpecialtiesDropdownProps) {
   const { t } = useLanguage();
@@ -67,6 +76,11 @@ export default function SpecialtiesDropdown({
         .map((s) => s.trim())
         .filter(Boolean)
     : [];
+
+  // Synchronize internal items list with pricing
+  const currentItemsList: SpecialtyItemWithPrice[] = itemsWithPrice && itemsWithPrice.length > 0
+    ? itemsWithPrice
+    : selectedItems.map((name) => ({ name, price: "1000" }));
 
   // Combine default options with any user-added custom options
   const allOptions = Array.from(
@@ -87,22 +101,43 @@ export default function SpecialtiesDropdown({
   };
 
   const handleToggleItem = (item: string) => {
-    let updated: string[];
-    if (selectedItems.some((s) => s.toLowerCase() === item.toLowerCase())) {
-      updated = selectedItems.filter(
-        (s) => s.toLowerCase() !== item.toLowerCase()
-      );
+    let updatedNames: string[];
+    let updatedItems: SpecialtyItemWithPrice[];
+
+    const exists = currentItemsList.some((s) => s.name.toLowerCase() === item.toLowerCase());
+    if (exists) {
+      updatedItems = currentItemsList.filter((s) => s.name.toLowerCase() !== item.toLowerCase());
+      updatedNames = updatedItems.map((s) => s.name);
     } else {
-      updated = [...selectedItems, item];
+      updatedItems = [...currentItemsList, { name: item, price: "1000" }];
+      updatedNames = updatedItems.map((s) => s.name);
     }
-    onChangeValue(updated.join(", "));
+
+    onChangeValue(updatedNames.join(", "));
+    if (onChangeItemsWithPrice) {
+      onChangeItemsWithPrice(updatedItems);
+    }
   };
 
-  const handleRemoveItem = (item: string) => {
-    const updated = selectedItems.filter(
-      (s) => s.toLowerCase() !== item.toLowerCase()
+  const handleUpdateItemPrice = (idx: number, newPrice: string) => {
+    const updated = [...currentItemsList];
+    if (updated[idx]) {
+      updated[idx].price = newPrice;
+      if (onChangeItemsWithPrice) {
+        onChangeItemsWithPrice(updated);
+      }
+    }
+  };
+
+  const handleRemoveItem = (itemName: string) => {
+    const updatedItems = currentItemsList.filter(
+      (s) => s.name.toLowerCase() !== itemName.toLowerCase()
     );
-    onChangeValue(updated.join(", "));
+    const updatedNames = updatedItems.map((s) => s.name);
+    onChangeValue(updatedNames.join(", "));
+    if (onChangeItemsWithPrice) {
+      onChangeItemsWithPrice(updatedItems);
+    }
   };
 
   const handleAddCustom = () => {
@@ -113,11 +148,14 @@ export default function SpecialtiesDropdown({
       setCustomList((prev) => [...prev, trimmed]);
     }
 
-    if (
-      !selectedItems.some((s) => s.toLowerCase() === trimmed.toLowerCase())
-    ) {
-      const updated = [...selectedItems, trimmed];
-      onChangeValue(updated.join(", "));
+    const exists = currentItemsList.some((s) => s.name.toLowerCase() === trimmed.toLowerCase());
+    if (!exists) {
+      const updatedItems = [...currentItemsList, { name: trimmed, price: "1000" }];
+      const updatedNames = updatedItems.map((s) => s.name);
+      onChangeValue(updatedNames.join(", "));
+      if (onChangeItemsWithPrice) {
+        onChangeItemsWithPrice(updatedItems);
+      }
     }
 
     setCustomInput("");
@@ -127,38 +165,65 @@ export default function SpecialtiesDropdown({
 
   return (
     <View style={styles.wrapper}>
-      {/* Selected Items Tags / Chips */}
-      {selectedItems.length > 0 && (
-        <View style={styles.chipsContainer}>
-          {selectedItems.map((item) => (
+      {/* Selected Cuts / Specialties with Price Inputs (Default 1,000 CFA) */}
+      {currentItemsList.length > 0 && (
+        <View style={styles.selectedItemsContainer}>
+          <Text style={[styles.selectedHeaderLabel, { color: colors.secondaryText }]}>
+            {t("auth.selectedCutsPricing") || "Selected Cuts / Specialties — Set Service Price (Min 1,000 CFA):"}
+          </Text>
+          {currentItemsList.map((item, idx) => (
             <View
-              key={item}
+              key={item.name + idx}
               style={[
-                styles.chip,
+                styles.itemPriceCard,
                 {
-                  backgroundColor: colors.brandSoft,
-                  borderColor: colors.brandBorder,
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
                 },
               ]}
             >
-              <Ionicons name="cut-outline" size={13} color={colors.brand} />
-              <Text
-                style={[styles.chipText, { color: colors.primaryText }]}
-                numberOfLines={1}
-              >
-                {item}
-              </Text>
-              <TouchableOpacity
-                onPress={() => handleRemoveItem(item)}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={styles.chipRemoveBtn}
-              >
-                <Ionicons
-                  name="close-circle"
-                  size={15}
-                  color={colors.secondaryText}
+              <View style={styles.itemNameWrap}>
+                <Ionicons name="cut-outline" size={15} color={colors.brand} />
+                <Text
+                  style={[styles.itemNameText, { color: colors.primaryText }]}
+                  numberOfLines={1}
+                >
+                  {item.name}
+                </Text>
+              </View>
+
+              <View style={styles.itemPriceWrap}>
+                <TextInput
+                  style={[
+                    styles.itemPriceInput,
+                    {
+                      color: colors.primaryText,
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                  value={item.price}
+                  onChangeText={(val) => handleUpdateItemPrice(idx, val)}
+                  placeholder="1000"
+                  placeholderTextColor={colors.inputPlaceholder}
+                  keyboardType="numeric"
                 />
-              </TouchableOpacity>
+                <Text style={[styles.cfaText, { color: colors.secondaryText }]}>
+                  CFA
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => handleRemoveItem(item.name)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.itemRemoveBtn}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={16}
+                    color="#EF4444"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </View>
@@ -409,6 +474,60 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 6,
     marginBottom: 10,
+  },
+  selectedItemsContainer: {
+    marginBottom: 14,
+    gap: 8,
+  },
+  selectedHeaderLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  itemPriceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  itemNameWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 8,
+    marginRight: 8,
+  },
+  itemNameText: {
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+  itemPriceWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  itemPriceInput: {
+    width: 76,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "right",
+  },
+  cfaText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  itemRemoveBtn: {
+    padding: 4,
+    marginLeft: 2,
   },
   chip: {
     flexDirection: "row",

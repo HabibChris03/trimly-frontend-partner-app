@@ -37,6 +37,57 @@ export default function SubBarberProfileScreen() {
   const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
   const [deletePhraseInput, setDeletePhraseInput] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [leaveModalVisible, setLeaveModalVisible] = useState(false);
+  const [isSubmittingLeave, setIsSubmittingLeave] = useState(false);
+  const [hasPendingLeave, setHasPendingLeave] = useState(false);
+
+  React.useEffect(() => {
+    async function checkLeave() {
+      if (user?.parent_salon_id) {
+        const res = await barberService.getMyLeaveStatus().catch(() => null);
+        if (res?.has_pending_leave || (user as any)?.staff_status === "pending_leave") {
+          setHasPendingLeave(true);
+        }
+      }
+    }
+    checkLeave();
+  }, [user?.parent_salon_id, (user as any)?.staff_status]);
+
+  const handleRequestLeaveConfirm = async () => {
+    setIsSubmittingLeave(true);
+    try {
+      const res = await barberService.requestLeaveSalon();
+      setLeaveModalVisible(false);
+      setHasPendingLeave(true);
+      showToast(
+        res?.message || (language === "fr" ? "Demande de départ transmise au gérant du salon." : "Leave request sent to salon manager."),
+        "info"
+      );
+    } catch (e: any) {
+      showToast(
+        e?.message || (language === "fr" ? "Échec de la demande." : "Failed to submit leave request."),
+        "error"
+      );
+    } finally {
+      setIsSubmittingLeave(false);
+    }
+  };
+
+  const handleCancelLeaveConfirm = async () => {
+    setIsSubmittingLeave(true);
+    try {
+      await barberService.cancelLeaveSalonRequest();
+      setHasPendingLeave(false);
+      showToast(
+        language === "fr" ? "Demande de départ annulée. Vous restez actif." : "Leave request cancelled. You remain on the salon floor.",
+        "success"
+      );
+    } catch {
+      showToast(language === "fr" ? "Erreur" : "Error cancelling leave request", "error");
+    } finally {
+      setIsSubmittingLeave(false);
+    }
+  };
 
   const REQUIRED_DELETE_PHRASE = "Deleting Account and Approving Deletion";
   const isDeletePhraseValid = deletePhraseInput.trim() === REQUIRED_DELETE_PHRASE;
@@ -338,6 +389,75 @@ export default function SubBarberProfileScreen() {
               </Text>
             </View>
           </View>
+
+          {/* Leave Salon Request Action */}
+          {user?.parent_salon_id ? (
+            <View style={{ marginTop: 12 }}>
+              {hasPendingLeave ? (
+                <View
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: "rgba(245, 158, 11, 0.1)",
+                    borderWidth: 1,
+                    borderColor: "rgba(245, 158, 11, 0.3)",
+                    gap: 8,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="time-outline" size={17} color="#F59E0B" />
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#F59E0B" }}>
+                      {language === "fr" ? "Demande de départ en attente d'approbation" : "Leave Request Pending Manager Approval"}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.secondarytext, lineHeight: 16 }}>
+                    {language === "fr"
+                      ? "Votre gérant a été notifié. Une fois approuvé, votre compte sera dissocié et vous choisirez d'exercer en solo ou de rejoindre un autre salon."
+                      : "Your salon manager must approve your departure. Once approved, your account will be detached and you can activate as solo or join another salon."}
+                  </Text>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    disabled={isSubmittingLeave}
+                    onPress={handleCancelLeaveConfirm}
+                    style={{
+                      alignSelf: "flex-start",
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 8,
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primarytext }}>
+                      {language === "fr" ? "Annuler la demande" : "Cancel Leave Request"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setLeaveModalVisible(true)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    paddingVertical: 10,
+                    borderRadius: 10,
+                    backgroundColor: "rgba(239, 68, 68, 0.08)",
+                    borderWidth: 1,
+                    borderColor: "rgba(239, 68, 68, 0.25)",
+                    gap: 6,
+                  }}
+                >
+                  <Ionicons name="exit-outline" size={16} color="#EF4444" />
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#EF4444" }}>
+                    {language === "fr" ? "Demander à quitter le salon" : "Request to Leave Salon"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
         </View>
 
         {/* My Craft & Services */}
@@ -615,6 +735,25 @@ export default function SubBarberProfileScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Leave Salon Confirmation Modal */}
+      <CustomModal
+        visible={leaveModalVisible}
+        title={language === "fr" ? "Demander à quitter le salon ?" : "Request to Leave Salon?"}
+        description={
+          language === "fr"
+            ? "Le gérant du salon doit d'abord accepter votre demande avant que vous puissiez partir. Vous conserverez votre compte mais ne pourrez plus être réservé jusqu'à ce que vous choisissiez de travailler en solo ou de rejoindre un autre salon."
+            : "Your salon manager must accept your request before you can leave. You will keep your account, but you will not be bookable by clients until you choose to work as a solo barber or join another salon."
+        }
+        icon="exit-outline"
+        iconColor="#EF4444"
+        primaryText={language === "fr" ? "Envoyer la demande" : "Send Leave Request"}
+        secondaryText={language === "fr" ? "Annuler" : "Cancel"}
+        primaryButtonColor="#EF4444"
+        loading={isSubmittingLeave}
+        onPrimary={handleRequestLeaveConfirm}
+        onSecondary={() => setLeaveModalVisible(false)}
+      />
 
       {/* Logout Confirmation Modal */}
       <CustomModal
