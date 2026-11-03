@@ -162,7 +162,8 @@ export const fr = {
     "newPasswordPlaceholder": "Nouveau mot de passe",
     "confirmPasswordPlaceholder": "Confirmer le nouveau mot de passe",
     "changePasswordBtn": "Changer le Mot de Passe",
-    "backToLogin": "Retour à la Connexion"
+    "backToLogin": "Retour à la Connexion",
+    "selectedCutsPricing": "Coupes & Spécialités sélectionnées — Fixer le tarif (Min 1 000 CFA) :"
   },
   "tabs": {
     "home": "Accueil",
@@ -442,7 +443,12 @@ export const fr = {
     "deleteSalonPlaceholder": "Écrivez la phrase de confirmation...",
     "deleteSalonBtn": "Supprimer définitivement mon compte",
     "accountDeletedToast": "Votre compte et votre profil de salon ont été définitivement supprimés.",
-    "deleteAccountError": "Échec de la suppression du compte. Veuillez vérifier votre phrase et réessayer."
+    "deleteAccountError": "Échec de la suppression du compte. Veuillez vérifier votre phrase et réessayer.",
+    "joinSalon": "Rejoindre un salon",
+    "joinSalonSub": "Recherchez un salon par nom uniquement pour envoyer une demande d'adhésion",
+    "joinSalonNotice": "Remarque : Lorsque vous rejoignez un salon, vous perdez tous vos droits d'administrateur car vous travaillerez désormais en tant que membre du personnel sous ce salon.",
+    "joinPendingApproval": "Demande en attente",
+    "cancelJoinRequest": "Annuler la demande"
   },
   "barberProfile": {
     "servicesTab": "Prestations",
@@ -985,7 +991,8 @@ export const fr = {
     "checking": "Vérification...",
     "logOut": "Se déconnecter",
     "suspensionLifted": "Votre suspension a été levée ! Vous êtes de nouveau actif.",
-    "stillSuspended": "Votre compte est toujours suspendu. Veuillez contacter le gérant de votre salon."  },
+    "stillSuspended": "Votre compte est toujours suspendu. Veuillez contacter le gérant de votre salon."
+  },
   "notifications": {
     "title": "Notifications",
     "filter_all": "Tous",

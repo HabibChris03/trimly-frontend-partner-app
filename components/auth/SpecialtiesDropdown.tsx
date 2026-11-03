@@ -62,7 +62,7 @@ export default function SpecialtiesDropdown({
   onChangeItemsWithPrice,
   onDropdownToggle,
 }: SpecialtiesDropdownProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const colors = useColors();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,7 +169,9 @@ export default function SpecialtiesDropdown({
       {currentItemsList.length > 0 && (
         <View style={styles.selectedItemsContainer}>
           <Text style={[styles.selectedHeaderLabel, { color: colors.secondaryText }]}>
-            {t("auth.selectedCutsPricing") || "Selected Cuts / Specialties — Set Service Price (Min 1,000 CFA):"}
+            {language === "fr"
+              ? "Coupes & Spécialités sélectionnées — Fixer le tarif (Min 1 000 CFA) :"
+              : (t("auth.selectedCutsPricing") || "Selected Cuts / Specialties — Set Service Price (Min 1,000 CFA):")}
           </Text>
           {currentItemsList.map((item, idx) => (
             <View
@@ -252,10 +254,12 @@ export default function SpecialtiesDropdown({
             numberOfLines={1}
           >
             {isOpen
-              ? "Hide specialties menu"
+              ? (language === "fr" ? "Masquer le menu des spécialités" : "Hide specialties menu")
               : selectedItems.length > 0
-                ? `Select more specialties (${selectedItems.length} selected)`
-                : "Select from specialties dropdown"}
+                ? (language === "fr"
+                    ? `Choisir d'autres spécialités (${selectedItems.length} sélectionnée${selectedItems.length > 1 ? "s" : ""})`
+                    : `Select more specialties (${selectedItems.length} selected)`)
+                : (language === "fr" ? "Choisir dans la liste des spécialités" : "Select from specialties dropdown")}
           </Text>
         </View>
         <Ionicons
@@ -318,7 +322,9 @@ export default function SpecialtiesDropdown({
           <Text
             style={[styles.dropdownSubtext, { color: colors.secondaryText }]}
           >
-            Tap a specialty to add or remove:
+            {language === "fr"
+              ? "Touchez une spécialité pour l'ajouter ou la retirer :"
+              : "Tap a specialty to add or remove:"}
           </Text>
 
           {/* Options Grid */}
@@ -367,7 +373,9 @@ export default function SpecialtiesDropdown({
 
           {filteredOptions.length === 0 && (
             <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
-              No matching preset found. Add it below.
+              {language === "fr"
+                ? "Aucune spécialité prédéfinie trouvée. Ajoutez la vôtre ci-dessous."
+                : "No matching preset found. Add it below."}
             </Text>
           )}
 
@@ -384,7 +392,7 @@ export default function SpecialtiesDropdown({
                 { color: colors.secondaryText },
               ]}
             >
-              Add your own specialty
+              {language === "fr" ? "Ajouter votre propre spécialité" : "Add your own specialty"}
             </Text>
             <View style={styles.customInputRow}>
               <TextInput
@@ -396,7 +404,7 @@ export default function SpecialtiesDropdown({
                     color: colors.primaryText,
                   },
                 ]}
-                placeholder="e.g. Afro Burst Fade, Beard Spa..."
+                placeholder={language === "fr" ? "ex : Dégradé Afro, Soin Barbe..." : "e.g. Afro Burst Fade, Beard Spa..."}
                 placeholderTextColor={colors.inputPlaceholder}
                 value={customInput}
                 onChangeText={setCustomInput}

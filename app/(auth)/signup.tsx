@@ -250,21 +250,21 @@ export default function SignupScreen() {
 
     if (primaryCategory === "salon") {
       if (!businessName.trim()) {
-        newErrors.businessName = "Please enter your salon or shop name";
+        newErrors.businessName = language === "fr" ? "Veuillez entrer le nom de votre salon ou établissement" : "Please enter your salon or shop name";
       }
       if (salonSubOption === "manager") {
         if (!barberEmailInput.trim()) {
-          newErrors.barberEmail = "Please enter an existing registered barber's email";
+          newErrors.barberEmail = language === "fr" ? "Veuillez entrer l'e-mail d'un coiffeur déjà enregistré" : "Please enter an existing registered barber's email";
         }
       }
     } else {
       if (barberSubOption === "solo") {
         if (!businessName.trim()) {
-          newErrors.businessName = "Please enter your brand or studio name";
+          newErrors.businessName = language === "fr" ? "Veuillez entrer le nom de votre marque ou studio" : "Please enter your brand or studio name";
         }
       } else {
         if (!salonEmailInput.trim()) {
-          newErrors.salonEmail = "Please enter the salon's email address";
+          newErrors.salonEmail = language === "fr" ? "Veuillez entrer l'e-mail du salon" : "Please enter the salon's email address";
         }
       }
     }
@@ -277,14 +277,14 @@ export default function SignupScreen() {
     const newErrors: Record<string, string> = {};
 
     if (!location.trim() && (!coords || !coords.latitude)) {
-      newErrors.location = "Please pinpoint your location on the map";
+      newErrors.location = language === "fr" ? "Veuillez localiser votre salon sur la carte" : "Please pinpoint your location on the map";
     }
 
     // Validate specialty & cut prices (min 1,000 CFA default)
     for (const s of specialtyItems) {
       const p = parseFloat(s.price.replace(/[^0-9.]/g, "")) || 0;
       if (p < 1000) {
-        newErrors.specialtyPrice = "All chosen specialties/cuts must have a price of at least 1,000 CFA";
+        newErrors.specialtyPrice = language === "fr" ? "Toutes les spécialités/coupes choisies doivent avoir un prix d'au moins 1 000 CFA" : "All chosen specialties/cuts must have a price of at least 1,000 CFA";
         break;
       }
     }
@@ -296,14 +296,12 @@ export default function SignupScreen() {
 
     if (needsInitialService) {
       if (!initialServiceName.trim()) {
-        newErrors.initialServiceName =
-          "At least 1 service is required to set up your profile";
+        newErrors.initialServiceName = language === "fr" ? "Au moins 1 prestation est requise pour configurer votre profil" : "At least 1 service is required to set up your profile";
       }
       const priceNum =
         parseFloat(initialServicePrice.replace(/[^0-9.]/g, "")) || 0;
       if (priceNum < 1000) {
-        newErrors.initialServicePrice =
-          "Default/minimum service price is 1,000 CFA";
+        newErrors.initialServicePrice = language === "fr" ? "Le tarif minimum par prestation est de 1 000 CFA" : "Default/minimum service price is 1,000 CFA";
       }
     }
 
@@ -315,23 +313,23 @@ export default function SignupScreen() {
     const newErrors: Record<string, string> = {};
 
     if (!email.trim()) {
-      newErrors.email = "Please enter your email address";
+      newErrors.email = language === "fr" ? "Veuillez entrer votre adresse e-mail" : "Please enter your email address";
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = language === "fr" ? "Veuillez entrer une adresse e-mail valide" : "Please enter a valid email address";
     }
 
     if (!phone.trim()) {
-      newErrors.phone = "Please enter your phone number";
+      newErrors.phone = language === "fr" ? "Veuillez entrer votre numéro de téléphone" : "Please enter your phone number";
     }
 
     if (!password) {
-      newErrors.password = "Please create a password";
+      newErrors.password = language === "fr" ? "Veuillez créer un mot de passe" : "Please create a password";
     } else if (password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = language === "fr" ? "Le mot de passe doit comporter au moins 6 caractères" : "Password must be at least 6 characters";
     }
 
     if (password !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = language === "fr" ? "Les mots de passe ne correspondent pas" : "Passwords do not match";
     }
 
     setErrors((prev) => ({ ...prev, ...newErrors }));

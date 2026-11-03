@@ -162,7 +162,8 @@ export const en = {
     "newPasswordPlaceholder": "New password",
     "confirmPasswordPlaceholder": "Confirm new password",
     "changePasswordBtn": "Change Password",
-    "backToLogin": "Back to Login"
+    "backToLogin": "Back to Login",
+    "selectedCutsPricing": "Selected Cuts / Specialties — Set Service Price (Min 1,000 CFA):"
   },
   "tabs": {
     "home": "Home",
@@ -442,7 +443,12 @@ export const en = {
     "deleteSalonPlaceholder": "Type the confirmation phrase...",
     "deleteSalonBtn": "Delete Account Permanently",
     "accountDeletedToast": "Your account and salon profile have been permanently deleted.",
-    "deleteAccountError": "Failed to delete account. Please verify your phrase and try again."
+    "deleteAccountError": "Failed to delete account. Please verify your phrase and try again.",
+    "joinSalon": "Join a Salon",
+    "joinSalonSub": "Search for a salon strictly by name only to send a join request",
+    "joinSalonNotice": "Notice: When you join a salon, you will no longer have your admin rights since you will now work under that salon as a staff member.",
+    "joinPendingApproval": "Pending Approval",
+    "cancelJoinRequest": "Cancel Join Request"
   },
   "barberProfile": {
     "servicesTab": "Services",
@@ -985,7 +991,8 @@ export const en = {
     "checking": "Checking...",
     "logOut": "Log Out",
     "suspensionLifted": "Your suspension has been lifted! You are now back active.",
-    "stillSuspended": "Your account is still suspended. Please contact your salon manager."  },
+    "stillSuspended": "Your account is still suspended. Please contact your salon manager."
+  },
   "notifications": {
     "title": "Notifications",
     "filter_all": "All",
