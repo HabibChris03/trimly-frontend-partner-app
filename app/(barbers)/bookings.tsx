@@ -65,9 +65,7 @@ export default function BarberBookingsScreen() {
   const { showToast } = useToast();
   const { handleScroll, showTabBar } = useTabBarVisibility();
 
-  const isSalonManager = Boolean(
-    user?.role === "salon" || Number(user?.capacity || user?.working_chairs || 1) > 1
-  );
+  const isSalonManager = Boolean(user?.role === "salon");
 
   const [selectedFilter, setSelectedFilter] = useState("All Bookings");
   const [searchQuery, setSearchQuery] = useState("");

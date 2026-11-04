@@ -674,7 +674,7 @@ export default function BarberDashboardScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.push("/Pages/salon-management")}
+            onPress={() => router.push("/(barbers)/profile")}
             style={[
               styles.headerIconButton,
               {
@@ -684,8 +684,8 @@ export default function BarberDashboardScreen() {
             ]}
           >
             <Ionicons
-              name="settings-sharp"
-              size={18}
+              name="settings-outline"
+              size={20}
               color={colors.primarytext}
             />
           </TouchableOpacity>

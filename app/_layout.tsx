@@ -7,6 +7,7 @@ import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider as NavThemeProvider,
+  useSegments,
 } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { StatusBar } from "expo-status-bar";
@@ -31,6 +32,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useOTAUpdates } from "@/hooks/useOTAUpdates";
 import { BarberSuspensionModal } from "@/components/barber/BarberSuspensionModal";
 import { AccountActivationModal } from "@/components/barber/AccountActivationModal";
+import FloatingBottomBar from "@/components/navigation/FloatingBottomBar";
 
 export const unstable_settings = {
   anchor: "index",
@@ -39,12 +41,16 @@ export const unstable_settings = {
 function RootNavigator() {
   const { isDark } = useTheme();
   const { user } = useAuth();
+  const segments = useSegments();
   
   // Check and apply over-the-air updates via EAS Update
   useOTAUpdates();
 
   // Register push notifications on mobile devices and listen for incoming notifications
   usePushNotifications(user?.id);
+
+  const isExcludedPage = segments[1] === "language-selection" || segments[1] === "onboarding";
+  const showPageBottomBar = segments[0] === "Pages" && !isExcludedPage && !!user;
 
   const customLightTheme = {
     ...DefaultTheme,
@@ -98,6 +104,7 @@ function RootNavigator() {
       </Stack>
       <BarberSuspensionModal />
       <AccountActivationModal />
+      {showPageBottomBar && <FloatingBottomBar />}
       <StatusBar style={isDark ? "light" : "dark"} />
     </NavThemeProvider>
   );

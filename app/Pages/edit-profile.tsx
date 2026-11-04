@@ -118,9 +118,7 @@ export default function EditProfileScreen() {
     }
   };
 
-  const isSalonManager = Boolean(
-    user?.role === "salon" || Number((user as any)?.capacity || (user as any)?.working_chairs || 1) > 1
-  );
+  const isSalonManager = Boolean(user?.role === "salon");
 
   const handleCopySalonId = () => {
     const idToCopy = String(user?.id || 4);

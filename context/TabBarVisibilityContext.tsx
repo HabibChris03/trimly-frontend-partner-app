@@ -33,9 +33,9 @@ export function TabBarVisibilityProvider({ children }: { children: ReactNode }) 
     }
     Animated.spring(tabBarTranslateY, {
       toValue: 0,
-      damping: 20,
-      stiffness: 180,
-      mass: 0.7,
+      damping: 18,
+      stiffness: 200,
+      mass: 0.6,
       useNativeDriver: true,
     }).start();
   }, [tabBarTranslateY]);
@@ -46,7 +46,7 @@ export function TabBarVisibilityProvider({ children }: { children: ReactNode }) 
       setIsTabBarVisible(false);
     }
     Animated.timing(tabBarTranslateY, {
-      toValue: 130, // Slide smoothly below the screen viewport
+      toValue: 150, // Slide smoothly below the screen viewport
       duration: 200,
       useNativeDriver: true,
     }).start();
@@ -74,14 +74,14 @@ export function TabBarVisibilityProvider({ children }: { children: ReactNode }) 
         return;
       }
 
-      // Scrolling DOWN -> Hide navbar
-      if (scrollDiff > 8 && currentScrollY > 30) {
+      // Scrolling DOWN -> Hide navbar smoothly
+      if (scrollDiff > 2 && currentScrollY > 20) {
         if (isVisibleRef.current) {
           hideTabBar();
         }
       }
       // Scrolling UP -> Show navbar immediately
-      else if (scrollDiff < -6) {
+      else if (scrollDiff < -2) {
         if (!isVisibleRef.current) {
           showTabBar();
         }

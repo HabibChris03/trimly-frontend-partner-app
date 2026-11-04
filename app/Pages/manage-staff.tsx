@@ -263,7 +263,7 @@ export default function ManageStaffScreen() {
         );
         setSelectedClient(null);
         setClientSearchQuery("");
-        setActiveTab("still_to_send");
+        setActiveTab("requests");
       } else {
         setPendingInvites((prev) => [invite, ...prev]);
         showToast(
@@ -274,7 +274,7 @@ export default function ManageStaffScreen() {
         );
         setSelectedClient(null);
         setClientSearchQuery("");
-        setActiveTab("pending");
+        setActiveTab("requests");
       }
     } catch {
       showToast(
@@ -724,12 +724,12 @@ export default function ManageStaffScreen() {
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  onPress={() => setActiveTab("invite")}
+                  onPress={() => setActiveTab("requests")}
                   style={[styles.emptyCTA, { backgroundColor: colors.primary }]}
                 >
-                  <Ionicons name="person-add" size={16} color={colors.onBrand} />
+                  <Ionicons name="mail-unread-outline" size={16} color={colors.onBrand} />
                   <Text style={[styles.emptyCTAText, { color: colors.onBrand }]}>
-                    {t("manageStaff.inviteFirstStylist") || "Invite Your First Stylist"}
+                    {language === "fr" ? "Voir les demandes d'adhésion" : "View Join Requests"}
                   </Text>
                 </TouchableOpacity>
               </View>

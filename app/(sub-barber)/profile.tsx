@@ -739,6 +739,7 @@ export default function SubBarberProfileScreen() {
       {/* Leave Salon Confirmation Modal */}
       <CustomModal
         visible={leaveModalVisible}
+        onClose={() => setLeaveModalVisible(false)}
         title={language === "fr" ? "Demander à quitter le salon ?" : "Request to Leave Salon?"}
         description={
           language === "fr"
@@ -749,7 +750,7 @@ export default function SubBarberProfileScreen() {
         iconColor="#EF4444"
         primaryText={language === "fr" ? "Envoyer la demande" : "Send Leave Request"}
         secondaryText={language === "fr" ? "Annuler" : "Cancel"}
-        primaryButtonColor="#EF4444"
+        primaryDanger={true}
         loading={isSubmittingLeave}
         onPrimary={handleRequestLeaveConfirm}
         onSecondary={() => setLeaveModalVisible(false)}

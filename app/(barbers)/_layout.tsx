@@ -31,11 +31,11 @@ export default function BarberTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
+          title: "Home",
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              size={23}
-              name={focused ? "grid" : "grid-outline"}
+              size={24}
+              name={focused ? "home" : "home-outline"}
               color={typeof color === "string" ? color : undefined}
             />
           ),
