@@ -22,11 +22,11 @@ export default function SubBarberTabLayout() {
 
   return (
     <Tabs
-      tabBar={(props: any) => <AnimatedTabBar {...props} showLabels={false} />}
+      tabBar={(props: any) => <AnimatedTabBar {...props} showLabels={false} stagnant={true} />}
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarHideOnKeyboard: true,
+        tabBarHideOnKeyboard: false,
       }}
     >
       <Tabs.Screen

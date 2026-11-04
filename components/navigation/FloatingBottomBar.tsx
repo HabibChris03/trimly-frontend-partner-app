@@ -6,32 +6,66 @@ import * as Haptics from "expo-haptics";
 import { useRouter, useSegments } from "expo-router";
 import { useTabBarVisibility } from "@/context/TabBarVisibilityContext";
 import useColors from "@/hooks/usecolor";
+import { useAuth } from "@/context/AuthContext";
 
 interface FloatingBottomBarProps {
-  activeTab?: "home" | "bookings" | "earnings" | "profile";
+  activeTab?: string;
+  stagnant?: boolean;
 }
 
-export default function FloatingBottomBar({ activeTab }: FloatingBottomBarProps) {
+export default function FloatingBottomBar({ activeTab, stagnant }: FloatingBottomBarProps) {
   const router = useRouter();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const segments = useSegments();
   const { tabBarTranslateY, isTabBarVisible, showTabBar } = useTabBarVisibility();
+  const { user } = useAuth();
 
+  const isSubBarber = Boolean(
+    user?.parent_salon_id ||
+    user?.is_sub_barber ||
+    (user as any)?.staff_title
+  );
+
+  const isStagnant = Boolean(stagnant || isSubBarber);
   const bottomInset = Math.max(12, insets.bottom);
 
-  // Determine current active tab
-  const currentTab = activeTab || (() => {
-    const lastSegment = segments[segments.length - 1];
-    if (lastSegment === "bookings") return "bookings";
-    if (lastSegment === "earnings") return "earnings";
-    if (lastSegment === "profile") return "profile";
-    if (segments[0] === "(barbers)" && (!lastSegment || (lastSegment as string) === "index")) return "home";
-    return undefined;
-  })();
+  // Sub-barber tabs
+  const subBarberTabs: Array<{
+    key: string;
+    iconActive: keyof typeof Ionicons.glyphMap;
+    iconInactive: keyof typeof Ionicons.glyphMap;
+    route: any;
+  }> = [
+    {
+      key: "bookings",
+      iconActive: "calendar",
+      iconInactive: "calendar-outline",
+      route: "/(sub-barber)/bookings",
+    },
+    {
+      key: "services",
+      iconActive: "cut",
+      iconInactive: "cut-outline",
+      route: "/(sub-barber)/services",
+    },
+    {
+      key: "portfolio",
+      iconActive: "images",
+      iconInactive: "images-outline",
+      route: "/(sub-barber)/portfolio",
+    },
+    {
+      key: "profile",
+      iconActive: "person",
+      iconInactive: "person-outline",
+      route: "/(sub-barber)/profile",
+    },
+  ];
 
-  const tabs: Array<{
-    key: "home" | "bookings" | "earnings" | "profile";
+  // Solo barber / salon owner tabs
+  const soloBarberTabs: Array<{
+    key: string;
     iconActive: keyof typeof Ionicons.glyphMap;
     iconInactive: keyof typeof Ionicons.glyphMap;
     route: any;
@@ -62,8 +96,24 @@ export default function FloatingBottomBar({ activeTab }: FloatingBottomBarProps)
     },
   ];
 
+  const tabs = isSubBarber ? subBarberTabs : soloBarberTabs;
+
+  // Determine current active tab
+  const currentTab = activeTab || (() => {
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment === "bookings") return "bookings";
+    if (lastSegment === "services" || lastSegment === "manage-services") return isSubBarber ? "services" : undefined;
+    if (lastSegment === "portfolio") return isSubBarber ? "portfolio" : undefined;
+    if (lastSegment === "earnings") return "earnings";
+    if (lastSegment === "profile" || lastSegment === "edit-profile") return "profile";
+    if (!isSubBarber && segments[0] === "(barbers)" && (!lastSegment || (lastSegment as string) === "index")) return "home";
+    return undefined;
+  })();
+
   const handlePress = (targetRoute: any) => {
-    showTabBar();
+    if (!isStagnant) {
+      showTabBar();
+    }
     try {
       Haptics.selectionAsync().catch(() => {});
     } catch {}
@@ -72,14 +122,14 @@ export default function FloatingBottomBar({ activeTab }: FloatingBottomBarProps)
 
   return (
     <Animated.View
-      pointerEvents={isTabBarVisible ? "auto" : "none"}
+      pointerEvents={isStagnant ? "auto" : isTabBarVisible ? "auto" : "none"}
       style={[
         styles.tabBarContainer,
         {
           backgroundColor: colors.card,
           borderColor: colors.border,
           bottom: bottomInset,
-          transform: [{ translateY: tabBarTranslateY }],
+          transform: isStagnant ? [] : [{ translateY: tabBarTranslateY }],
         },
       ]}
     >

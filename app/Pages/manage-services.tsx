@@ -1642,7 +1642,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 18,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: 104,
     gap: 14,
   },
   telemetryCard: {

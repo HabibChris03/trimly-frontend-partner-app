@@ -16,6 +16,8 @@ interface AnimatedTabBarProps {
   insets?: any;
   /** Reference design is icon-only; labels are still exposed to screen readers. */
   showLabels?: boolean;
+  /** When true, the tab bar remains stagnant at the bottom and never translates or hides on scroll */
+  stagnant?: boolean;
 }
 
 export default function AnimatedTabBar({
@@ -24,6 +26,7 @@ export default function AnimatedTabBar({
   navigation,
   emitter,
   navigateToTab,
+  stagnant = false,
 }: AnimatedTabBarProps) {
   const router = useRouter();
   const colors = useColors();
@@ -31,6 +34,14 @@ export default function AnimatedTabBar({
   const { t } = useLanguage();
   const { tabBarTranslateY, isTabBarVisible, showTabBar } =
     useTabBarVisibility();
+
+  // If explicitly marked stagnant or within sub-barber route set
+  const isSubBarberRoutes = state.routes?.some(
+    (route: any) =>
+      route.name === "services" ||
+      (route.name === "portfolio" && descriptors[route.key]?.options?.href !== null)
+  );
+  const isStagnant = Boolean(stagnant || isSubBarberRoutes);
 
   const visibleRoutes = state.routes.filter((route: any) => {
     const { options } = descriptors[route.key];
@@ -51,6 +62,8 @@ export default function AnimatedTabBar({
       bookings: "tabs.schedule",
       earnings: "tabs.earnings",
       profile: "tabs.profile",
+      services: "subBarber.services",
+      portfolio: "subBarber.portfolio",
     };
     const key = map[routeName.toLowerCase()];
     if (key) {
@@ -62,14 +75,14 @@ export default function AnimatedTabBar({
 
   return (
     <Animated.View
-      pointerEvents={isTabBarVisible ? "auto" : "none"}
+      pointerEvents={isStagnant ? "auto" : isTabBarVisible ? "auto" : "none"}
       style={[
         styles.tabBarContainer,
         {
           backgroundColor: colors.card,
           borderColor: colors.border,
           bottom: bottomInset,
-          transform: [{ translateY: tabBarTranslateY }],
+          transform: isStagnant ? [] : [{ translateY: tabBarTranslateY }],
         },
       ]}
     >
@@ -78,7 +91,9 @@ export default function AnimatedTabBar({
         const isFocused = currentRouteName === route.name;
 
         const onPress = () => {
-          showTabBar();
+          if (!isStagnant) {
+            showTabBar();
+          }
           let isDefaultPrevented = false;
 
           if (navigation?.emit) {
