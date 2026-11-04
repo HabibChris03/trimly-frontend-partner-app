@@ -36,13 +36,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const colors = useColors();
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  let currentLanguage = "en";
-  try {
-    const langCtx = useLanguage();
-    if (langCtx?.language) currentLanguage = langCtx.language;
-  } catch {
-    // Graceful fallback
-  }
+  const langCtx = useLanguage();
+  const currentLanguage = langCtx?.language || "en";
   const [toastData, setToastData] = useState<ToastOptions | null>(null);
 
   const translateY = useRef(new Animated.Value(-100)).current;

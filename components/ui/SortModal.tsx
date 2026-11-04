@@ -35,11 +35,8 @@ export default function SortModal({
   onSelectOption,
 }: SortModalProps) {
   const colors = useColors();
-  let currentLang = "en";
-  try {
-    const langCtx = useLanguage();
-    if (langCtx?.language) currentLang = langCtx.language;
-  } catch {}
+  const langCtx = useLanguage();
+  const currentLang = langCtx?.language || "en";
   const resolvedTitle = title || (currentLang === "fr" ? "Trier les résultats" : "Sort Results");
 
   return (

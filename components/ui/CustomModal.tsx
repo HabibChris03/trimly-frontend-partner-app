@@ -64,15 +64,12 @@ export function CustomModal({
 }: CustomModalProps) {
   const colors = useColors();
   const [internalLoading, setInternalLoading] = useState(false);
-  const isActionLoading = loading || internalLoading;
+  const langCtx = useLanguage();
 
   if (!visible) return null;
 
-  let currentLang = "en";
-  try {
-    const langCtx = useLanguage();
-    if (langCtx?.language) currentLang = langCtx.language;
-  } catch {}
+  const isActionLoading = loading || internalLoading;
+  const currentLang = langCtx?.language || "en";
 
   const defaultConfirm = currentLang === "fr" ? "Confirmer" : "Confirm";
   const defaultCancel = currentLang === "fr" ? "Annuler" : "Cancel";
