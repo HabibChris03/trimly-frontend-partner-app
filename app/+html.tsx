@@ -1,10 +1,12 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
-import { type PropsWithChildren } from 'react';
+import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
+import type { PropsWithChildren } from 'react';
 
-// Template for rendering HTML headers for Web/iOS Safari PWA
+// Template for rendering HTML headers and scripts for Web/iOS Safari PWA
 export default function Root({ children }: PropsWithChildren) {
+  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } = useServerDocumentContext();
+
   return (
-    <html lang="en">
+    <html lang="en" {...htmlAttributes}>
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -24,18 +26,40 @@ export default function Root({ children }: PropsWithChildren) {
 
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: `
-          html, body, #root {
+          html, body {
             height: 100%;
-            background-color: #171918;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #0D0F0E;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
-            user-select: none;
             overflow-x: hidden;
           }
+          #root {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            position: relative;
+            background-color: #171918;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.7);
+          }
+          @media (max-width: 500px) {
+            #root {
+              max-width: 100%;
+              box-shadow: none;
+            }
+          }
         ` }} />
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body {...bodyAttributes}>
+        {children}
+        {bodyNodes}
+      </body>
     </html>
   );
 }
-

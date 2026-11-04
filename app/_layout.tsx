@@ -120,9 +120,17 @@ export default function RootLayout() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });
+  const [fontTimeout, setFontTimeout] = React.useState(false);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    const timer = setTimeout(() => {
+      setFontTimeout(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded || fontTimeout) {
       try {
         const Font = require("expo-font");
         if (Font.isLoaded("Monoglyphic-Regular") || Font.isLoaded("Monoglyphic")) {
@@ -133,9 +141,9 @@ export default function RootLayout() {
       }
       applyGlobalFont();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, fontTimeout]);
 
-  if (!fontsLoaded && !fontError) {
+  if (!fontsLoaded && !fontError && !fontTimeout) {
     return (
       <View
         style={{
