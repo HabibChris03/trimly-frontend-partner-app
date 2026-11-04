@@ -491,7 +491,7 @@ export default function BarberProfileSettingsScreen() {
                 <View style={[styles.roleBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: "rgba(199, 243, 107, 0.3)" }]}>
                   <Ionicons name="shield-checkmark" size={11} color={colors.brand} />
                   <Text style={[styles.roleBadgeText, { color: colors.brand }]}>
-                    {isSalonManager ? "Salon Manager" : "Master Stylist"}
+                    {isSalonManager ? (language === "fr" ? "Gérant du Salon" : "Salon Manager") : (language === "fr" ? "Maître Coiffeur" : "Master Stylist")}
                   </Text>
                 </View>
 

@@ -250,7 +250,7 @@ export default function BarberMapView({
   const handleOpenProfile = () => {
     if (!selectedBarber) return;
     router.push({
-      pathname: "/Pages/barbersprofile",
+      pathname: "/Pages/barbersprofile" as any,
       params: {
         id: selectedBarber.id.toString(),
         name: selectedBarber.name,

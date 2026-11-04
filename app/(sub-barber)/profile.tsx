@@ -337,7 +337,7 @@ export default function SubBarberProfileScreen() {
             >
               <Ionicons name="create-outline" size={13} color={colors.primary} />
               <Text style={[styles.changeSalonText, { color: colors.primary }]}>
-                {user?.parent_salon_id ? "Change ID" : "Set Salon ID"}
+                {user?.parent_salon_id ? (language === "fr" ? "Modifier l'ID" : "Change ID") : (language === "fr" ? "Définir l'ID Salon" : "Set Salon ID")}
               </Text>
             </TouchableOpacity>
           </View>

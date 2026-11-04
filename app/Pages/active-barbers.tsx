@@ -57,7 +57,7 @@ interface BarberChairCardData {
 export default function ActiveBarbersScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { showToast } = useToast();
   const themeImages = useThemeImages();
@@ -302,14 +302,20 @@ export default function ActiveBarbersScreen() {
     const nextStatus = isCurrentlySuspended ? "Active" : "Suspended";
 
     Alert.alert(
-      isCurrentlySuspended ? "Reactivate Barber & Chair" : "Suspend Barber & Chair",
-      isCurrentlySuspended
-        ? `Reactivate ${barber.barberName} at Chair 0${barber.chairNumber}? They will immediately be available for client bookings.`
-        : `Are you sure you want to suspend ${barber.barberName} at Chair 0${barber.chairNumber}? This temporarily pauses this chair from taking new appointments.`,
+      language === "fr"
+        ? (isCurrentlySuspended ? "Réactiver le coiffeur & le fauteuil" : "Suspendre le coiffeur & le fauteuil")
+        : (isCurrentlySuspended ? "Reactivate Barber & Chair" : "Suspend Barber & Chair"),
+      language === "fr"
+        ? (isCurrentlySuspended
+            ? `Réactiver ${barber.barberName} au Fauteuil 0${barber.chairNumber} ? Le coiffeur sera immédiatement disponible pour les réservations.`
+            : `Êtes-vous sûr de vouloir suspendre ${barber.barberName} au Fauteuil 0${barber.chairNumber} ? Cela empêchera temporairement de nouvelles réservations sur ce fauteuil.`)
+        : (isCurrentlySuspended
+            ? `Reactivate ${barber.barberName} at Chair 0${barber.chairNumber}? They will immediately be available for client bookings.`
+            : `Are you sure you want to suspend ${barber.barberName} at Chair 0${barber.chairNumber}? This temporarily pauses this chair from taking new appointments.`),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: language === "fr" ? "Annuler" : "Cancel", style: "cancel" },
         {
-          text: isCurrentlySuspended ? "Reactivate" : "Suspend",
+          text: language === "fr" ? (isCurrentlySuspended ? "Réactiver" : "Suspendre") : (isCurrentlySuspended ? "Reactivate" : "Suspend"),
           style: isCurrentlySuspended ? "default" : "destructive",
           onPress: async () => {
             setActionLoadingId(barber.barberId);
@@ -333,11 +339,16 @@ export default function ActiveBarbersScreen() {
                 );
               }
               showToast(
-                `${barber.barberName} (Chair 0${barber.chairNumber}) has been ${isCurrentlySuspended ? "reactivated" : "suspended"}.`,
+                language === "fr"
+                  ? `${barber.barberName} (Fauteuil 0${barber.chairNumber}) a été ${isCurrentlySuspended ? "réactivé" : "suspendu"}.`
+                  : `${barber.barberName} (Chair 0${barber.chairNumber}) has been ${isCurrentlySuspended ? "reactivated" : "suspended"}.`,
                 "success"
               );
             } catch {
-              showToast("Failed to update status. Please try again.", "error");
+              showToast(
+                language === "fr" ? "Échec de la mise à jour du statut. Veuillez réessayer." : "Failed to update status. Please try again.",
+                "error"
+              );
             } finally {
               setActionLoadingId(null);
             }

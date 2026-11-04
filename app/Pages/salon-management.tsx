@@ -376,7 +376,7 @@ export default function SalonManagementScreen() {
                 <View style={[styles.statusBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: "rgba(199, 243, 107, 0.3)" }]}>
                   <Ionicons name="business" size={11} color={colors.brand} />
                   <Text style={[styles.statusBadgeText, { color: colors.brand }]}>
-                    {isSalon ? "Licensed Salon" : "Solo Studio"}
+                    {isSalon ? (language === "fr" ? "Salon Agréé" : "Licensed Salon") : (language === "fr" ? "Studio Solo" : "Solo Studio")}
                   </Text>
                 </View>
 

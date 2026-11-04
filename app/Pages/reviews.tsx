@@ -758,7 +758,7 @@ export default function BarberReviewsScreen() {
             <View style={styles.modalHeaderRow}>
               <View style={{ flex: 1, paddingRight: 10 }}>
                 <Text style={[styles.modalTitle, { color: colors.primarytext }]}>
-                  {selectedReview?.reply ? "Edit Your Reply" : "Reply to Client"}
+                  {selectedReview?.reply ? (language === "fr" ? "Modifier votre réponse" : "Edit Your Reply") : (language === "fr" ? "Répondre au client" : "Reply to Client")}
                 </Text>
                 <Text
                   style={[styles.modalSub, { color: colors.secondarytext }]}

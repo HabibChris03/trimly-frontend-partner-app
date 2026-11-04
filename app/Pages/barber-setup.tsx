@@ -95,7 +95,7 @@ import { useLanguage } from "@/context/LanguageContext";
 
 export default function BarberSetupScreen() {
   const { colors, isDark } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -835,7 +835,7 @@ export default function BarberSetupScreen() {
           ) : (
             <>
               <Text style={styles.nextBtnText}>
-                {currentStep === 4 ? "Complete Setup" : "Continue to Next Step"}
+                {currentStep === 4 ? (language === "fr" ? "Terminer la configuration" : "Complete Setup") : (language === "fr" ? "Passer à l'étape suivante" : "Continue to Next Step")}
               </Text>
               <Ionicons
                 name="arrow-forward"
@@ -877,7 +877,7 @@ export default function BarberSetupScreen() {
           <View style={[styles.timeModalSheet, { backgroundColor: colors.surface }]}>
             <View style={styles.timeModalHeader}>
               <Text style={[styles.timeModalTitle, { color: colors.primarytext }]}>
-                Select {timePickerTarget?.type === "open" ? "Opening" : "Closing"} Time
+                {language === "fr" ? "Choisir l'heure d'" + (timePickerTarget?.type === "open" ? "ouverture" : "fermeture") : "Select " + (timePickerTarget?.type === "open" ? "Opening" : "Closing") + " Time"}
               </Text>
               <TouchableOpacity
                 onPress={() => setTimePickerTarget(null)}

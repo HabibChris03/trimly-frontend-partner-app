@@ -85,7 +85,7 @@ interface ChairItem {
 export default function BarberDashboardScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { handleScroll, showTabBar } = useTabBarVisibility();
 
   useFocusEffect(
@@ -933,7 +933,7 @@ export default function BarberDashboardScreen() {
                   ]}
                 >
                   {barberReviewCount}{" "}
-                  {barberReviewCount === 1 ? "Review" : "Reviews"}
+                  {language === "fr" ? "Avis" : (barberReviewCount === 1 ? "Review" : "Reviews")}
                 </Text>
               </TouchableOpacity>
 
