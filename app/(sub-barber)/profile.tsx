@@ -26,7 +26,7 @@ export default function SubBarberProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { colors, isDark, toggleTheme } = useTheme();
-  const { t, language } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { showToast } = useToast();
 
   const [staffStatus, setStaffStatus] = useState<
@@ -34,6 +34,7 @@ export default function SubBarberProfileScreen() {
   >((user as any)?.staff_status || "Active");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
   const [deletePhraseInput, setDeletePhraseInput] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -642,7 +643,7 @@ export default function SubBarberProfileScreen() {
           {/* Language Selection */}
           <TouchableOpacity
             activeOpacity={0.75}
-            onPress={() => router.push("/Pages/language-selection")}
+            onPress={() => setLanguageModalVisible(true)}
             style={styles.menuRow}
           >
             <View style={styles.menuLeft}>
@@ -769,6 +770,81 @@ export default function SubBarberProfileScreen() {
         onPrimary={handleLogOutConfirm}
         onSecondary={() => setLogoutModalVisible(false)}
       />
+
+      {/* Language Selection Modal */}
+      <CustomModal
+        visible={languageModalVisible}
+        title={t("profile.selectLanguage")}
+        onClose={() => setLanguageModalVisible(false)}
+      >
+        <View style={{ gap: 12, paddingVertical: 8 }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={async () => {
+              await setLanguage("en");
+              setLanguageModalVisible(false);
+              showToast("Language changed to English", "info");
+            }}
+            style={[
+              styles.langOptionCard,
+              {
+                backgroundColor: language === "en" ? "rgba(199, 243, 107, 0.12)" : colors.card,
+                borderColor: language === "en" ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={[styles.langMonogramBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.langMonogramText, { color: colors.primary }]}>EN</Text>
+              </View>
+              <View>
+                <Text style={[styles.langOptionTitle, { color: colors.primarytext }]}>
+                  English
+                </Text>
+                <Text style={[styles.langOptionSub, { color: colors.secondarytext }]}>
+                  Default English (US)
+                </Text>
+              </View>
+            </View>
+            {language === "en" && (
+              <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={async () => {
+              await setLanguage("fr");
+              setLanguageModalVisible(false);
+              showToast("Langue changée en Français", "info");
+            }}
+            style={[
+              styles.langOptionCard,
+              {
+                backgroundColor: language === "fr" ? "rgba(199, 243, 107, 0.12)" : colors.card,
+                borderColor: language === "fr" ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <View style={[styles.langMonogramBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.langMonogramText, { color: colors.primary }]}>FR</Text>
+              </View>
+              <View>
+                <Text style={[styles.langOptionTitle, { color: colors.primarytext }]}>
+                  Français
+                </Text>
+                <Text style={[styles.langOptionSub, { color: colors.secondarytext }]}>
+                  Français (Cameroun / Standard)
+                </Text>
+              </View>
+            </View>
+            {language === "fr" && (
+              <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </CustomModal>
 
       {/* Account Deletion Confirmation Modal */}
       <CustomModal
@@ -1122,5 +1198,33 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     fontFamily: FontFamily.bold,
     fontWeight: "700",
+  },
+  langOptionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  langMonogramBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  langMonogramText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  langOptionTitle: {
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  langOptionSub: {
+    fontSize: 11.5,
+    marginTop: 2,
   },
 });

@@ -94,6 +94,8 @@ export interface ProfileUpdateInput {
   latitude?: number | null;
   longitude?: number | null;
   parent_salon_id?: number | null;
+  business_license_url?: string | null;
+  verification_status?: string | null;
 }
 
 export interface BarberCapacityUpdate {

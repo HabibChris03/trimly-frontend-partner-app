@@ -2163,11 +2163,11 @@ export default function BarberBookingsScreen() {
               { borderTopColor: colors.border },
             ]}
           >
-            <Ionicons name="alert-circle-outline" size={14} color={colors.error} />
-            <Text style={{ fontSize: 11.5, color: colors.error, fontWeight: "600" }}>
+            <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
+            <Text style={{ fontSize: 12, color: colors.error, fontWeight: "700" }}>
               {language === "fr"
-                ? "Client a refusé de payer ou est parti ? Signaler un incident"
-                : (t("bookings.reportIncidentRefused") || "Client refused to pay or walked out? Report Incident")}
+                ? "Le client n'a pas payé en espèces ? Signaler à l'administrateur"
+                : (t("bookings.reportIncidentRefused") || "Client hasn't paid in cash? Report to Admin")}
             </Text>
           </TouchableOpacity>
         </View>

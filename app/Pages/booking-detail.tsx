@@ -61,6 +61,9 @@ export default function BarberBookingDetailScreen() {
   const [isSubmittingPin, setIsSubmittingPin] = useState(false);
 
   const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [unpaidModalVisible, setUnpaidModalVisible] = useState(false);
+  const [unpaidDisputeNote, setUnpaidDisputeNote] = useState('');
+  const [isSubmittingDispute, setIsSubmittingDispute] = useState(false);
   const [completionPinInput, setCompletionPinInput] = useState("");
   const [isBypassingCompletionPin, setIsBypassingCompletionPin] = useState(false);
   const [bypassCompletionReason, setBypassCompletionReason] = useState("");
@@ -210,6 +213,40 @@ export default function BarberBookingDetailScreen() {
       );
     } finally {
       setIsSubmittingPin(false);
+    }
+  };
+
+  const handleReportUnpaidDispute = async () => {
+    setIsSubmittingDispute(true);
+    try {
+      const targetId = bookingIdParam || booking?.id;
+      if (!targetId) return;
+      const note = unpaidDisputeNote.trim() || (language === "fr"
+        ? "Le client a validé le code d'arrivée mais n'a pas réglé en espèces avant de fournir le code de fin."
+        : "Client provided arrival PIN but did not pay in cash before giving ending PIN.");
+
+      await bookingService.updateBookingStatus(targetId, "disputed", {
+        payment_method: "unpaid",
+        note: note,
+      });
+
+      if (booking) {
+        setBooking({ ...booking, status: "disputed", payment_status: "unpaid" });
+      }
+
+      showToast(
+        language === "fr"
+          ? "Rapport transmis à l'administrateur. Le litige de paiement est en cours de traitement."
+          : "Report sent to admin. The cash dispute is now under admin review.",
+        "info"
+      );
+      setUnpaidModalVisible(false);
+      setCompletionModalVisible(false);
+      setUnpaidDisputeNote("");
+    } catch (err: any) {
+      showToast(err?.message || "Failed to submit dispute report.", "error");
+    } finally {
+      setIsSubmittingDispute(false);
     }
   };
 
@@ -912,6 +949,36 @@ export default function BarberBookingDetailScreen() {
                   },
                 ]}
               />
+
+              {/* Report Unpaid Cash to Admin Button */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  setCompletionModalVisible(false);
+                  setUnpaidModalVisible(true);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  marginTop: 14,
+                  paddingVertical: 10,
+                  paddingHorizontal: 12,
+                  borderRadius: 10,
+                  backgroundColor: "rgba(239, 68, 68, 0.08)",
+                  borderWidth: 1,
+                  borderColor: "rgba(239, 68, 68, 0.25)",
+                }}
+              >
+                <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#EF4444" }}>
+                  {language === "fr"
+                    ? "Le client n'a pas payé en espèces ? Signaler à l'administrateur"
+                    : "Client hasn't paid in cash? Report to Admin"}
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() => setIsBypassingCompletionPin(true)}
                 style={styles.bypassLinkBtn}
@@ -950,6 +1017,56 @@ export default function BarberBookingDetailScreen() {
               </TouchableOpacity>
             </View>
           )}
+        </View>
+      </CustomModal>
+
+      {/* Unpaid Cash Dispute Modal */}
+      <CustomModal
+        visible={unpaidModalVisible}
+        onClose={() => setUnpaidModalVisible(false)}
+        title={language === "fr" ? "Signaler un non-paiement à l'administrateur" : "Report Unpaid Cash to Admin"}
+        description={
+          language === "fr"
+            ? "Le client a validé le code d'arrivée mais n'a pas réglé en espèces avant la fin de la prestation ? Soumettez un rapport officiel à l'administrateur pour intervention et régularisation."
+            : "The client gave the start PIN but did not pay in cash before giving the end PIN? Submit a formal dispute report to the admin for resolution."
+        }
+        icon="alert-circle-outline"
+        iconBg="rgba(239, 68, 68, 0.12)"
+        iconColor="#EF4444"
+        primaryText={isSubmittingDispute ? (language === "fr" ? "Envoi du rapport..." : "Submitting...") : (language === "fr" ? "Envoyer le rapport à l'admin" : "Submit Report to Admin")}
+        primaryDanger={true}
+        loading={isSubmittingDispute}
+        secondaryText={language === "fr" ? "Annuler" : "Cancel"}
+        onPrimary={handleReportUnpaidDispute}
+        onSecondary={() => setUnpaidModalVisible(false)}
+      >
+        <View style={{ gap: 10, paddingVertical: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: colors.secondarytext }}>
+            {language === "fr" ? "Détails de l'incident (optionnel) :" : "Incident Details (Optional):"}
+          </Text>
+          <TextInput
+            value={unpaidDisputeNote}
+            onChangeText={setUnpaidDisputeNote}
+            placeholder={
+              language === "fr"
+                ? "Ex: Le client refuse de payer les 5 000 XAF convenus en espèces..."
+                : "e.g. Client refused to pay 5,000 XAF cash after haircut completed..."
+            }
+            placeholderTextColor={colors.secondarytext}
+            multiline
+            numberOfLines={3}
+            style={{
+              minHeight: 70,
+              padding: 10,
+              borderRadius: 8,
+              backgroundColor: colors.background,
+              borderWidth: 1,
+              borderColor: colors.border,
+              color: colors.primarytext,
+              fontSize: 13,
+              textAlignVertical: "top",
+            }}
+          />
         </View>
       </CustomModal>
     </View>

@@ -51,7 +51,7 @@ const PRESET_CHAIRS = [2, 4, 6, 8, 12];
 export default function SalonManagementScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, updateUser } = useAuth();
   const { showToast } = useToast();
 
@@ -82,6 +82,7 @@ export default function SalonManagementScreen() {
     "lounge",
   ]);
   const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
+  const [uploadedDocUri, setUploadedDocUri] = useState<string | null>((user as any)?.business_license_url || null);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
     user?.latitude && user?.longitude
@@ -181,8 +182,15 @@ export default function SalonManagementScreen() {
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setUploadedDocName(result.assets[0].name);
-        showToast(`Uploaded ${result.assets[0].name}`, "success");
+        const file = result.assets[0];
+        setUploadedDocName(file.name);
+        setUploadedDocUri(file.uri);
+        showToast(
+          language === "fr"
+            ? `Document sélectionné : ${file.name}. Enregistrez pour transmettre à l'administration.`
+            : `Document selected: ${file.name}. Save to submit for admin verification.`,
+          "success"
+        );
       }
     } catch {
       showToast("Could not select document. Please try again.", "error");
@@ -210,12 +218,17 @@ export default function SalonManagementScreen() {
         is_salon: isSalon,
         capacity: capNumber,
       });
+      const licenseUrl = uploadedDocUri || (user as any)?.business_license_url || (uploadedDocName ? `https://trimly237.com/docs/licenses/${uploadedDocName}` : undefined);
       await barberService.updateProfileDetails({
         about_us: salonBio,
         logo_url: salonLogo,
         city: city,
         latitude: coordinates?.latitude,
         longitude: coordinates?.longitude,
+        ...(licenseUrl ? {
+          business_license_url: licenseUrl,
+          verification_status: "pending_review",
+        } : {})
       });
       if (updateUser) {
         updateUser({
@@ -224,9 +237,18 @@ export default function SalonManagementScreen() {
           about_us: salonBio,
           logo_url: salonLogo,
           city: city,
+          ...(licenseUrl ? {
+            business_license_url: licenseUrl,
+            verification_status: "pending_review",
+          } : {})
         } as any);
       }
-      showToast("Salon configuration & capacity saved successfully.", "success");
+      showToast(
+        language === "fr"
+          ? (uploadedDocUri ? "Configuration et licence commerciale transmises avec succès à l'administration pour validation." : "Configuration du salon enregistrée avec succès.")
+          : (uploadedDocUri ? "Salon details & business license successfully submitted for admin verification." : "Salon configuration & capacity saved successfully."),
+        "success"
+      );
       router.back();
     } catch (err: any) {
       showToast(err?.message || "Configuration updated locally.", "info");
