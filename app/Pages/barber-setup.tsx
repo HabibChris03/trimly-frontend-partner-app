@@ -381,14 +381,10 @@ export default function BarberSetupScreen() {
             <Text style={[styles.stepTitle, { color: colors.primarytext }]}>
               Shop & Profile Info
             </Text>
-            <Text style={[styles.stepSubtitle, { color: colors.secondarytext }]}>
-              Tell clients who you are and where they can find your chair.
-            </Text>
+            <Text style={[styles.stepSubtitle, { color: colors.secondarytext }]}>{language === "fr" ? "Présentez-vous aux clients et indiquez l'emplacement de votre salon." : "Tell clients who you are and where they can find your chair."}</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>
-                Shop / Barber Name
-              </Text>
+              <Text style={[styles.inputLabel, { color: colors.secondarytext }]}>{language === "fr" ? "Nom du salon / barbier" : "Shop / Barber Name"}</Text>
               <TextInput
                 style={[
                   styles.input,
@@ -477,9 +473,7 @@ export default function BarberSetupScreen() {
             <Text style={[styles.stepTitle, { color: colors.primarytext }]}>
               Salon Services & Custom Pricing
             </Text>
-            <Text style={[styles.stepSubtitle, { color: colors.secondarytext }]}>
-              Select what your salon/barbershop offers and define your custom rates.
-            </Text>
+            <Text style={[styles.stepSubtitle, { color: colors.secondarytext }]}>{language === "fr" ? "Sélectionnez les prestations proposées et définissez vos tarifs." : "Select what your salon/barbershop offers and define your custom rates."}</Text>
 
             {/* Dropdown Catalog Selector */}
             <SelectOrAddInput
@@ -564,9 +558,7 @@ export default function BarberSetupScreen() {
         {/* STEP 3: Working Hours (Interactive Start & End Times) */}
         {currentStep === 3 && (
           <View style={styles.stepContainer}>
-            <Text style={[styles.stepTitle, { color: colors.primarytext }]}>
-              Working Hours
-            </Text>
+            <Text style={[styles.stepTitle, { color: colors.primarytext }]}>{language === "fr" ? "Horaires d'ouverture" : "Working Hours"}</Text>
             <Text style={[styles.stepSubtitle, { color: colors.secondarytext }]}>
               Choose the days and exact start & end hours clients can book slots.
             </Text>
@@ -579,9 +571,7 @@ export default function BarberSetupScreen() {
               ]}
             >
               <View style={{ flex: 1 }}>
-                <Text style={[styles.bulkTitle, { color: colors.primarytext }]}>
-                  Standard Salon Hours
-                </Text>
+                <Text style={[styles.bulkTitle, { color: colors.primarytext }]}>{language === "fr" ? "Horaires standards du salon" : "Standard Salon Hours"}</Text>
                 <Text style={[styles.bulkSubtitle, { color: colors.secondarytext }]}>
                   08:30 - 20:00 (Mon to Sat)
                 </Text>
@@ -591,9 +581,7 @@ export default function BarberSetupScreen() {
                 onPress={() => applyBulkHours("08:30", "20:00")}
                 style={[styles.applyBulkBtn, { backgroundColor: colors.primary }]}
               >
-                <Text style={[styles.applyBulkBtnText, { color: "#FFFFFF" }]}>
-                  Apply to All
-                </Text>
+                <Text style={[styles.applyBulkBtnText, { color: "#FFFFFF" }]}>{language === "fr" ? "Appliquer à tous" : "Apply to All"}</Text>
               </TouchableOpacity>
             </View>
 
@@ -640,9 +628,7 @@ export default function BarberSetupScreen() {
                   <View style={styles.timePickersRow}>
                     {/* Start Time Selector */}
                     <View style={styles.timeCol}>
-                      <Text style={[styles.timeLabel, { color: colors.secondarytext }]}>
-                        START TIME
-                      </Text>
+                      <Text style={[styles.timeLabel, { color: colors.secondarytext }]}>{language === "fr" ? "HEURE DE DÉBUT" : "START TIME"}</Text>
                       <TouchableOpacity
                         activeOpacity={0.75}
                         onPress={() => setTimePickerTarget({ dayIndex: idx, type: "open" })}
@@ -665,9 +651,7 @@ export default function BarberSetupScreen() {
 
                     {/* End Time Selector */}
                     <View style={styles.timeCol}>
-                      <Text style={[styles.timeLabel, { color: colors.secondarytext }]}>
-                        END TIME
-                      </Text>
+                      <Text style={[styles.timeLabel, { color: colors.secondarytext }]}>{language === "fr" ? "HEURE DE FIN" : "END TIME"}</Text>
                       <TouchableOpacity
                         activeOpacity={0.75}
                         onPress={() => setTimePickerTarget({ dayIndex: idx, type: "close" })}
@@ -696,9 +680,7 @@ export default function BarberSetupScreen() {
             <Text style={[styles.stepTitle, { color: colors.primarytext }]}>
               Photos & Verification
             </Text>
-            <Text style={[styles.stepSubtitle, { color: colors.secondarytext }]}>
-              Add an avatar, portfolio cuts, and your barber trade certificate.
-            </Text>
+            <Text style={[styles.stepSubtitle, { color: colors.secondarytext }]}>{language === "fr" ? "Ajoutez une photo de profil, des coupes de portfolio et votre certificat professionnel." : "Add an avatar, portfolio cuts, and your barber trade certificate."}</Text>
 
             {/* Profile Avatar Picker */}
             <View style={styles.photoUploadCenter}>
@@ -718,9 +700,7 @@ export default function BarberSetupScreen() {
                     <Ionicons name="camera-outline" size={38} color={colors.primary} />
                     <Text
                       style={[styles.uploadPrompt, { color: colors.secondarytext }]}
-                    >
-                      Profile Avatar
-                    </Text>
+                    >{language === "fr" ? "Photo de profil" : "Profile Avatar"}</Text>
                   </>
                 )}
               </View>
@@ -732,7 +712,7 @@ export default function BarberSetupScreen() {
                   style={[styles.smallPickerBtn, { backgroundColor: colors.surfacevariant }]}
                 >
                   <Ionicons name="image-outline" size={15} color="#FFFFFF" />
-                  <Text style={styles.smallPickerBtnText}>Gallery</Text>
+                  <Text style={styles.smallPickerBtnText}>{language === "fr" ? "Galerie" : "Gallery"}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -741,7 +721,7 @@ export default function BarberSetupScreen() {
                   style={[styles.smallPickerBtn, { backgroundColor: colors.surfacevariant }]}
                 >
                   <Ionicons name="camera-outline" size={15} color="#FFFFFF" />
-                  <Text style={styles.smallPickerBtnText}>Camera</Text>
+                  <Text style={styles.smallPickerBtnText}>{language === "fr" ? "Appareil photo" : "Camera"}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -776,9 +756,7 @@ export default function BarberSetupScreen() {
                 ]}
               >
                 <Ionicons name="add" size={24} color={colors.primary} />
-                <Text style={{ fontSize: 10, color: colors.secondarytext, marginTop: 2 }}>
-                  Add Cut
-                </Text>
+                <Text style={{ fontSize: 10, color: colors.secondarytext, marginTop: 2 }}>{language === "fr" ? "Ajouter coupe" : "Add Cut"}</Text>
               </TouchableOpacity>
             </View>
 
@@ -788,9 +766,7 @@ export default function BarberSetupScreen() {
                 styles.inputLabel,
                 { color: colors.secondarytext, marginTop: 18 },
               ]}
-            >
-              Trade License or Certificate (Optional)
-            </Text>
+            >{language === "fr" ? "Agrément ou certificat professionnel (Optionnel)" : "Trade License or Certificate (Optional)"}</Text>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handlePickDocument}

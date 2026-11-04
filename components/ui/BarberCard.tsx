@@ -1,3 +1,4 @@
+import { useLanguage } from '@/context/LanguageContext';
 import React from "react";
 import {
   Image,
@@ -46,6 +47,7 @@ export function BarberCard({
   style,
 }: BarberCardProps) {
   const { colors, typography } = useTheme();
+  const { language } = useLanguage();
 
   const imageSource =
     typeof imageUrl === "string"
@@ -108,9 +110,7 @@ export function BarberCard({
                   fontFamily: typography.fontFamily.semiBold,
                 },
               ]}
-            >
-              Salon
-            </Text>
+            >{language === "fr" ? "Salon" : "Salon"}</Text>
           </View>
         )}
       </View>
@@ -230,9 +230,7 @@ export function BarberCard({
                   fontFamily: typography.fontFamily.bold,
                 },
               ]}
-            >
-              Book Now
-            </Text>
+            >{language === "fr" ? "Réserver" : "Book Now"}</Text>
           </TouchableOpacity>
         </View>
       </View>

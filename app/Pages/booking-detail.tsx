@@ -376,9 +376,7 @@ export default function BarberBookingDetailScreen() {
         {isLoading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.secondarytext }]}>
-              Loading booking details...
-            </Text>
+            <Text style={[styles.loadingText, { color: colors.secondarytext }]}>{language === "fr" ? "Chargement des détails du rendez-vous..." : "Loading booking details..."}</Text>
           </View>
         ) : (
           <>
@@ -404,9 +402,7 @@ export default function BarberBookingDetailScreen() {
                     ]}
                   >
                     <Ionicons name="sparkles" size={12} color={colors.primary} />
-                    <Text style={[styles.photoBadgeText, { color: colors.primary }]}>
-                      CLIENT BOOKED USING THIS PHOTO
-                    </Text>
+                    <Text style={[styles.photoBadgeText, { color: colors.primary }]}>{language === "fr" ? "LE CLIENT A RÉSERVÉ AVEC CETTE PHOTO" : "CLIENT BOOKED USING THIS PHOTO"}</Text>
                   </View>
                   <TouchableOpacity
                     activeOpacity={0.8}
@@ -414,7 +410,7 @@ export default function BarberBookingDetailScreen() {
                     style={styles.expandIconBtn}
                   >
                     <Ionicons name="scan-outline" size={16} color={colors.primary} />
-                    <Text style={[styles.expandText, { color: colors.primary }]}>Zoom</Text>
+                    <Text style={[styles.expandText, { color: colors.primary }]}>{language === "fr" ? "Agrandir" : "Zoom"}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -441,10 +437,7 @@ export default function BarberBookingDetailScreen() {
                       Style Reference: {serviceTitle}
                     </Text>
                   </View>
-                  <Text style={[styles.photoCaptionSub, { color: colors.secondarytext }]}>
-                    The client selected this specific photo when booking. Replicate this hairstyle
-                    during the session.
-                  </Text>
+                  <Text style={[styles.photoCaptionSub, { color: colors.secondarytext }]}>{language === "fr" ? "Le client a choisi cette photo lors de la réservation. Reproduisez cette coupe pendant la prestation." : "The client selected this specific photo when booking. Replicate this hairstyle during the session."}</Text>
                 </View>
               </View>
             ) : null}
@@ -459,9 +452,7 @@ export default function BarberBookingDetailScreen() {
                 },
               ]}
             >
-              <Text style={[styles.cardSectionLabel, { color: colors.secondarytext }]}>
-                CLIENT INFORMATION
-              </Text>
+              <Text style={[styles.cardSectionLabel, { color: colors.secondarytext }]}>{language === "fr" ? "INFORMATIONS CLIENT" : "CLIENT INFORMATION"}</Text>
               <View style={styles.clientRow}>
                 <View
                   style={[
@@ -488,7 +479,7 @@ export default function BarberBookingDetailScreen() {
                   style={[styles.callActionBtn, { backgroundColor: colors.primary }]}
                 >
                   <Ionicons name="call" size={14} color={colors.onBrand} />
-                  <Text style={[styles.callActionText, { color: colors.onBrand }]}>Call</Text>
+                  <Text style={[styles.callActionText, { color: colors.onBrand }]}>{language === "fr" ? "Appeler" : "Call"}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -512,9 +503,7 @@ export default function BarberBookingDetailScreen() {
                     >
                       <Ionicons name="home-outline" size={15} color={colors.primary} />
                     </View>
-                    <Text style={[styles.homeServiceLabel, { color: colors.primary }]}>
-                      HOME SERVICE / HOUSE CALL
-                    </Text>
+                    <Text style={[styles.homeServiceLabel, { color: colors.primary }]}>{language === "fr" ? "SERVICE À DOMICILE / DÉPLACEMENT" : "HOME SERVICE / HOUSE CALL"}</Text>
                   </View>
                   <Text style={[styles.homeServiceDest, { color: colors.primarytext }]}>
                     Destination: {homeAddressVal || "Client Home"}
@@ -554,9 +543,7 @@ export default function BarberBookingDetailScreen() {
                 },
               ]}
             >
-              <Text style={[styles.cardSectionLabel, { color: colors.secondarytext }]}>
-                APPOINTMENT DETAILS
-              </Text>
+              <Text style={[styles.cardSectionLabel, { color: colors.secondarytext }]}>{language === "fr" ? "DÉTAILS DU RENDEZ-VOUS" : "APPOINTMENT DETAILS"}</Text>
 
               <View style={styles.specRow}>
                 <View
@@ -571,9 +558,7 @@ export default function BarberBookingDetailScreen() {
                   <Ionicons name="calendar-outline" size={17} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>
-                    Scheduled Time
-                  </Text>
+                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>{language === "fr" ? "Heure prévue" : "Scheduled Time"}</Text>
                   <Text style={[styles.specValue, { color: colors.secondarytext }]}>
                     {timeLabel}
                   </Text>
@@ -600,9 +585,7 @@ export default function BarberBookingDetailScreen() {
                   <Ionicons name="cut-outline" size={17} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>
-                    Requested Service
-                  </Text>
+                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>{language === "fr" ? "Service demandé" : "Requested Service"}</Text>
                   <Text style={[styles.specValue, { color: colors.secondarytext }]}>
                     {serviceTitle} (45 mins)
                   </Text>
@@ -618,9 +601,7 @@ export default function BarberBookingDetailScreen() {
                     ]}
                   >
                     <Ionicons name="camera-outline" size={11} color={colors.primary} />
-                    <Text style={[styles.photoTagText, { color: colors.primary }]}>
-                      Photo Attached
-                    </Text>
+                    <Text style={[styles.photoTagText, { color: colors.primary }]}>{language === "fr" ? "Photo jointe" : "Photo Attached"}</Text>
                   </View>
                 )}
               </View>
@@ -640,12 +621,8 @@ export default function BarberBookingDetailScreen() {
                   <Ionicons name="cash-outline" size={17} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>
-                    Total Booking Price
-                  </Text>
-                  <Text style={[styles.specValue, { color: colors.secondarytext }]}>
-                    To be collected / released upon completion
-                  </Text>
+                  <Text style={[styles.specTitle, { color: colors.primarytext }]}>{language === "fr" ? "Prix total de la réservation" : "Total Booking Price"}</Text>
+                  <Text style={[styles.specValue, { color: colors.secondarytext }]}>{language === "fr" ? "À encaisser / débloqué après la prestation" : "To be collected / released upon completion"}</Text>
                 </View>
                 <Text style={[styles.priceHighlight, { color: colors.primary }]}>
                   {priceVal.toLocaleString()} CFA
@@ -679,9 +656,7 @@ export default function BarberBookingDetailScreen() {
                     style={[styles.primaryActionBtn, { backgroundColor: colors.primary }]}
                   >
                     <Ionicons name="key-outline" size={18} color={colors.onBrand} />
-                    <Text style={[styles.primaryActionBtnText, { color: colors.onBrand }]}>
-                      Start Service (Verify Arrival PIN)
-                    </Text>
+                    <Text style={[styles.primaryActionBtnText, { color: colors.onBrand }]}>{language === "fr" ? "Démarrer le service (Valider code d'arrivée)" : "Start Service (Verify Arrival PIN)"}</Text>
                   </TouchableOpacity>
                 </View>
               ) : statusVal.toLowerCase().includes("shav") || statusVal === "In Progress" ? (
@@ -696,9 +671,7 @@ export default function BarberBookingDetailScreen() {
                     ]}
                   >
                     <Ionicons name="cut-outline" size={16} color={colors.info} />
-                    <Text style={[styles.activeBannerText, { color: colors.info }]}>
-                      shaving... (Active In Your Chair)
-                    </Text>
+                    <Text style={[styles.activeBannerText, { color: colors.info }]}>{language === "fr" ? "Coiffure en cours... (Au fauteuil)" : "shaving... (Active In Your Chair)"}</Text>
                   </View>
                   <TouchableOpacity
                     activeOpacity={0.88}
@@ -780,9 +753,7 @@ export default function BarberBookingDetailScreen() {
                 ]}
               >
                 <Ionicons name="sparkles" size={12} color="#C7F36B" />
-                <Text style={[styles.photoBadgeText, { color: "#C7F36B" }]}>
-                  CLIENT CHOSEN STYLE REFERENCE
-                </Text>
+                <Text style={[styles.photoBadgeText, { color: "#C7F36B" }]}>{language === "fr" ? "RÉFÉRENCE DU STYLE CHOISI PAR LE CLIENT" : "CLIENT CHOSEN STYLE REFERENCE"}</Text>
               </View>
               <Text style={styles.fullscreenStyleTitle}>{serviceTitle}</Text>
               <Text style={styles.fullscreenClientNote}>
@@ -839,9 +810,7 @@ export default function BarberBookingDetailScreen() {
             </View>
           ) : (
             <View>
-              <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>
-                Bypass Mode (Requires Verification Note)
-              </Text>
+              <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>{language === "fr" ? "Mode dérogation (Note de vérification requise)" : "Bypass Mode (Requires Verification Note)"}</Text>
               <TextInput
                 value={bypassReason}
                 onChangeText={setBypassReason}
@@ -908,9 +877,7 @@ export default function BarberBookingDetailScreen() {
           {isRequestingPin ? (
             <View style={{ alignItems: "center", paddingVertical: 16 }}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={{ fontSize: 13, color: colors.secondarytext, marginTop: 8 }}>
-                Sending ending code to client...
-              </Text>
+              <Text style={{ fontSize: 13, color: colors.secondarytext, marginTop: 8 }}>{language === "fr" ? "Envoi du code de fin au client..." : "Sending ending code to client..."}</Text>
             </View>
           ) : !isBypassingCompletionPin ? (
             <View>
@@ -923,9 +890,7 @@ export default function BarberBookingDetailScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.awaitingCodeLabel, { color: colors.primary }]}>
-                  AWAITING 4-DIGIT ENDING CODE
-                </Text>
+                <Text style={[styles.awaitingCodeLabel, { color: colors.primary }]}>{language === "fr" ? "EN ATTENTE DU CODE DE FIN À 4 CHIFFRES" : "AWAITING 4-DIGIT ENDING CODE"}</Text>
                 <Text style={[styles.awaitingCodeSub, { color: colors.primarytext }]}>
                   Ask {clientName} for the 4-digit ending code on their Trimly receipt
                 </Text>
@@ -983,16 +948,12 @@ export default function BarberBookingDetailScreen() {
                 onPress={() => setIsBypassingCompletionPin(true)}
                 style={styles.bypassLinkBtn}
               >
-                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>
-                  Client offline? Complete without code
-                </Text>
+                <Text style={[styles.bypassLinkText, { color: colors.secondarytext }]}>{language === "fr" ? "Client hors-ligne ? Terminer sans code" : "Client offline? Complete without code"}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View>
-              <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>
-                Bypass Mode (Service Completion Verification Note)
-              </Text>
+              <Text style={[styles.bypassWarningLabel, { color: colors.warning }]}>{language === "fr" ? "Mode dérogation (Note de fin de service requise)" : "Bypass Mode (Service Completion Verification Note)"}</Text>
               <TextInput
                 value={bypassCompletionReason}
                 onChangeText={setBypassCompletionReason}

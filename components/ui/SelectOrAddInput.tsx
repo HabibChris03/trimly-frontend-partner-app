@@ -35,7 +35,7 @@ export function SelectOrAddInput({
   customPlaceholder = "Type custom value...",
   helperText,
 }: SelectOrAddInputProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const colors = useColors();
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -247,9 +247,7 @@ export function SelectOrAddInput({
 
                 {filteredOptions.length === 0 && (
                   <View style={styles.emptyWrap}>
-                    <Text style={[styles.emptyText, { color: colors.secondaryText }]}>
-                      No matching option found.
-                    </Text>
+                    <Text style={[styles.emptyText, { color: colors.secondaryText }]}>{language === "fr" ? "Aucune option correspondante trouvée." : "No matching option found."}</Text>
                   </View>
                 )}
 

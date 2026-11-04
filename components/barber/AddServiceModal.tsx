@@ -145,7 +145,7 @@ export function AddServiceModal({
   barberId,
 }: AddServiceModalProps) {
   const colors = useColors();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
 
   const [serviceName, setServiceName] = useState("");
@@ -368,9 +368,7 @@ export function AddServiceModal({
             }}
             style={styles.resetBtn}
           >
-            <Text style={[styles.resetText, { color: colors.primary }]}>
-              Reset
-            </Text>
+            <Text style={[styles.resetText, { color: colors.primary }]}>{language === "fr" ? "Réinitialiser" : "Reset"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -399,9 +397,7 @@ export function AddServiceModal({
                     styles.inputLabel,
                     { color: colors.primarytext, marginBottom: 0 },
                   ]}
-                >
-                  Showcase Design Photo
-                </Text>
+                >{language === "fr" ? "Photo vitrine du style" : "Showcase Design Photo"}</Text>
               </View>
               <TouchableOpacity
                 activeOpacity={0.7}
@@ -414,9 +410,7 @@ export function AddServiceModal({
             </View>
             <Text
               style={[styles.sectionHintText, { color: colors.secondarytext }]}
-            >
-              Upload high-definition photos of this specific cut or hairstyle to showcase on your profile.
-            </Text>
+            >{language === "fr" ? "Importez des photos haute définition de cette coupe ou coiffure pour la mettre en valeur sur votre profil." : "Upload high-definition photos of this specific cut or hairstyle to showcase on your profile."}</Text>
 
             {imageUrl ? (
               <View
@@ -456,9 +450,7 @@ export function AddServiceModal({
                         styles.photoActionText,
                         { color: colors.primarytext },
                       ]}
-                    >
-                      Change Photo
-                    </Text>
+                    >{language === "fr" ? "Changer la photo" : "Change Photo"}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -473,9 +465,7 @@ export function AddServiceModal({
                     ]}
                   >
                     <Ionicons name="trash-outline" size={14} color="#EF4444" />
-                    <Text style={[styles.photoActionText, { color: "#EF4444" }]}>
-                      Remove Photo
-                    </Text>
+                    <Text style={[styles.photoActionText, { color: "#EF4444" }]}>{language === "fr" ? "Supprimer la photo" : "Remove Photo"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -509,17 +499,13 @@ export function AddServiceModal({
                     styles.uploadBoxTitle,
                     { color: colors.primarytext },
                   ]}
-                >
-                  Choose from Gallery
-                </Text>
+                >{language === "fr" ? "Choisir depuis la galerie" : "Choose from Gallery"}</Text>
                 <Text
                   style={[
                     styles.uploadBoxSubtitle,
                     { color: colors.secondarytext },
                   ]}
-                >
-                  Supports JPG, PNG, WEBP design snapshots
-                </Text>
+                >{language === "fr" ? "Formats JPG, PNG, WEBP acceptés" : "Supports JPG, PNG, WEBP design snapshots"}</Text>
               </TouchableOpacity>
             )}
 
@@ -642,9 +628,7 @@ export function AddServiceModal({
                         fontWeight: "700",
                         fontSize: 12,
                       }}
-                    >
-                      Save Category
-                    </Text>
+                    >{language === "fr" ? "Enregistrer la catégorie" : "Save Category"}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -839,9 +823,7 @@ export function AddServiceModal({
                         styles.dropdownItemText,
                         { color: colors.primary, fontWeight: "600" },
                       ]}
-                    >
-                      Or type custom name below
-                    </Text>
+                    >{language === "fr" ? "Ou saisir un nom personnalisé ci-dessous" : "Or type custom name below"}</Text>
                   </TouchableOpacity>
                 </ScrollView>
               </View>
@@ -854,9 +836,7 @@ export function AddServiceModal({
                   styles.fieldSubLabel,
                   { color: colors.secondarytext, marginBottom: 6 },
                 ]}
-              >
-                Custom Service Name:
-              </Text>
+              >{language === "fr" ? "Nom de service personnalisé :" : "Custom Service Name:"}</Text>
               <TextInput
                 style={[
                   styles.textInput,
@@ -925,9 +905,7 @@ export function AddServiceModal({
                   styles.sectionHintText,
                   { color: colors.secondarytext },
                 ]}
-              >
-                You have full control over the duration. Client booking slots on the calendar will be automatically partitioned according to this exact duration.
-              </Text>
+              >{language === "fr" ? "Vous avez le contrôle total de la durée. Les créneaux de réservation client sur le calendrier seront automatiquement découpés selon cette durée exacte." : "You have full control over the duration. Client booking slots on the calendar will be automatically partitioned according to this exact duration."}</Text>
 
               {/* Quick Presets */}
               <Text
@@ -935,9 +913,7 @@ export function AddServiceModal({
                   styles.fieldSubLabel,
                   { color: colors.secondarytext, marginTop: 12, marginBottom: 8 },
                 ]}
-              >
-                Quick Select Duration:
-              </Text>
+              >{language === "fr" ? "Sélection rapide de durée :" : "Quick Select Duration:"}</Text>
               <View style={styles.durationPresetWrap}>
                 {DURATION_PRESETS.map((mins) => {
                   const isSelected = parseInt(serviceDuration, 10) === mins;
@@ -984,9 +960,7 @@ export function AddServiceModal({
                   styles.fieldSubLabel,
                   { color: colors.secondarytext, marginTop: 12, marginBottom: 8 },
                 ]}
-              >
-                Or Fine-tune Minutes:
-              </Text>
+              >{language === "fr" ? "Ou ajuster les minutes :" : "Or Fine-tune Minutes:"}</Text>
               <View style={styles.durationStepperRow}>
                 <TouchableOpacity
                   activeOpacity={0.7}
@@ -1242,17 +1216,13 @@ export function AddServiceModal({
                   styles.extraToggleTitle,
                   { color: colors.primarytext },
                 ]}
-              >
-                Extra Service / Add-on
-              </Text>
+              >{language === "fr" ? "Service supplémentaire / Option" : "Extra Service / Add-on"}</Text>
               <Text
                 style={[
                   styles.extraToggleSub,
                   { color: colors.secondarytext },
                 ]}
-              >
-                No separate calendar slot required (e.g. Beard Oil, Facial Scrub, Eyebrows). Added alongside primary cut.
-              </Text>
+              >{language === "fr" ? "Aucun créneau séparé requis (ex. Huile à barbe, Gommage, Sourcils). Ajouté en complément de la coupe principale." : "No separate calendar slot required (e.g. Beard Oil, Facial Scrub, Eyebrows). Added alongside primary cut."}</Text>
             </View>
             <Switch
               value={isExtra}

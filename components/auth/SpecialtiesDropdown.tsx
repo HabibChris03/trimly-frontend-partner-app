@@ -461,9 +461,7 @@ export default function SpecialtiesDropdown({
             ]}
           >
             <Ionicons name="checkmark" size={15} color={colors.brand} />
-            <Text style={[styles.doneButtonText, { color: colors.brand }]}>
-              Done Selecting
-            </Text>
+            <Text style={[styles.doneButtonText, { color: colors.brand }]}>{language === "fr" ? "Terminer la sélection" : "Done Selecting"}</Text>
           </TouchableOpacity>
         </View>
       )}

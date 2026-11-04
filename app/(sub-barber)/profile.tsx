@@ -798,12 +798,8 @@ export default function SubBarberProfileScreen() {
                 <Text style={[styles.langMonogramText, { color: colors.primary }]}>EN</Text>
               </View>
               <View>
-                <Text style={[styles.langOptionTitle, { color: colors.primarytext }]}>
-                  English
-                </Text>
-                <Text style={[styles.langOptionSub, { color: colors.secondarytext }]}>
-                  Default English (US)
-                </Text>
+                <Text style={[styles.langOptionTitle, { color: colors.primarytext }]}>{language === "fr" ? "Anglais" : "English"}</Text>
+                <Text style={[styles.langOptionSub, { color: colors.secondarytext }]}>{language === "fr" ? "Anglais par défaut (US)" : "Default English (US)"}</Text>
               </View>
             </View>
             {language === "en" && (

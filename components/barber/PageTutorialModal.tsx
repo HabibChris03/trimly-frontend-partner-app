@@ -1,3 +1,4 @@
+import { useLanguage } from '@/context/LanguageContext';
 import React, { useState, useEffect } from "react";
 import {
   Modal,
@@ -62,6 +63,7 @@ export function PageTutorialModal({
   onClose,
   autoTrigger = true,
 }: PageTutorialModalProps) {
+  const { language } = useLanguage();
   const colors = useColors();
   const [internalVisible, setInternalVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -280,9 +282,7 @@ export function PageTutorialModal({
                 />
                 <Text
                   style={[styles.backBtnText, { color: colors.primarytext }]}
-                >
-                  Back
-                </Text>
+                >{language === "fr" ? "Retour" : "Back"}</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -292,9 +292,7 @@ export function PageTutorialModal({
               >
                 <Text
                   style={[styles.skipBtnText, { color: colors.secondarytext }]}
-                >
-                  Skip Tour
-                </Text>
+                >{language === "fr" ? "Passer la visite" : "Skip Tour"}</Text>
               </TouchableOpacity>
             )}
 

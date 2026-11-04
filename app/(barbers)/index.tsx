@@ -610,9 +610,7 @@ export default function BarberDashboardScreen() {
                     { backgroundColor: colors.primary },
                   ]}
                 />
-                <Text style={[styles.liveOpenText, { color: colors.primary }]}>
-                  Open
-                </Text>
+                <Text style={[styles.liveOpenText, { color: colors.primary }]}>{language === "fr" ? "Ouvert" : "Open"}</Text>
               </View>
             </View>
             <Text
@@ -991,7 +989,7 @@ export default function BarberDashboardScreen() {
                 </Text>
               </View>
               <View style={styles.actionRequiredPill}>
-                <Text style={styles.actionRequiredText}>Action Required</Text>
+                <Text style={styles.actionRequiredText}>{language === "fr" ? "Action requise" : "Action Required"}</Text>
               </View>
             </View>
 
@@ -1149,9 +1147,7 @@ export default function BarberDashboardScreen() {
                                   fontWeight: "700",
                                   color: colors.primary,
                                 }}
-                              >
-                                Client Reference Photo
-                              </Text>
+                              >{language === "fr" ? "Photo de référence du client" : "Client Reference Photo"}</Text>
                             </View>
                             <Text
                               style={{
@@ -1159,9 +1155,7 @@ export default function BarberDashboardScreen() {
                                 color: colors.secondarytext,
                                 marginTop: 1,
                               }}
-                            >
-                              Booked directly from style photo
-                            </Text>
+                            >{language === "fr" ? "Réservé directement depuis la photo du style" : "Booked directly from style photo"}</Text>
                           </View>
                         </View>
                       ) : null}
@@ -1263,9 +1257,7 @@ export default function BarberDashboardScreen() {
             <View style={{ flex: 1 }}>
               <Text
                 style={[styles.autoConfirmTitle, { color: colors.primarytext }]}
-              >
-                Auto-Confirm Appointments
-              </Text>
+              >{language === "fr" ? "Confirmation auto des RDV" : "Auto-Confirm Appointments"}</Text>
               <Text
                 style={[styles.autoConfirmSub, { color: colors.secondarytext }]}
               >
@@ -1287,9 +1279,7 @@ export default function BarberDashboardScreen() {
         {/* 2x2 BENTO STUDIO OPERATIONS GRID */}
         <View style={styles.sectionHeaderRow}>
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-              Studio Operations
-            </Text>
+            <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>{language === "fr" ? "Opérations du Studio" : "Studio Operations"}</Text>
             <Text
               style={[styles.sectionSubtitle, { color: colors.secondarytext }]}
             >
@@ -1335,9 +1325,7 @@ export default function BarberDashboardScreen() {
               </View>
               <Text
                 style={[styles.bentoTileTitle, { color: colors.primarytext }]}
-              >
-                Services Menu
-              </Text>
+              >{language === "fr" ? "Menu des Services" : "Services Menu"}</Text>
               <Text
                 style={[styles.bentoTileSub, { color: colors.secondarytext }]}
               >
@@ -1426,9 +1414,7 @@ export default function BarberDashboardScreen() {
               </View>
               <Text
                 style={[styles.bentoTileTitle, { color: colors.primarytext }]}
-              >
-                Working Hours
-              </Text>
+              >{language === "fr" ? "Horaires" : "Working Hours"}</Text>
               <Text
                 style={[styles.bentoTileSub, { color: colors.secondarytext }]}
               >
@@ -1471,9 +1457,7 @@ export default function BarberDashboardScreen() {
               </View>
               <Text
                 style={[styles.bentoTileTitle, { color: colors.primarytext }]}
-              >
-                Style Portfolio
-              </Text>
+              >{language === "fr" ? "Portfolio des Styles" : "Style Portfolio"}</Text>
               <Text
                 style={[styles.bentoTileSub, { color: colors.secondarytext }]}
               >
@@ -1486,9 +1470,7 @@ export default function BarberDashboardScreen() {
         {/* TODAY'S QUEUE / LIVE TIMELINE */}
         <View style={[styles.sectionHeaderRow, { marginTop: 18 }]}>
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-              Today's Queue
-            </Text>
+            <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>{language === "fr" ? "File d'attente du jour" : "Today's Queue"}</Text>
             <Text
               style={[styles.sectionSubtitle, { color: colors.secondarytext }]}
             >
@@ -1518,9 +1500,7 @@ export default function BarberDashboardScreen() {
                 styles.secondaryActionPillText,
                 { color: colors.primarytext },
               ]}
-            >
-              Full Schedule
-            </Text>
+            >{language === "fr" ? "Planning complet" : "Full Schedule"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -1576,17 +1556,13 @@ export default function BarberDashboardScreen() {
                   styles.emptyAgendaTitle,
                   { color: colors.primarytext },
                 ]}
-              >
-                No Appointments in Queue
-              </Text>
+              >{language === "fr" ? "Aucun rendez-vous dans la file" : "No Appointments in Queue"}</Text>
               <Text
                 style={[
                   styles.emptyAgendaSub,
                   { color: colors.secondarytext },
                 ]}
-              >
-                Client bookings for today will appear here in real time.
-              </Text>
+              >{language === "fr" ? "Les réservations clients pour aujourd'hui apparaîtront ici en temps réel." : "Client bookings for today will appear here in real time."}</Text>
             </View>
           ) : (
             agenda.map((item) => (
@@ -1730,9 +1706,7 @@ export default function BarberDashboardScreen() {
                               styles.agendaMiniTagText,
                               { color: colors.primary },
                             ]}
-                          >
-                            Photo Attached
-                          </Text>
+                          >{language === "fr" ? "Photo jointe" : "Photo Attached"}</Text>
                         </View>
                       ) : null}
                     </View>
@@ -1746,14 +1720,10 @@ export default function BarberDashboardScreen() {
         {/* SERVICES & PRICING MENU PREVIEW */}
         <View style={[styles.sectionHeaderRow, { marginTop: 26 }]}>
           <View>
-            <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>
-              Active Services
-            </Text>
+            <Text style={[styles.sectionTitle, { color: colors.primarytext }]}>{language === "fr" ? "Services Actifs" : "Active Services"}</Text>
             <Text
               style={[styles.sectionSubtitle, { color: colors.secondarytext }]}
-            >
-              Manage haircut pricing and session duration
-            </Text>
+            >{language === "fr" ? "Gérer les tarifs des coupes et la durée des séances" : "Manage haircut pricing and session duration"}</Text>
           </View>
 
           <TouchableOpacity
@@ -1764,9 +1734,7 @@ export default function BarberDashboardScreen() {
             <Ionicons name="add" size={16} color={colors.onBrand} />
             <Text
               style={[styles.addNewButtonText, { color: colors.onBrand }]}
-            >
-              Add New
-            </Text>
+            >{language === "fr" ? "Ajouter" : "Add New"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -1801,9 +1769,7 @@ export default function BarberDashboardScreen() {
                   styles.emptyAgendaTitle,
                   { color: colors.primarytext },
                 ]}
-              >
-                No Services Added Yet
-              </Text>
+              >{language === "fr" ? "Aucun service ajouté pour l'instant" : "No Services Added Yet"}</Text>
               <Text
                 style={[
                   styles.emptyAgendaSub,
@@ -1824,9 +1790,7 @@ export default function BarberDashboardScreen() {
                 <Ionicons name="add" size={16} color={colors.onBrand} />
                 <Text
                   style={[styles.addNewButtonText, { color: colors.onBrand }]}
-                >
-                  Add First Service
-                </Text>
+                >{language === "fr" ? "Ajouter un premier service" : "Add First Service"}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -2030,9 +1994,7 @@ export default function BarberDashboardScreen() {
                   fontWeight: "800",
                   color: colors.primary,
                 }}
-              >
-                CLIENT'S SELECTED HAIRSTYLE PHOTO
-              </Text>
+              >{language === "fr" ? "PHOTO DU STYLE SÉLECTIONNÉ PAR LE CLIENT" : "CLIENT'S SELECTED HAIRSTYLE PHOTO"}</Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.9}
@@ -2096,9 +2058,7 @@ export default function BarberDashboardScreen() {
                     fontFamily: FontFamily.semibold,
                     fontWeight: "600",
                   }}
-                >
-                  Tap to Inspect
-                </Text>
+                >{language === "fr" ? "Toucher pour inspecter" : "Tap to Inspect"}</Text>
               </View>
             </TouchableOpacity>
           </View>

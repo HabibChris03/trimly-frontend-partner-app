@@ -638,9 +638,7 @@ export default function SubBarberBookingsScreen() {
             <Text style={[styles.summaryNum, { color: colors.primary }]}>
               {confirmedCount}
             </Text>
-            <Text style={[styles.summaryLabel, { color: colors.secondarytext }]}>
-              Active
-            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.secondarytext }]}>{language === "fr" ? "Actif" : "Active"}</Text>
           </View>
           <View
             style={[styles.summaryDivider, { backgroundColor: colors.border }]}
@@ -649,9 +647,7 @@ export default function SubBarberBookingsScreen() {
             <Text style={[styles.summaryNum, { color: "#F59E0B" }]}>
               {pendingCount}
             </Text>
-            <Text style={[styles.summaryLabel, { color: colors.secondarytext }]}>
-              Pending
-            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.secondarytext }]}>{language === "fr" ? "En attente" : "Pending"}</Text>
           </View>
           <View
             style={[styles.summaryDivider, { backgroundColor: colors.border }]}
@@ -660,9 +656,7 @@ export default function SubBarberBookingsScreen() {
             <Text style={[styles.summaryNum, { color: colors.success }]}>
               {completedCount}
             </Text>
-            <Text style={[styles.summaryLabel, { color: colors.secondarytext }]}>
-              Done
-            </Text>
+            <Text style={[styles.summaryLabel, { color: colors.secondarytext }]}>{language === "fr" ? "Terminé" : "Done"}</Text>
           </View>
           <View
             style={[styles.summaryDivider, { backgroundColor: colors.border }]}

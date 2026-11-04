@@ -122,7 +122,7 @@ export default function BarberLocationPickerModal({
   initialLongitude,
   initialCity = "Douala, Akwa",
 }: BarberLocationPickerModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { colors, isDark } = useTheme();
   const webIframeRef = useRef<any>(null);
 
@@ -250,9 +250,7 @@ export default function BarberLocationPickerModal({
           </TouchableOpacity>
 
           <View style={styles.headerTitleContainer}>
-            <Text style={[styles.headerTitle, { color: colors.primarytext }]}>
-              Pinpoint Shop Location
-            </Text>
+            <Text style={[styles.headerTitle, { color: colors.primarytext }]}>{language === "fr" ? "Localiser l'emplacement du salon" : "Pinpoint Shop Location"}</Text>
             <Text
               style={[styles.headerSubtitle, { color: colors.secondarytext }]}
             >
@@ -267,9 +265,7 @@ export default function BarberLocationPickerModal({
           >
             <Text
               style={[styles.saveHeaderBtnText, { color: colors.onBrand }]}
-            >
-              Save
-            </Text>
+            >{language === "fr" ? "Enregistrer" : "Save"}</Text>
           </TouchableOpacity>
         </View>
 

@@ -1,3 +1,4 @@
+import { useLanguage } from '@/context/LanguageContext';
 import {
   DEFAULT_MAP_REGION,
   LIGHT_MAP_STYLE,
@@ -175,6 +176,7 @@ export default function BarberMapView({
   style,
 }: BarberMapViewProps) {
   const { colors, isDark } = useTheme();
+  const { language } = useLanguage();
   const router = useRouter();
   const mapRef = useRef<MapView>(null);
   const webIframeRef = useRef<any>(null);
@@ -534,9 +536,7 @@ export default function BarberMapView({
               onPress={handleOpenProfile}
               style={[styles.bookBtn, { backgroundColor: colors.primary }]}
             >
-              <Text style={[styles.bookBtnText, { color: "#FFFFFF" }]}>
-                Book
-              </Text>
+              <Text style={[styles.bookBtnText, { color: "#FFFFFF" }]}>{language === "fr" ? "Réserver" : "Book"}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

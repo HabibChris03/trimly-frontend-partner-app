@@ -1364,9 +1364,7 @@ export default function BarberBookingsScreen() {
                 >
                   <View style={styles.disputeModalTitleRow}>
                     <Ionicons name="warning-outline" size={14} color={colors.error} />
-                    <Text style={[styles.disputeModalTitle, { color: colors.error }]}>
-                      Payment Incident Escalated
-                    </Text>
+                    <Text style={[styles.disputeModalTitle, { color: colors.error }]}>{language === "fr" ? "Incident de paiement signalé" : "Payment Incident Escalated"}</Text>
                   </View>
                   <Text style={{ fontSize: 11.5, color: colors.secondaryText }}>
                     {selectedAppointment.dispute_reason ||

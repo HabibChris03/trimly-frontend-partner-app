@@ -1,3 +1,4 @@
+import { useLanguage } from '@/context/LanguageContext';
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -34,6 +35,7 @@ export function BookingCard({
   style,
 }: BookingCardProps) {
   const { colors, radius, spacing, typography } = useTheme();
+  const { language } = useLanguage();
 
   const getBadgeVariant = () => {
     switch (status) {
@@ -159,9 +161,7 @@ export function BookingCard({
                     fontFamily: typography.fontFamily.semiBold,
                   },
                 ]}
-              >
-                Reschedule
-              </Text>
+              >{language === "fr" ? "Reprogrammer" : "Reschedule"}</Text>
             </TouchableOpacity>
           )}
 
@@ -188,9 +188,7 @@ export function BookingCard({
                     fontFamily: typography.fontFamily.semiBold,
                   },
                 ]}
-              >
-                Cancel
-              </Text>
+              >{language === "fr" ? "Annuler" : "Cancel"}</Text>
             </TouchableOpacity>
           )}
 
@@ -214,9 +212,7 @@ export function BookingCard({
                     fontFamily: typography.fontFamily.bold,
                   },
                 ]}
-              >
-                Leave Review
-              </Text>
+              >{language === "fr" ? "Laisser un avis" : "Leave Review"}</Text>
             </TouchableOpacity>
           )}
         </View>

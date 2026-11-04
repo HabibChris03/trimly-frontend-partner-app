@@ -1,16 +1,18 @@
+import { useLanguage } from '@/context/LanguageContext';
 import { Link } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { StyleSheet, Text, View } from "react-native";
 import React from "react";
 
 export default function NotFoundScreen() {
+  const { language } = useLanguage();
   return (
     <>
       <Stack.Screen options={{ title: "Oops!", headerShown: false }} />
       <View style={styles.container}>
         <Text style={styles.title}>Redirecting to Trimly...</Text>
         <Link href="/(barbers)" style={styles.link}>
-          <Text style={styles.linkText}>Return to Dashboard</Text>
+          <Text style={styles.linkText}>{language === "fr" ? "Retour au tableau de bord" : "Return to Dashboard"}</Text>
         </Link>
       </View>
     </>

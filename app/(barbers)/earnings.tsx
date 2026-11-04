@@ -65,7 +65,7 @@ export default function BarberEarningsScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
   const { handleScroll, showTabBar } = useTabBarVisibility();
 
@@ -295,9 +295,7 @@ export default function BarberEarningsScreen() {
                       fontWeight: selectedStaffId === null ? "700" : "500",
                     },
                   ]}
-                >
-                  All Salon Revenue
-                </Text>
+                >{language === "fr" ? "Tous les revenus du salon" : "All Salon Revenue"}</Text>
               </TouchableOpacity>
 
               {staffList.map((member) => {
@@ -347,12 +345,8 @@ export default function BarberEarningsScreen() {
           >
             <Ionicons name="shield-checkmark" size={17} color={colors.brand} />
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[styles.staffPrivacyTitle, { color: colors.primaryText }]}>
-                Personal Booking Earnings
-              </Text>
-              <Text style={[styles.staffPrivacySub, { color: colors.secondaryText }]}>
-                Showing only your personal earnings and statistics from your client appointments.
-              </Text>
+              <Text style={[styles.staffPrivacyTitle, { color: colors.primaryText }]}>{language === "fr" ? "Gains des réservations personnelles" : "Personal Booking Earnings"}</Text>
+              <Text style={[styles.staffPrivacySub, { color: colors.secondaryText }]}>{language === "fr" ? "Affichage uniquement de vos gains personnels et statistiques de vos rendez-vous clients." : "Showing only your personal earnings and statistics from your client appointments."}</Text>
             </View>
           </View>
         )}
@@ -402,9 +396,7 @@ export default function BarberEarningsScreen() {
             <View style={styles.balanceMetaCol}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                 <View style={[styles.microDot, { backgroundColor: "#22C55E" }]} />
-                <Text style={[styles.balanceMetaTitle, { color: colors.secondaryText }]}>
-                  Settled Revenue
-                </Text>
+                <Text style={[styles.balanceMetaTitle, { color: colors.secondaryText }]}>{language === "fr" ? "Revenus encaissés" : "Settled Revenue"}</Text>
               </View>
               <Text style={[styles.balanceMetaValue, { color: colors.primaryText }]}>
                 {completedEarnings.toLocaleString()} CFA
@@ -416,9 +408,7 @@ export default function BarberEarningsScreen() {
             <View style={styles.balanceMetaCol}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                 <View style={[styles.microDot, { backgroundColor: pendingEarnings > 0 ? "#F59E0B" : colors.secondaryText }]} />
-                <Text style={[styles.balanceMetaTitle, { color: colors.secondaryText }]}>
-                  Pending Bookings
-                </Text>
+                <Text style={[styles.balanceMetaTitle, { color: colors.secondaryText }]}>{language === "fr" ? "Réservations en attente" : "Pending Bookings"}</Text>
               </View>
               <Text style={[styles.balanceMetaValue, { color: pendingEarnings > 0 ? "#F59E0B" : colors.primaryText }]}>
                 {pendingEarnings.toLocaleString()} CFA
@@ -487,9 +477,7 @@ export default function BarberEarningsScreen() {
 
             <View style={[styles.metricTrendPill, { backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: "rgba(199, 243, 107, 0.3)" }]}>
               <Ionicons name="trending-up" size={14} color={colors.brand} />
-              <Text style={[styles.metricTrendText, { color: colors.brand }]}>
-                Live
-              </Text>
+              <Text style={[styles.metricTrendText, { color: colors.brand }]}>{language === "fr" ? "En direct" : "Live"}</Text>
             </View>
           </View>
 
@@ -500,9 +488,7 @@ export default function BarberEarningsScreen() {
             <View style={[styles.metricTile, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
               <View style={styles.metricTileIconRow}>
                 <Ionicons name="calendar-outline" size={16} color={colors.brand} />
-                <Text style={[styles.metricTileLabel, { color: colors.secondaryText }]}>
-                  Appointments
-                </Text>
+                <Text style={[styles.metricTileLabel, { color: colors.secondaryText }]}>{language === "fr" ? "Rendez-vous" : "Appointments"}</Text>
               </View>
               <Text style={[styles.metricTileValue, { color: colors.primaryText }]}>
                 {appointmentCount}{" "}
@@ -515,9 +501,7 @@ export default function BarberEarningsScreen() {
             <View style={[styles.metricTile, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
               <View style={styles.metricTileIconRow}>
                 <Ionicons name="receipt-outline" size={16} color={colors.brand} />
-                <Text style={[styles.metricTileLabel, { color: colors.secondaryText }]}>
-                  Average Ticket
-                </Text>
+                <Text style={[styles.metricTileLabel, { color: colors.secondaryText }]}>{language === "fr" ? "Panier moyen" : "Average Ticket"}</Text>
               </View>
               <Text style={[styles.metricTileValue, { color: colors.brand }]}>
                 {avgTicket.toLocaleString()}{" "}
@@ -541,18 +525,14 @@ export default function BarberEarningsScreen() {
         >
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
-                Weekly Revenue Cadence
-              </Text>
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>{language === "fr" ? "Rythme des revenus hebdomadaires" : "Weekly Revenue Cadence"}</Text>
               <Text style={[styles.sectionSubtitle, { color: colors.secondaryText }]}>
                 Daily revenue performance (Mon — Sun)
               </Text>
             </View>
             <View style={[styles.chartLegend, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
               <View style={[styles.legendDot, { backgroundColor: colors.brand }]} />
-              <Text style={[styles.legendText, { color: colors.secondaryText }]}>
-                Volume
-              </Text>
+              <Text style={[styles.legendText, { color: colors.secondaryText }]}>{language === "fr" ? "Volume" : "Volume"}</Text>
             </View>
           </View>
 
@@ -602,9 +582,7 @@ export default function BarberEarningsScreen() {
         >
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
-                Top Services by Revenue
-              </Text>
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>{language === "fr" ? "Meilleurs services par revenu" : "Top Services by Revenue"}</Text>
               <Text style={[styles.sectionSubtitle, { color: colors.secondaryText }]}>
                 {t("earnings.mostPopularCuts") || "Most popular cuts & styles ordered by clients"}
               </Text>
@@ -667,9 +645,7 @@ export default function BarberEarningsScreen() {
         >
           <View style={styles.sectionHeaderRow}>
             <View>
-              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
-                Payout Settlements
-              </Text>
+              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>{language === "fr" ? "Règlements & Virements" : "Payout Settlements"}</Text>
               <Text style={[styles.sectionSubtitle, { color: colors.secondaryText }]}>
                 {t("earnings.withdrawalHistory") || "Withdrawal history to Mobile Money & Bank"}
               </Text>
@@ -922,7 +898,7 @@ export default function BarberEarningsScreen() {
 
             <View style={{ gap: 8 }}>
               <View style={styles.statementRow}>
-                <Text style={[styles.statementLabel, { color: colors.secondaryText }]}>Registered Partner</Text>
+                <Text style={[styles.statementLabel, { color: colors.secondaryText }]}>{language === "fr" ? "Partenaire enregistré" : "Registered Partner"}</Text>
                 <Text style={[styles.statementVal, { color: colors.primaryText }]}>{user?.name || "Partner"}</Text>
               </View>
               <View style={styles.statementRow}>
@@ -930,11 +906,11 @@ export default function BarberEarningsScreen() {
                 <Text style={[styles.statementVal, { color: colors.primaryText }]}>{user?.phone || "+237 6XX XXX XXX"}</Text>
               </View>
               <View style={styles.statementRow}>
-                <Text style={[styles.statementLabel, { color: colors.secondaryText }]}>Total Cuts Delivered</Text>
+                <Text style={[styles.statementLabel, { color: colors.secondaryText }]}>{language === "fr" ? "Total coupes effectuées" : "Total Cuts Delivered"}</Text>
                 <Text style={[styles.statementVal, { color: colors.primaryText }]}>{appointmentCount} bookings</Text>
               </View>
               <View style={styles.statementRow}>
-                <Text style={[styles.statementLabel, { color: colors.secondaryText }]}>Statement Currency</Text>
+                <Text style={[styles.statementLabel, { color: colors.secondaryText }]}>{language === "fr" ? "Devise du relevé" : "Statement Currency"}</Text>
                 <Text style={[styles.statementVal, { color: colors.brand, fontWeight: "800" }]}>Central African CFA (XAF)</Text>
               </View>
             </View>
@@ -948,9 +924,7 @@ export default function BarberEarningsScreen() {
               style={[styles.exportBtn, { backgroundColor: colors.brand }]}
             >
               <Ionicons name="download-outline" size={18} color={colors.onBrand} />
-              <Text style={[styles.exportBtnText, { color: colors.onBrand }]}>
-                Export PDF Statement
-              </Text>
+              <Text style={[styles.exportBtnText, { color: colors.onBrand }]}>{language === "fr" ? "Exporter le relevé PDF" : "Export PDF Statement"}</Text>
             </TouchableOpacity>
           </View>
         </CustomModal>
