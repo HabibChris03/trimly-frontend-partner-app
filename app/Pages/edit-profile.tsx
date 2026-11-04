@@ -369,7 +369,7 @@ export default function EditProfileScreen() {
                 style={[styles.input, { color: colors.primaryText }]}
                 value={fullName}
                 onChangeText={setFullName}
-                placeholder="Master Barber Name"
+                placeholder={language === "fr" ? "Nom du maître barbier / coiffeur" : "Master Barber Name"}
                 placeholderTextColor={colors.inputPlaceholder}
               />
             </View>

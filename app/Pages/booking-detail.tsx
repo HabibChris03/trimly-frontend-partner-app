@@ -797,10 +797,10 @@ export default function BarberBookingDetailScreen() {
       <CustomModal
         visible={pinModalVisible}
         onClose={() => setPinModalVisible(false)}
-        title="Verify Client Arrival PIN"
+        title={language === "fr" ? "Vérifier le code PIN d'arrivée du client" : "Verify Client Arrival PIN"}
         description={t("bookings.confirmSeatedDesc") || "Ask the client for the 4-digit PIN displayed on their Trimly booking receipt to confirm they are physically seated."}
         icon="key-outline"
-        primaryText={isSubmittingPin ? "Verifying..." : "Confirm & Start Service"}
+        primaryText={isSubmittingPin ? (language === "fr" ? "Vérification..." : "Verifying...") : (language === "fr" ? "Confirmer & Démarrer le service" : "Confirm & Start Service")}
         onPrimary={handleStartService}
         secondaryText="Cancel"
         onSecondary={() => {
@@ -873,8 +873,8 @@ export default function BarberBookingDetailScreen() {
       <CustomModal
         visible={completionModalVisible}
         onClose={() => setCompletionModalVisible(false)}
-        title="Complete Service & Release Payout"
-        description={t("bookings.completionModalDesc") || "Enter the 4-digit completion code provided by the client to finalize the session and release payment to your account."}
+        title={language === "fr" ? "Terminer la prestation & Libérer le paiement" : "Complete Service & Release Payout"}
+        description={t("bookings.completionModalDesc") || (language === "fr" ? "Saisissez le code de fin à 4 chiffres fourni par le client pour finaliser la prestation et débloquer les fonds sur votre compte." : "Enter the 4-digit completion code provided by the client to finalize the session and release payment to your account.")}
         icon="checkmark-done-circle-outline"
         primaryText={
           isSubmittingCompletion

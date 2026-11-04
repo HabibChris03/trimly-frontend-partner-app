@@ -613,12 +613,12 @@ export default function SalonManagementScreen() {
               <Text style={[styles.mapTriggerCoords, { color: colors.secondaryText }]}>
                 {coordinates
                   ? `GPS: ${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}`
-                  : "Tap to pinpoint exact shop location"}
+                  : (language === "fr" ? "Touchez pour localiser précisément le salon" : "Tap to pinpoint exact shop location")}
               </Text>
             </View>
             <View style={[styles.editCoordBadge, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Ionicons name="location" size={13} color={colors.brand} />
-              <Text style={[styles.editCoordText, { color: colors.brand }]}>Adjust</Text>
+              <Text style={[styles.editCoordText, { color: colors.brand }]}>{language === "fr" ? "Ajuster" : "Adjust"}</Text>
             </View>
           </TouchableOpacity>
         </View>
