@@ -307,7 +307,7 @@ export default function SupportChatScreen() {
             >
               <Ionicons name="chatbubble-ellipses-outline" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
               <Text style={[styles.startReportText, { color: "#FFFFFF" }]}>
-                Report an Issue / Start Chat
+                {language === "fr" ? "Signaler un problème / Démarrer le chat" : "Report an Issue / Start Chat"}
               </Text>
             </TouchableOpacity>
           </View>

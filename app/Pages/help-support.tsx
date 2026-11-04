@@ -470,7 +470,7 @@ export default function HelpSupportScreen() {
             ]}
           >
             <Ionicons name="logo-whatsapp" size={14} color="#FFFFFF" />
-            <Text style={[styles.ticketBtnText, { color: "#FFFFFF" }]}>Contact</Text>
+            <Text style={[styles.ticketBtnText, { color: "#FFFFFF" }]}>{language === "fr" ? "Contacter" : "Contact"}</Text>
           </TouchableOpacity>
         </View>
 
@@ -485,7 +485,7 @@ export default function HelpSupportScreen() {
             Trimly App
           </Text>
           <Text style={{ color: colors.secondarytext, fontSize: 12, marginTop: 2 }}>
-            Version 1.0.0 · Grooming on Demand
+            {language === "fr" ? "Version 1.0.0 • Coiffure à la demande" : "Version 1.0.0 • Grooming on Demand"}
           </Text>
         </View>
       </ScrollView>

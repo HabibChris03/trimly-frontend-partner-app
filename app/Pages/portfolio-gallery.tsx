@@ -31,7 +31,7 @@ const CATEGORIES = ["All", "Fades", "Classic", "Beard", "Color"];
 export default function PortfolioGalleryScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const params = useLocalSearchParams<{ barberId?: string; barberName?: string }>();
 
   const barberIdNum = parseInt(params.barberId || "4", 10) || 4;
@@ -293,7 +293,7 @@ export default function PortfolioGalleryScreen() {
       {/* Centered Caption & Divider matching Reference Right Phone */}
       <View style={[styles.captionDivider, { borderBottomColor: colors.border }]}>
         <Text style={[styles.captionText, { color: colors.secondarytext }]}>
-          Scroll down for more styles
+          {language === "fr" ? "Faites défiler pour voir plus de styles" : "Scroll down for more styles"}
         </Text>
       </View>
 

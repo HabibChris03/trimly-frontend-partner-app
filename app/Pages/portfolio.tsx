@@ -340,7 +340,7 @@ export default function BarberPortfolioScreen() {
             {t("barber.myPortfolio") || "My Portfolio"}
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.secondarytext }]}>
-            {portfolio.length} cuts uploaded • Bookable styles
+            {language === "fr" ? `${portfolio.length} coupes ajoutées • Styles réservables` : `${portfolio.length} cuts uploaded • Bookable styles`}
           </Text>
         </View>
 
@@ -376,18 +376,14 @@ export default function BarberPortfolioScreen() {
             <Text style={[styles.telemetryVal, { color: colors.primarytext }]}>
               {totalCuts}
             </Text>
-            <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-              Total Cuts
-            </Text>
+            <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>{language === "fr" ? "Total Coupes" : "Total Cuts"}</Text>
           </View>
           <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.telemetryItem}>
             <Text style={[styles.telemetryVal, { color: colors.primary }]}>
               {bookableCount}
             </Text>
-            <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-              Bookable
-            </Text>
+            <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>{language === "fr" ? "Réservables" : "Bookable"}</Text>
           </View>
           <View style={[styles.telemetryDivider, { backgroundColor: colors.border }]} />
           <View style={styles.telemetryItem}>
@@ -406,9 +402,7 @@ export default function BarberPortfolioScreen() {
                 {totalLikes}
               </Text>
             </View>
-            <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>
-              Likes
-            </Text>
+            <Text style={[styles.telemetryLabel, { color: colors.secondarytext }]}>{language === "fr" ? "J'aime" : "Likes"}</Text>
           </View>
         </View>
 

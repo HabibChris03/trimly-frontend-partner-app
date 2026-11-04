@@ -497,7 +497,7 @@ export default function BarberProfileSettingsScreen() {
 
                 <View style={[styles.ratingBadge, { backgroundColor: "rgba(245, 158, 11, 0.12)", borderColor: "rgba(245, 158, 11, 0.3)" }]}>
                   <Ionicons name="star" size={11} color="#F59E0B" />
-                  <Text style={styles.ratingBadgeText}>4.9 Rating</Text>
+                  <Text style={styles.ratingBadgeText}>{language === "fr" ? "Note 4.9" : "4.9 Rating"}</Text>
                 </View>
               </View>
             </View>
@@ -523,7 +523,7 @@ export default function BarberProfileSettingsScreen() {
             >
               <Ionicons name="time-outline" size={15} color={colors.brand} />
               <Text style={[styles.profileActionBtnText, { color: colors.primaryText }]}>
-                Working Hours
+                {language === "fr" ? "Horaires" : "Working Hours"}
               </Text>
             </TouchableOpacity>
 
@@ -534,7 +534,7 @@ export default function BarberProfileSettingsScreen() {
             >
               <Ionicons name="images-outline" size={15} color={colors.primaryText} />
               <Text style={[styles.profileActionBtnText, { color: colors.primaryText }]}>
-                Portfolio
+                {language === "fr" ? "Portfolio" : "Portfolio"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -590,9 +590,9 @@ export default function BarberProfileSettingsScreen() {
           <View style={[styles.dutyPillsWrap, { backgroundColor: colors.background, borderColor: colors.border }]}>
             {(
               [
-                { key: "active", label: "Active", icon: "flash" },
-                { key: "on_break", label: "On Break", icon: "cafe" },
-                { key: "off_duty", label: "Off Duty", icon: "moon" },
+                { key: "active", label: language === "fr" ? "En service" : "Active", icon: "flash" },
+                { key: "on_break", label: language === "fr" ? "En pause" : "On Break", icon: "cafe" },
+                { key: "off_duty", label: language === "fr" ? "Hors service" : "Off Duty", icon: "moon" },
               ] as const
             ).map((item) => {
               const isSelected = dutyStatus === item.key;
@@ -656,16 +656,14 @@ export default function BarberProfileSettingsScreen() {
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={[styles.toggleTitle, { color: colors.primaryText }]}>{t("profile.acceptOnlineBookings") || "Accept New Online Bookings"}</Text>
               <Text style={[styles.toggleSubtitle, { color: colors.secondaryText }]}>
-                {acceptingAppointments
-                  ? "Clients can view your timetable and book appointments"
-                  : "Bookings paused — existing appointments remain scheduled"}
+                {acceptingAppointments ? (language === "fr" ? "Les clients peuvent consulter votre planning et réserver" : "Clients can view your timetable and book appointments") : (language === "fr" ? "Réservations en pause — les rendez-vous existants restent maintenus" : "Bookings paused — existing appointments remain scheduled")}
               </Text>
             </View>
             <Switch
               value={acceptingAppointments}
               onValueChange={(val) => {
                 setAcceptingAppointments(val);
-                showToast(val ? "Now accepting bookings" : "Bookings paused", "info");
+                showToast(language === "fr" ? (val ? "Accepte désormais les réservations" : "Réservations en pause") : (val ? "Now accepting bookings" : "Bookings paused"), "info");
               }}
               trackColor={{ false: colors.elevated, true: colors.brand }}
               thumbColor={colors.onBrand}
@@ -684,7 +682,7 @@ export default function BarberProfileSettingsScreen() {
               value={pushNotifications}
               onValueChange={(val) => {
                 setPushNotifications(val);
-                showToast(val ? "Booking alerts enabled" : "Booking alerts muted", "info");
+                showToast(language === "fr" ? (val ? "Alertes de réservation activées" : "Alertes de réservation désactivées") : (val ? "Booking alerts enabled" : "Booking alerts muted"), "info");
               }}
               trackColor={{ false: colors.elevated, true: colors.brand }}
               thumbColor={colors.onBrand}
@@ -694,7 +692,7 @@ export default function BarberProfileSettingsScreen() {
 
         {/* Section: Salon Affiliation / Salon ID Field */}
         <Text style={[styles.groupSectionHeader, { color: colors.secondaryText }]}>
-          {isSalonManager ? "SALON ID & STAFF REGISTRATION" : "SALON AFFILIATION & SALON ID"}
+          {isSalonManager ? (language === "fr" ? "ID DU SALON & INSCRIPTION DU PERSONNEL" : "SALON ID & STAFF REGISTRATION") : (language === "fr" ? "AFFILIATION AU SALON & ID DU SALON" : "SALON AFFILIATION & SALON ID")}
         </Text>
 
         {isSalonManager ? (
@@ -759,9 +757,9 @@ export default function BarberProfileSettingsScreen() {
                 style={[styles.salonSubActionBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
               >
                 <Ionicons name="cut-outline" size={15} color={colors.brand} />
-                <Text style={[styles.salonSubActionText, { color: colors.primaryText }]}>
-                  Active Chairs
-                </Text>
+              <Text style={[styles.salonSubActionText, { color: colors.primaryText }]}>
+                {language === "fr" ? "Fauteuils Actifs" : "Active Chairs"}
+              </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -783,9 +781,7 @@ export default function BarberProfileSettingsScreen() {
                 </Text>
               </View>
               <View style={[styles.affiliatedBadge, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
-                <Text style={[styles.affiliatedBadgeText, { color: colors.secondaryText }]}>
-                  SOLO / INDIE
-                </Text>
+                <Text style={[styles.affiliatedBadgeText, { color: colors.secondaryText }]}>{language === "fr" ? "SOLO / INDÉPENDANT" : "SOLO / INDIE"}</Text>
               </View>
             </View>
 
@@ -1050,8 +1046,8 @@ export default function BarberProfileSettingsScreen() {
 
         {/* Section 1: Salon & Operations Management */}
         <Text style={[styles.groupSectionHeader, { color: colors.secondaryText }]}>
-          SALON OPERATIONS & SERVICES
-        </Text>
+        {language === "fr" ? "OPÉRATIONS DU SALON & SERVICES" : "SALON OPERATIONS & SERVICES"}
+      </Text>
         <View
           style={[
             styles.sectionCard,
@@ -1070,12 +1066,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="cut" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Services & Pricing Menu
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Haircut styles, durations, and CFA prices
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Menu des Services & Tarifs" : "Services & Pricing Menu"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Styles de coupe, durées et tarifs en CFA" : "Haircut styles, durations, and CFA prices"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
           </TouchableOpacity>
@@ -1091,12 +1083,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="time" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Weekly Schedule & Working Hours
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Opening hours, break times & capacity rules
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Planning Hebdomadaire & Horaires" : "Weekly Schedule & Working Hours"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Heures d'ouverture, pauses et règles de capacité" : "Opening hours, break times & capacity rules"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
           </TouchableOpacity>
@@ -1112,12 +1100,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="images" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Portfolio & Style Showcase
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Upload client haircut photos with direct booking prices
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Portfolio & Vitrine des Styles" : "Portfolio & Style Showcase"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Photos de coupes avec prix de réservation directe" : "Upload client haircut photos with direct booking prices"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
           </TouchableOpacity>
@@ -1135,12 +1119,8 @@ export default function BarberProfileSettingsScreen() {
                   <Ionicons name="people" size={17} color={colors.brand} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                    Staff & Stylist Chairs
-                  </Text>
-                  <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                    Invite barbers, manage chair capacity & schedules
-                  </Text>
+                  <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Équipe & Fauteuils des Coiffeurs" : "Staff & Stylist Chairs"}</Text>
+                  <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Inviter des coiffeurs, gérer les fauteuils et plannings" : "Invite barbers, manage chair capacity & schedules"}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
               </TouchableOpacity>
@@ -1156,12 +1136,8 @@ export default function BarberProfileSettingsScreen() {
                   <Ionicons name="business" size={17} color={colors.brand} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                    Salon Settings & Documents
-                  </Text>
-                  <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                    Shop identity, verification docs & address
-                  </Text>
+                  <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Paramètres du Salon & Documents" : "Salon Settings & Documents"}</Text>
+                  <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Identité du salon, agrément et adresse" : "Shop identity, verification docs & address"}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
               </TouchableOpacity>
@@ -1171,8 +1147,8 @@ export default function BarberProfileSettingsScreen() {
 
         {/* Section 2: Client Reviews & Alerts */}
         <Text style={[styles.groupSectionHeader, { color: colors.secondaryText }]}>
-          CLIENT REPUTATION & ALERTS
-        </Text>
+        {language === "fr" ? "RÉPUTATION CLIENTS & ALERTES" : "CLIENT REPUTATION & ALERTS"}
+      </Text>
         <View
           style={[
             styles.sectionCard,
@@ -1191,12 +1167,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="star" size={17} color="#F59E0B" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Client Reviews & Feedback
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Ratings, client comments and official replies
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Avis Clients & Commentaires" : "Client Reviews & Feedback"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Notes, commentaires des clients et réponses officielles" : "Ratings, client comments and official replies"}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View
@@ -1230,12 +1202,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="notifications" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Notifications & Activity
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                System alerts, staff invites, and schedule updates
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Notifications & Activité" : "Notifications & Activity"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Alertes système, invitations et mises à jour de planning" : "System alerts, staff invites, and schedule updates"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
           </TouchableOpacity>
@@ -1243,8 +1211,8 @@ export default function BarberProfileSettingsScreen() {
 
         {/* Section 3: Account Security & Preferences */}
         <Text style={[styles.groupSectionHeader, { color: colors.secondaryText }]}>
-          SECURITY & PREFERENCES
-        </Text>
+        {language === "fr" ? "SÉCURITÉ & PRÉFÉRENCES" : "SECURITY & PREFERENCES"}
+      </Text>
         <View
           style={[
             styles.sectionCard,
@@ -1263,12 +1231,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="shield-checkmark" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Profile, Phone & Password
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Edit name, client phone line, shop location & password
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Profil, Téléphone & Mot de passe" : "Profile, Phone & Password"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Modifier le nom, numéro client, emplacement du salon et mot de passe" : "Edit name, client phone line, shop location & password"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
           </TouchableOpacity>
@@ -1284,12 +1248,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="globe" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Display Language
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                English / Français
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Langue d'Affichage" : "Display Language"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Français / Anglais" : "English / Français"}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={[styles.langBadge, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
@@ -1312,18 +1272,14 @@ export default function BarberProfileSettingsScreen() {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Dark Urban Mode
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                High-contrast barbershop aesthetic
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Mode Sombre Urbain" : "Dark Urban Mode"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Esthétique salon de coiffure à fort contraste" : "High-contrast barbershop aesthetic"}</Text>
             </View>
             <Switch
               value={isDark}
               onValueChange={() => {
                 toggleTheme();
-                showToast(isDark ? "Switched to Light Mode" : "Switched to Dark Mode", "info");
+                showToast(language === "fr" ? (isDark ? "Mode clair activé" : "Mode sombre activé") : (isDark ? "Switched to Light Mode" : "Switched to Dark Mode"), "info");
               }}
               trackColor={{ false: colors.elevated, true: colors.brand }}
               thumbColor={colors.onBrand}
@@ -1333,8 +1289,8 @@ export default function BarberProfileSettingsScreen() {
 
         {/* Section 4: Support & Operations */}
         <Text style={[styles.groupSectionHeader, { color: colors.secondaryText }]}>
-          HELP & OPERATIONS TEAM
-        </Text>
+        {language === "fr" ? "AIDE & ÉQUIPE DES OPÉRATIONS" : "HELP & OPERATIONS TEAM"}
+      </Text>
         <View
           style={[
             styles.sectionCard,
@@ -1353,12 +1309,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="chatbubbles" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Admin Operations Live Chat
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Instant support from Trimly partner desk
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Chat en Direct - Opérations Admin" : "Admin Operations Live Chat"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Assistance directe du bureau partenaire Trimly" : "Instant support from Trimly partner desk"}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
@@ -1377,12 +1329,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="help-circle" size={17} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                Help Center & FAQs
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Payout guides, booking rules & account policies
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Centre d'Aide & FAQ" : "Help Center & FAQs"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Guides de paiement, règles de réservation et politiques" : "Payout guides, booking rules & account policies"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
           </TouchableOpacity>
@@ -1392,10 +1340,7 @@ export default function BarberProfileSettingsScreen() {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() =>
-              openWhatsApp(
-                SUPPORT_WHATSAPP_NUMBER,
-                "Hello Trimly Support, I am a barber partner and need assistance."
-              )
+              openWhatsApp(SUPPORT_WHATSAPP_NUMBER, language === "fr" ? "Bonjour le support Trimly, je suis un coiffeur partenaire et j'ai besoin d'aide." : "Hello Trimly Support, I am a barber partner and need assistance.")
             }
             style={styles.menuRowItem}
           >
@@ -1403,12 +1348,8 @@ export default function BarberProfileSettingsScreen() {
               <Ionicons name="logo-whatsapp" size={17} color="#22C55E" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
-                WhatsApp Priority Support
-              </Text>
-              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
-                Direct chat: +237 653 811 357
-              </Text>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Support Prioritaire WhatsApp" : "WhatsApp Priority Support"}</Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Chat direct : +237 653 811 357" : "Direct chat: +237 653 811 357"}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
           </TouchableOpacity>
@@ -1457,9 +1398,7 @@ export default function BarberProfileSettingsScreen() {
           <Text style={[styles.footerTitle, { color: colors.secondaryText }]}>
             Trimly Partner Pro Suite
           </Text>
-          <Text style={[styles.footerSubtitle, { color: colors.secondaryText }]}>
-            Version 2.4.0 • Enterprise Partner Edition
-          </Text>
+          <Text style={[styles.footerSubtitle, { color: colors.secondaryText }]}>{language === "fr" ? "Version 2.4.0 • Édition Partenaire Entreprise" : "Version 2.4.0 • Enterprise Partner Edition"}</Text>
         </View>
 
         {/* Logout Confirmation Modal */}
@@ -1601,11 +1540,11 @@ export default function BarberProfileSettingsScreen() {
                 </View>
                 <View>
                   <Text style={[styles.langOptionTitle, { color: colors.primaryText }]}>
-                    English
+                    {language === "fr" ? "Anglais" : "English"}
                   </Text>
                   <Text style={[styles.langOptionSub, { color: colors.secondaryText }]}>
-                    Default English (US)
-                  </Text>
+                  {language === "fr" ? "Anglais par défaut (US)" : "Default English (US)"}
+                </Text>
                 </View>
               </View>
               {language === "en" && (
@@ -1637,8 +1576,8 @@ export default function BarberProfileSettingsScreen() {
                     Français
                   </Text>
                   <Text style={[styles.langOptionSub, { color: colors.secondaryText }]}>
-                    Français (Cameroun)
-                  </Text>
+                  {language === "fr" ? "Français (Cameroun)" : "French (Cameroon)"}
+                </Text>
                 </View>
               </View>
               {language === "fr" && (

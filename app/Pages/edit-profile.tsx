@@ -352,9 +352,7 @@ export default function EditProfileScreen() {
 
           {/* Full Name */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
-              Barber / Shop Name
-            </Text>
+            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>{language === "fr" ? "Nom du barbier / salon" : "Barber / Shop Name"}</Text>
             <View
               style={[
                 styles.inputWrapper,
@@ -435,11 +433,11 @@ export default function EditProfileScreen() {
               </Text>
               <View style={[styles.privateBadge, { backgroundColor: "rgba(34, 197, 94, 0.12)", borderColor: "rgba(34, 197, 94, 0.3)" }]}>
                 <Ionicons name="lock-closed" size={11} color="#22C55E" />
-                <Text style={styles.privateBadgeText}>Private Direct Dial</Text>
+                <Text style={styles.privateBadgeText}>{language === "fr" ? "Ligne d'appel direct privée" : "Private Direct Dial"}</Text>
               </View>
             </View>
             <Text style={[styles.inputHelperText, { color: colors.secondaryText }]}>
-              Clients can tap to call you directly through Trimly. Your private number is never exposed in plain text.
+              {language === "fr" ? "Les clients peuvent vous appeler directement via Trimly. Votre numéro privé n'est jamais affiché en clair." : "Clients can tap to call you directly through Trimly. Your private number is never exposed in plain text."}
             </Text>
             <View
               style={[
@@ -550,11 +548,9 @@ export default function EditProfileScreen() {
                   <Ionicons name="git-network-outline" size={20} color={colors.brand} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.salonCardTitle, { color: colors.primaryText }]}>
-                    Work Under a Salon
-                  </Text>
+                  <Text style={[styles.salonCardTitle, { color: colors.primaryText }]}>{language === "fr" ? "Travailler dans un salon" : "Work Under a Salon"}</Text>
                   <Text style={[styles.salonCardSubtitle, { color: colors.secondaryText }]}>
-                    Enter the Salon ID provided by your salon manager to register or link your chair under their salon floor.
+                    {language === "fr" ? "Entrez l'ID du salon fourni par votre gérant pour rattacher votre fauteuil à son salon." : "Enter the Salon ID provided by your salon manager to register or link your chair under their salon floor."}
                   </Text>
                 </View>
               </View>
@@ -627,7 +623,7 @@ export default function EditProfileScreen() {
                       {verifiedSalonName}
                     </Text>
                     <Text style={[styles.verifiedSalonSub, { color: colors.secondaryText }]}>
-                      Linked under this salon. Changes will save with profile.
+                      {language === "fr" ? "Rattaché à ce salon. Les modifications seront enregistrées avec le profil." : "Linked under this salon. Changes will save with profile."}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -637,13 +633,13 @@ export default function EditProfileScreen() {
                     }}
                     style={styles.unlinkMiniBtn}
                   >
-                    <Text style={styles.unlinkMiniText}>Leave</Text>
+                    <Text style={styles.unlinkMiniText}>{language === "fr" ? "Quitter" : "Leave"}</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
 
               <Text style={[styles.salonHelperNote, { color: colors.secondaryText }]}>
-                Leave blank or set to 0 to operate as an independent / freelance barber.
+                {language === "fr" ? "Laissez vide ou mettez 0 pour exercer en tant que coiffeur indépendant / freelance." : "Leave blank or set to 0 to operate as an independent / freelance barber."}
               </Text>
             </View>
           )}
@@ -651,9 +647,7 @@ export default function EditProfileScreen() {
 
         {/* Style Specialties Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>
-            STYLE SPECIALTIES & FOCUS
-          </Text>
+          <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>{language === "fr" ? "SPÉCIALITÉS & STYLES" : "STYLE SPECIALTIES & FOCUS"}</Text>
           <View style={styles.stylesWrap}>
             {PREF_STYLES.map((style) => {
               const isSelected = selectedStyles.includes(style);
@@ -698,11 +692,9 @@ export default function EditProfileScreen() {
               <Ionicons name="key" size={18} color={colors.brand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.securityTitle, { color: colors.primaryText }]}>
-                Change Account Password
-              </Text>
+              <Text style={[styles.securityTitle, { color: colors.primaryText }]}>{language === "fr" ? "Changer le mot de passe du compte" : "Change Account Password"}</Text>
               <Text style={[styles.securitySubtitle, { color: colors.secondaryText }]}>
-                {passwordExpanded ? "Update your secret password below" : "Tap to expand and set a new password"}
+                {passwordExpanded ? (language === "fr" ? "Mettez à jour votre mot de passe secret ci-dessous" : "Update your secret password below") : (language === "fr" ? "Appuyez pour ouvrir et définir un nouveau mot de passe" : "Tap to expand and set a new password")}
               </Text>
             </View>
             <Ionicons

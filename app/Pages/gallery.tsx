@@ -33,7 +33,7 @@ const CATEGORIES = ["All", "Skin Fades", "Classic", "Beard", "Locs", "Color"];
 export default function GalleryScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const getCategoryLabel = (cat: string) => {
     if (cat === "All") return t("portfolioGallery.catAll");
@@ -284,7 +284,7 @@ export default function GalleryScreen() {
         style={[styles.captionDivider, { borderBottomColor: colors.border }]}
       >
         <Text style={[styles.captionText, { color: colors.secondarytext }]}>
-          Scroll down for more styles
+          {language === "fr" ? "Faites défiler pour voir plus de styles" : "Scroll down for more styles"}
         </Text>
       </View>
 

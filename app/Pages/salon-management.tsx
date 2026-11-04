@@ -298,9 +298,7 @@ export default function SalonManagementScreen() {
         </TouchableOpacity>
 
         <View style={{ flex: 1, paddingHorizontal: 4 }}>
-          <Text style={[styles.headerTitle, { color: colors.primaryText }]} numberOfLines={1}>
-            Salon Management
-          </Text>
+          <Text style={[styles.headerTitle, { color: colors.primaryText }]} numberOfLines={1}>{language === "fr" ? "Gestion du Salon" : "Salon Management"}</Text>
           <Text style={[styles.headerSub, { color: colors.secondaryText }]}>
             {t("salonManagement.capacityProfile") || "Capacity, credentials & studio profile"}
           </Text>
@@ -382,9 +380,7 @@ export default function SalonManagementScreen() {
 
                 <View style={[styles.statusBadge, { backgroundColor: "rgba(34, 197, 94, 0.12)", borderColor: "rgba(34, 197, 94, 0.3)" }]}>
                   <Ionicons name="shield-checkmark" size={11} color="#22C55E" />
-                  <Text style={[styles.statusBadgeText, { color: "#22C55E" }]}>
-                    Verified Studio
-                  </Text>
+                  <Text style={[styles.statusBadgeText, { color: "#22C55E" }]}>{language === "fr" ? "Salon Vérifié" : "Verified Studio"}</Text>
                 </View>
               </View>
             </View>
@@ -400,9 +396,7 @@ export default function SalonManagementScreen() {
               style={[styles.photoActionBtn, { backgroundColor: colors.elevated, borderColor: colors.border }]}
             >
               <Ionicons name="image-outline" size={15} color={colors.brand} />
-              <Text style={[styles.photoActionBtnText, { color: colors.primaryText }]}>
-                Upload Logo
-              </Text>
+              <Text style={[styles.photoActionBtnText, { color: colors.primaryText }]}>{language === "fr" ? "Importer un logo" : "Upload Logo"}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -411,9 +405,7 @@ export default function SalonManagementScreen() {
               style={[styles.photoActionBtn, { backgroundColor: colors.elevated, borderColor: colors.border }]}
             >
               <Ionicons name="camera-outline" size={15} color={colors.brand} />
-              <Text style={[styles.photoActionBtnText, { color: colors.primaryText }]}>
-                Take Photo
-              </Text>
+              <Text style={[styles.photoActionBtnText, { color: colors.primaryText }]}>{language === "fr" ? "Prendre une photo" : "Take Photo"}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -429,7 +421,7 @@ export default function SalonManagementScreen() {
                 Working Chairs & Capacity
               </Text>
               <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
-                Determines how many simultaneous clients can book slots
+                {language === "fr" ? "Détermine le nombre de clients simultanés pouvant réserver" : "Determines how many simultaneous clients can book slots"}
               </Text>
             </View>
           </View>
@@ -437,9 +429,7 @@ export default function SalonManagementScreen() {
           {/* Studio Mode Toggle (Solo Studio vs Multi-Chair Salon) */}
           <View style={[styles.modeToggleCard, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
             <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text style={[styles.modeToggleTitle, { color: colors.primaryText }]}>
-                Multi-Chair Enterprise Mode
-              </Text>
+              <Text style={[styles.modeToggleTitle, { color: colors.primaryText }]}>{language === "fr" ? "Mode Entreprise Multi-Fauteuils" : "Multi-Chair Enterprise Mode"}</Text>
               <Text style={[styles.modeToggleSub, { color: colors.secondaryText }]}>
                 {t("salonManagement.enableMultipleBarbers") || "Enable if your shop has multiple staff barbers working simultaneously"}
               </Text>
@@ -634,7 +624,7 @@ export default function SalonManagementScreen() {
                 Studio Amenities & Perks
               </Text>
               <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
-                Highlighted on your public client shop card
+                {language === "fr" ? "Mis en avant sur la fiche publique de votre salon" : "Highlighted on your public client shop card"}
               </Text>
             </View>
           </View>

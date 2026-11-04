@@ -51,7 +51,7 @@ export default function LanguageSelectionScreen() {
           TRIMLY PARTNER
         </Text>
         <Text style={[styles.brandSubtitle, { color: colors.secondaryText }]}>
-          BARBER & SALON MANAGEMENT PLATFORM
+          {selected === "fr" ? "PLATEFORME DE GESTION DE SALON & COIFFEURS" : "BARBER & SALON MANAGEMENT PLATFORM"}
         </Text>
       </View>
 
@@ -89,10 +89,10 @@ export default function LanguageSelectionScreen() {
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={[styles.langName, { color: colors.primaryText }]}>
-                English
+                {selected === "fr" ? "Anglais" : "English"}
               </Text>
               <Text style={[styles.langSub, { color: colors.secondaryText }]}>
-                English (US)
+                {selected === "fr" ? "Anglais (US)" : "English (US)"}
               </Text>
             </View>
             <View
@@ -112,7 +112,7 @@ export default function LanguageSelectionScreen() {
             </View>
           </View>
           <Text style={[styles.cardDesc, { color: colors.secondaryText }]}>
-            Manage staff, organize schedules, track earnings, and grow your salon revenue.
+            {selected === "fr" ? "Gérez l'équipe, organisez les plannings, suivez vos revenus et développez votre salon." : "Manage staff, organize schedules, track earnings, and grow your salon revenue."}
           </Text>
         </TouchableOpacity>
 
@@ -139,7 +139,7 @@ export default function LanguageSelectionScreen() {
                 Français
               </Text>
               <Text style={[styles.langSub, { color: colors.secondaryText }]}>
-                Français (FR)
+                {selected === "fr" ? "Français (FR)" : "French (FR)"}
               </Text>
             </View>
             <View

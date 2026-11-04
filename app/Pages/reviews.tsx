@@ -261,9 +261,7 @@ export default function BarberReviewsScreen() {
           ]}
         >
           <Ionicons name="shield-checkmark" size={13} color={colors.primary} />
-          <Text style={[styles.headerBadgeText, { color: colors.primary }]}>
-            Verified
-          </Text>
+          <Text style={[styles.headerBadgeText, { color: colors.primary }]}>{language === "fr" ? "Vérifié" : "Verified"}</Text>
         </View>
       </View>
 
@@ -384,7 +382,7 @@ export default function BarberReviewsScreen() {
                 color={colors.success}
               />
               <Text style={[styles.metricText, { color: colors.primarytext }]}>
-                100% Verified Clients
+                {language === "fr" ? "100% Clients Vérifiés" : "100% Verified Clients"}
               </Text>
             </View>
           </View>
@@ -688,7 +686,7 @@ export default function BarberReviewsScreen() {
                               { color: colors.primary },
                             ]}
                           >
-                            Edit
+                            {language === "fr" ? "Modifier" : "Edit"}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -883,7 +881,7 @@ export default function BarberReviewsScreen() {
                 <Text
                   style={[styles.cancelBtnText, { color: colors.secondarytext }]}
                 >
-                  Cancel
+                  {language === "fr" ? "Annuler" : "Cancel"}
                 </Text>
               </TouchableOpacity>
 
@@ -910,7 +908,7 @@ export default function BarberReviewsScreen() {
                         { color: colors.onBrand },
                       ]}
                     >
-                      Publish Reply
+                      {language === "fr" ? "Publier la réponse" : "Publish Reply"}
                     </Text>
                   </>
                 )}

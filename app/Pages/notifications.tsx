@@ -31,7 +31,7 @@ export default function NotificationsScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const { user, refreshUser } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
   const {
     notifications,
@@ -291,9 +291,7 @@ export default function NotificationsScreen() {
                     {t("notifications.newSection") || "New"}
                   </Text>
                   <TouchableOpacity activeOpacity={0.7} onPress={handleMarkAllRead}>
-                    <Text style={[styles.seeAllAction, { color: colors.brand }]}>
-                      Mark all as read
-                    </Text>
+                    <Text style={[styles.seeAllAction, { color: colors.brand }]}>{language === "fr" ? "Tout marquer comme lu" : "Mark all as read"}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -399,9 +397,7 @@ export default function NotificationsScreen() {
               onPress={() => setSelectedItemForMenu(null)}
               style={[styles.sheetCancelBtn, { backgroundColor: colors.surfacevariant }]}
             >
-              <Text style={[styles.sheetCancelText, { color: colors.primarytext }]}>
-                Cancel
-              </Text>
+              <Text style={[styles.sheetCancelText, { color: colors.primarytext }]}>{language === "fr" ? "Annuler" : "Cancel"}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

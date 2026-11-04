@@ -731,7 +731,7 @@ export default function ActiveBarbersScreen() {
                   >
                     <View style={styles.matrixCol}>
                       <Text style={[styles.matrixLabel, { color: colors.secondarytext }]}>
-                        Today's Revenue
+                        {language === "fr" ? "Revenus du jour" : "Today's Revenue"}
                       </Text>
                       <Text style={[styles.matrixValueLime, { color: colors.primary }]}>
                         {barber.revenue.toLocaleString()} CFA
@@ -742,7 +742,7 @@ export default function ActiveBarbersScreen() {
 
                     <View style={styles.matrixCol}>
                       <Text style={[styles.matrixLabel, { color: colors.secondarytext }]}>
-                        Cuts Completed
+                        {language === "fr" ? "Coupes terminées" : "Cuts Completed"}
                       </Text>
                       <Text style={[styles.matrixValue, { color: colors.primarytext }]}>
                         {barber.cutsCount} cuts
