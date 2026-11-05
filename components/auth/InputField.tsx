@@ -24,6 +24,7 @@ interface InputFieldProps {
   autoCorrect?: boolean;
   error?: string;
   rightLabelAction?: React.ReactNode;
+  maxLength?: number;
 }
 
 export default function InputField({
@@ -38,12 +39,27 @@ export default function InputField({
   autoCorrect = false,
   error,
   rightLabelAction,
+  maxLength,
 }: InputFieldProps) {
   const colors = useColors();
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const isPasswordType = secureTextEntry;
+  const isPhoneInput =
+    keyboardType === "phone-pad" ||
+    iconName === "call-outline" ||
+    /phone|téléphone/i.test(label);
+  const effectiveMaxLength = maxLength !== undefined ? maxLength : (isPhoneInput ? 10 : undefined);
+
+  const handleTextChange = (text: string) => {
+    if (isPhoneInput) {
+      const sanitized = text.replace(/[^0-9]/g, "").slice(0, 10);
+      onChangeText(sanitized);
+    } else {
+      onChangeText(text);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -82,11 +98,12 @@ export default function InputField({
           placeholder={placeholder}
           placeholderTextColor={colors.inputPlaceholder}
           value={value}
-          onChangeText={onChangeText}
+          onChangeText={handleTextChange}
           secureTextEntry={isPasswordType && !isPasswordVisible}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
+          maxLength={effectiveMaxLength}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
         />

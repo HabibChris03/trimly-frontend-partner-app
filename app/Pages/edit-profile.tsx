@@ -452,9 +452,10 @@ export default function EditProfileScreen() {
               <TextInput
                 style={[styles.input, { color: colors.primaryText }]}
                 value={phone}
-                onChangeText={setPhone}
+                onChangeText={(val) => setPhone(val.replace(/[^0-9]/g, "").slice(0, 10))}
                 keyboardType="phone-pad"
-                placeholder="+237 6XX XXX XXX"
+                maxLength={10}
+                placeholder="6XX XXX XXX"
                 placeholderTextColor={colors.inputPlaceholder}
               />
             </View>

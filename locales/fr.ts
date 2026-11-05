@@ -380,7 +380,7 @@ export const fr = {
     "partnerProfile": "Profil professionnel",
     "accountSalonOperations": "Compte, gestion du salon et paramètres",
     "edit": "Modifier",
-    "editAccount": "Modifier le compte",
+    "editAccount": "Modifier",
     "logoutConfirmTitle": "Confirmation de déconnexion",
     "selectLanguage": "Choisir la langue d'affichage",
     "unlinkFromSalon": "Se détacher du salon",
@@ -536,7 +536,7 @@ export const fr = {
     "acceptBooking": "Accepter le Rendez-vous",
     "completeAppointment": "Terminer le Rendez-vous",
     "hairstyleService": "Prestation Coiffure",
-        "dutyStatusUpdated": "Statut mis à jour : {status}",
+    "dutyStatusUpdated": "Statut mis à jour : {status}",
     "services": "Mes Services",
     "portfolio": "Mon Portfolio",
     "appointments": "Rendez-vous",
@@ -553,7 +553,7 @@ export const fr = {
     "licenseUnderReview": "Agrément soumis et en cours d'examen par l'administrateur",
     "licenseValidated": "Agrément Validé",
     "licenseRejected": "Agrément Rejeté",
-    "licenseResubmit": "Veuillez soumettre un nouveau document d'agrément valide" 
+    "licenseResubmit": "Veuillez soumettre un nouveau document d'agrément valide"
   },
   "rescheduleScreen": {
     "title": "Reprogrammer le Rendez-vous",

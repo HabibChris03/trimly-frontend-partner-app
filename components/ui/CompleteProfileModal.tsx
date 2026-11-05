@@ -180,11 +180,12 @@ export default function CompleteProfileModal({
                 <Ionicons name="call-outline" size={18} color={colors.secondaryText} style={styles.inputIcon} />
                 <TextInput
                   value={phone}
-                  onChangeText={setPhone}
-                  placeholder="+237 6xx xx xx xx"
+                  onChangeText={(val) => setPhone(val.replace(/[^0-9]/g, "").slice(0, 10))}
+                  placeholder="6xx xx xx xx"
                   placeholderTextColor={placeholderColor}
                   style={[styles.input, { color: colors.primaryText }]}
                   keyboardType="phone-pad"
+                  maxLength={10}
                 />
               </View>
             </View>

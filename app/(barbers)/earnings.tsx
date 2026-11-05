@@ -841,8 +841,15 @@ export default function BarberEarningsScreen() {
                 style={[styles.modalTextInput, { color: colors.primaryText }]}
                 keyboardType={paymentMethod.includes("Bank") ? "default" : "phone-pad"}
                 value={accountDetails}
-                onChangeText={setAccountDetails}
-                placeholder="+237 6XX XXX XXX"
+                onChangeText={(val) => {
+                  if (!paymentMethod.includes("Bank")) {
+                    setAccountDetails(val.replace(/[^0-9]/g, "").slice(0, 10));
+                  } else {
+                    setAccountDetails(val);
+                  }
+                }}
+                maxLength={paymentMethod.includes("Bank") ? undefined : 10}
+                placeholder={paymentMethod.includes("Bank") ? "Account Number / IBAN" : "6XX XXX XXX (10 digits max)"}
                 placeholderTextColor={colors.inputPlaceholder}
               />
             </View>

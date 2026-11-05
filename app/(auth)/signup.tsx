@@ -1669,13 +1669,15 @@ export default function SignupScreen() {
               <InputField
                 label={t("auth.phonePlaceholder") || "Phone Number"}
                 iconName="call-outline"
-                placeholder="+237 673492314"
+                placeholder="673492314"
                 value={phone}
                 onChangeText={(val) => {
-                  setPhone(val);
+                  const sanitized = val.replace(/[^0-9]/g, "").slice(0, 10);
+                  setPhone(sanitized);
                   if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
                 }}
                 keyboardType="phone-pad"
+                maxLength={10}
                 error={errors.phone}
               />
 
