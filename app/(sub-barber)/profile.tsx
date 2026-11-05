@@ -19,6 +19,8 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { useToast } from "@/context/ToastContext";
 import { barberService } from "@/services/barberService";
+import { AppUpdateModal } from "@/components/ui/AppUpdateModal";
+import { UPDATE_CONFIG } from "@/constants/updateConfig";
 import { authService } from "@/services/authService";
 import { CustomModal } from "@/components/ui/CustomModal";
 
@@ -35,6 +37,7 @@ export default function SubBarberProfileScreen() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const [deleteAccountModalVisible, setDeleteAccountModalVisible] = useState(false);
   const [deletePhraseInput, setDeletePhraseInput] = useState("");
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -677,6 +680,50 @@ export default function SubBarberProfileScreen() {
             style={[styles.divider, { backgroundColor: colors.border }]}
           />
 
+          {/* App Update Button */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => setUpdateModalVisible(true)}
+            style={styles.menuRow}
+          >
+            <View style={styles.menuLeft}>
+              <View
+                style={[
+                  styles.menuIconSquare,
+                  {
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="cloud-download-outline"
+                  size={17}
+                  color={colors.primary}
+                />
+              </View>
+              <View>
+                <Text style={[styles.menuLabel, { color: colors.primarytext }]}>
+                  {language === "fr" ? "Mise à jour de l'application" : "Check for App Update"}
+                </Text>
+                <Text style={[styles.menuSublabel, { color: colors.secondarytext, marginTop: 1 }]}>
+                  {language === "fr"
+                    ? `Version ${UPDATE_CONFIG.CURRENT_VERSION} • Rechercher les mises à jour`
+                    : `Version ${UPDATE_CONFIG.CURRENT_VERSION} • Tap to check for updates`}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={colors.secondarytext}
+            />
+          </TouchableOpacity>
+
+          <View
+            style={[styles.divider, { backgroundColor: colors.border }]}
+          />
+
           {/* Help & Support */}
           <TouchableOpacity
             activeOpacity={0.75}
@@ -911,6 +958,12 @@ export default function SubBarberProfileScreen() {
           />
         </View>
       </CustomModal>
+
+      {/* App Update Modal */}
+      <AppUpdateModal
+        visible={updateModalVisible}
+        onClose={() => setUpdateModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }

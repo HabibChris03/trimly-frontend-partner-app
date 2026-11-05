@@ -21,6 +21,8 @@ import { useTabBarVisibility } from "@/context/TabBarVisibilityContext";
 import { useToast } from "@/context/ToastContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { CustomModal } from "@/components/ui/CustomModal";
+import { AppUpdateModal } from "@/components/ui/AppUpdateModal";
+import { UPDATE_CONFIG } from "@/constants/updateConfig";
 import { useTheme } from "@/context/ThemeContext";
 import { barberService } from "@/services/barberService";
 import { authService } from "@/services/authService";
@@ -48,6 +50,7 @@ export default function BarberProfileSettingsScreen() {
   const [isUpdatingDuty, setIsUpdatingDuty] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Salon ID affiliation state
@@ -1285,6 +1288,29 @@ export default function BarberProfileSettingsScreen() {
               thumbColor={colors.onBrand}
             />
           </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setUpdateModalVisible(true)}
+            style={styles.menuRowItem}
+          >
+            <View style={[styles.menuIconCircle, { backgroundColor: colors.elevated }]}>
+              <Ionicons name="cloud-download" size={17} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>
+                {language === "fr" ? "Mise à jour de l'application" : "Check for App Update"}
+              </Text>
+              <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
+                {language === "fr"
+                  ? `Version ${UPDATE_CONFIG.CURRENT_VERSION} • Télécharger la nouvelle version`
+                  : `Version ${UPDATE_CONFIG.CURRENT_VERSION} • Download latest version & APK`}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
+          </TouchableOpacity>
         </View>
 
         {/* Section 4: Support & Operations */}
@@ -1941,6 +1967,12 @@ export default function BarberProfileSettingsScreen() {
           </View>
         </CustomModal>
       </ScrollView>
+
+      {/* App Update Modal */}
+      <AppUpdateModal
+        visible={updateModalVisible}
+        onClose={() => setUpdateModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
