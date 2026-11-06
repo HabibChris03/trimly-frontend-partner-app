@@ -413,6 +413,58 @@ export default function EditProfileScreen() {
     }
   };
 
+  const handleJoinSalonById = async () => {
+    const cleanNum = parseInt(salonId.replace(/[^0-9]/g, ""), 10);
+    if (!cleanNum || isNaN(cleanNum)) {
+      showToast(
+        language === "fr"
+          ? "Veuillez entrer un ID de salon valide (ex: 4 ou TRM-SALON-04)."
+          : "Please enter a valid numeric Salon ID (e.g. 4 or TRM-SALON-04).",
+        "warning"
+      );
+      return;
+    }
+    setIsVerifyingSalon(true);
+    try {
+      const salon = await barberService.getSalonById(cleanNum);
+      const targetSalonName = salon?.name || `Partner Salon #${cleanNum}`;
+      setVerifiedSalonName(targetSalonName);
+
+      const res = await barberService.updateProfileDetails({
+        parent_salon_id: cleanNum,
+      });
+
+      if (updateUser) {
+        updateUser({
+          parent_salon_id: cleanNum,
+          parent_salon_name: res?.user?.parent_salon_name || targetSalonName,
+          is_sub_barber: true,
+          staff_status: "Active",
+          staff_title: user?.role === "hairdresser" ? "Hairdresser" : "Staff Barber",
+        });
+      }
+
+      if (refreshUser) {
+        await refreshUser().catch(() => null);
+      }
+
+      showToast(
+        language === "fr"
+          ? `Vous avez rejoint ${targetSalonName} avec succès !`
+          : `You have successfully joined ${targetSalonName}!`,
+        "success"
+      );
+    } catch (err: any) {
+      showToast(
+        err?.message ||
+          (language === "fr" ? "Échec de connexion au salon." : "Failed to join salon."),
+        "error"
+      );
+    } finally {
+      setIsVerifyingSalon(false);
+    }
+  };
+
   const handlePickFromGallery = async () => {
     setPhotoModalVisible(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -758,18 +810,18 @@ export default function EditProfileScreen() {
           </TouchableOpacity>
         </View>
 
-                {/* Salon Affiliation & Salon ID Section */}
+                {/* Salon Identifier Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>
             {isSalon
-              ? (language === "fr" ? "IDENTIFIANT DU SALON & GESTION DU PERSONNEL" : "SALON IDENTIFIER FOR STAFF REGISTRATION")
+              ? (language === "fr" ? "IDENTIFIANT DU SALON" : "SALON IDENTIFIER")
               : isUnderSalon
-                ? (language === "fr" ? "AFFILIATION AU SALON & STATUT" : "SALON AFFILIATION & STATUS")
-                : (language === "fr" ? "REJOINDRE UN SALON OU PASSER EN COMPTE SALON" : "JOIN OR SWITCH TO A SALON")}
+                ? (language === "fr" ? "AFFILIATION AU SALON" : "SALON AFFILIATION")
+                : (language === "fr" ? "IDENTIFIANT DU SALON" : "SALON IDENTIFIER")}
           </Text>
 
           {isSalon ? (
-            /* CASE 1: SALON OWNER / STUDIO */
+            /* CASE 1: SALON OWNER / STUDIO - Displays Official Salon ID for Staff */
             <View
               style={[
                 styles.salonCard,
@@ -818,7 +870,7 @@ export default function EditProfileScreen() {
               </TouchableOpacity>
             </View>
           ) : isUnderSalon ? (
-            /* CASE 2: PROVIDER WORKING UNDER A SALON */
+            /* CASE 2: PROVIDER WORKING UNDER A SALON - Must leave first */
             <View style={{ gap: 14 }}>
               <View
                 style={[
@@ -891,42 +943,45 @@ export default function EditProfileScreen() {
               </View>
             </View>
           ) : (
-            /* CASE 3: INDEPENDENT SOLO BARBER / HAIRDRESSER */
+            /* CASE 3: SOLO BARBER - SECTION FOR SALON IDENTIFIER IS AN INPUT FIELD TO JOIN A SALON (NO SALON ID) */
             <View style={{ gap: 14 }}>
-              {/* Option A: Join a Salon using Salon ID */}
               <View
                 style={[
                   styles.salonCard,
-                  { backgroundColor: colors.card, borderColor: "rgba(199, 243, 107, 0.35)", borderWidth: 1.5 },
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: "rgba(199, 243, 107, 0.35)",
+                    borderWidth: 1.5,
+                  },
                 ]}
               >
                 <View style={styles.salonCardHeader}>
                   <View style={[styles.salonIconBox, { backgroundColor: "rgba(199, 243, 107, 0.15)" }]}>
-                    <Ionicons name="git-network-outline" size={20} color={colors.brand} />
+                    <Ionicons name="business" size={20} color={colors.brand} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
                       <Text style={[styles.salonCardTitle, { color: colors.primaryText }]}>
-                        {language === "fr" ? "Rejoindre un salon via l'ID Salon" : "Join a Salon Using Salon ID"}
+                        {language === "fr" ? "Rejoindre un salon" : "Join a Salon"}
                       </Text>
                       <View style={{ backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: colors.brand, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
                         <Text style={{ fontSize: 10, fontWeight: "800", color: colors.brand }}>
-                          {language === "fr" ? "VIA SALON ID" : "VIA SALON ID"}
+                          {language === "fr" ? "BARBIER SOLO" : "SOLO BARBER"}
                         </Text>
                       </View>
                     </View>
                     <Text style={[styles.salonCardSubtitle, { color: colors.secondaryText, marginTop: 4 }]}>
                       {language === "fr"
-                        ? "En tant que coiffeur ou barbier solo, vous n'avez pas d'ID de salon. Vous avez l'opportunité de rejoindre un salon en utilisant son identifiant unique (Salon ID) ou en effectuant une recherche."
-                        : "As a solo barber or hairdresser, you do not have a Salon ID. You only have the opportunity to join a salon using their Salon ID or by searching."}
+                        ? "En tant que barbier solo, vous n'avez pas d'identifiant de salon. Entrez l'identifiant du salon ci-dessous pour rejoindre son établissement."
+                        : "As a solo barber, you do not have a Salon ID. Enter a Salon ID below to join an established salon floor."}
                     </Text>
                   </View>
                 </View>
 
-                {/* Direct Salon ID Entry */}
-                <View style={{ gap: 6, marginTop: 4 }}>
-                  <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.secondaryText }}>
-                    {language === "fr" ? "Entrez l'ID du salon :" : "Enter Salon ID:"}
+                {/* Input Field to Join a Salon */}
+                <View style={{ gap: 6, marginTop: 6 }}>
+                  <Text style={[styles.inputLabel, { color: colors.secondaryText, marginBottom: 2 }]}>
+                    {language === "fr" ? "Entrez l'identifiant du salon à rejoindre :" : "Enter Salon Identifier to Join:"}
                   </Text>
                   <View style={styles.salonInputRow}>
                     <View
@@ -938,8 +993,8 @@ export default function EditProfileScreen() {
                       <Ionicons name="business-outline" size={17} color={colors.secondaryText} style={{ marginRight: 8 }} />
                       <TextInput
                         style={[styles.salonTextInput, { color: colors.primaryText }]}
-                        placeholder={t("editProfile.salonIdPlaceholder") || "e.g. 4 or TRM-SALON-04"}
-                        placeholderTextColor={colors.secondaryText}
+                        placeholder={language === "fr" ? "ex: 4 ou TRM-SALON-04" : "e.g. 4 or TRM-SALON-04"}
+                        placeholderTextColor={colors.inputPlaceholder}
                         value={salonId}
                         onChangeText={(val) => {
                           setSalonId(val);
@@ -965,7 +1020,7 @@ export default function EditProfileScreen() {
 
                     <TouchableOpacity
                       activeOpacity={0.8}
-                      onPress={handleVerifySalon}
+                      onPress={handleJoinSalonById}
                       disabled={isVerifyingSalon || !salonId.trim()}
                       style={[
                         styles.verifyBtn,
@@ -979,13 +1034,14 @@ export default function EditProfileScreen() {
                         <ActivityIndicator size="small" color={colors.onBrand} />
                       ) : (
                         <Text style={[styles.verifyBtnText, { color: colors.onBrand }]}>
-                          {language === "fr" ? "Vérifier" : "Verify"}
+                          {language === "fr" ? "Rejoindre" : "Join Salon"}
                         </Text>
                       )}
                     </TouchableOpacity>
                   </View>
                 </View>
 
+                {/* Verified feedback */}
                 {verifiedSalonName && (
                   <View
                     style={[
@@ -999,7 +1055,9 @@ export default function EditProfileScreen() {
                         {verifiedSalonName}
                       </Text>
                       <Text style={[styles.verifiedSalonSub, { color: colors.secondaryText }]}>
-                        {language === "fr" ? "Salon trouvé ! Appuyez sur Enregistrer en bas pour confirmer." : "Salon found! Tap Save Profile below to confirm."}
+                        {language === "fr"
+                          ? "Salon identifié ! Appuyez sur Rejoindre pour vous lier à ce salon."
+                          : "Salon identified! Tap Join Salon to link under this salon."}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -1014,7 +1072,7 @@ export default function EditProfileScreen() {
                   </View>
                 )}
 
-                {/* Or Search Salon by Name */}
+                {/* Search by Name button */}
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={() => setJoinSalonModalVisible(true)}
@@ -1023,14 +1081,14 @@ export default function EditProfileScreen() {
                     { backgroundColor: colors.elevated, borderColor: colors.border, borderWidth: 1, marginTop: 4 },
                   ]}
                 >
-                  <Ionicons name="search" size={16} color={colors.brand} />
+                  <Ionicons name="search" size={15} color={colors.brand} />
                   <Text style={[styles.salonActionBtnText, { color: colors.primaryText }]}>
-                    {language === "fr" ? "Rechercher un salon par nom" : "Search Salon by Name"}
+                    {language === "fr" ? "Ou rechercher un salon par nom" : "Or Search Salon by Name"}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Option B: Switch to a Salon (as a solo barber you cannot have staff, but can switch to a salon) */}
+              {/* Option to Switch to a Salon (as a solo barber you cannot have staff, but can switch to a salon) */}
               <View
                 style={[
                   styles.salonCard,

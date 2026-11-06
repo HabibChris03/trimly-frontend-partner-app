@@ -696,10 +696,10 @@ export default function BarberProfileSettingsScreen() {
         {/* Section: Salon Affiliation / Salon ID Field */}
         <Text style={[styles.groupSectionHeader, { color: colors.secondaryText }]}>
           {isSalonManager
-          ? (language === "fr" ? "ID DU SALON & INSCRIPTION DU PERSONNEL" : "SALON ID & STAFF REGISTRATION")
+          ? (language === "fr" ? "IDENTIFIANT DU SALON" : "SALON IDENTIFIER")
           : user?.parent_salon_id
             ? (language === "fr" ? "AFFILIATION AU SALON" : "SALON AFFILIATION")
-            : (language === "fr" ? "REJOINDRE UN SALON VIA L'ID SALON" : "JOIN A SALON VIA SALON ID")}
+            : (language === "fr" ? "IDENTIFIANT DU SALON" : "SALON IDENTIFIER")}
         </Text>
 
         {isSalonManager ? (
@@ -886,8 +886,110 @@ export default function BarberProfileSettingsScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              /* State B: Search for a Salon strictly by name only */
-              <View style={{ gap: 10, marginTop: 12 }}>
+              /* State B: Input field to join a salon using Salon ID */
+              <View style={{ gap: 12, marginTop: 12 }}>
+                {/* Direct Salon ID Input Field to Join a Salon */}
+                <View style={{ gap: 6 }}>
+                  <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.secondaryText }}>
+                    {language === "fr" ? "Entrez l'identifiant du salon à rejoindre :" : "Enter Salon Identifier to Join:"}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View
+                      style={{
+                        flex: 1,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        borderRadius: 8,
+                        paddingHorizontal: 10,
+                      }}
+                    >
+                      <Ionicons name="business-outline" size={17} color={colors.secondaryText} style={{ marginRight: 6 }} />
+                      <TextInput
+                        style={{ flex: 1, height: 42, fontSize: 14, color: colors.primaryText }}
+                        placeholder={language === "fr" ? "ex: 4 ou TRM-SALON-04" : "e.g. 4 or TRM-SALON-04"}
+                        placeholderTextColor={colors.inputPlaceholder}
+                        value={salonIdInput}
+                        onChangeText={(val) => {
+                          setSalonIdInput(val);
+                          if (verifiedSalon) setVerifiedSalon(null);
+                        }}
+                        keyboardType="numeric"
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleVerifySalon()}
+                      disabled={isVerifyingSalon || !salonIdInput.trim()}
+                      style={{
+                        backgroundColor: colors.brand,
+                        borderRadius: 8,
+                        paddingHorizontal: 16,
+                        justifyContent: "center",
+                        alignItems: "center",
+                        opacity: isVerifyingSalon || !salonIdInput.trim() ? 0.6 : 1,
+                      }}
+                    >
+                      {isVerifyingSalon ? (
+                        <ActivityIndicator size="small" color={colors.onBrand} />
+                      ) : (
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.onBrand }}>
+                          {language === "fr" ? "Vérifier" : "Verify"}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {verifiedSalon && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "rgba(199, 243, 107, 0.1)",
+                      borderColor: "rgba(199, 243, 107, 0.3)",
+                      borderWidth: 1,
+                      borderRadius: 8,
+                      padding: 10,
+                      gap: 8,
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={18} color={colors.brand} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primaryText }}>
+                        {verifiedSalon.name}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: colors.secondaryText }}>
+                        {language === "fr" ? "Salon identifié ! Appuyez sur Rejoindre pour vous lier à ce salon." : "Salon identified! Tap Join to link under this salon."}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={handleConnectSalon}
+                      disabled={isLinkingSalon}
+                      style={{
+                        backgroundColor: colors.brand,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text style={{ fontSize: 12, fontWeight: "800", color: colors.onBrand }}>
+                        {language === "fr" ? "Rejoindre" : "Join"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 2 }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+                  <Text style={{ fontSize: 11, color: colors.secondaryText, fontWeight: "600" }}>
+                    {language === "fr" ? "OU RECHERCHER PAR NOM" : "OR SEARCH BY NAME"}
+                  </Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
+                </View>
                 <View
                   style={{
                     flexDirection: "row",

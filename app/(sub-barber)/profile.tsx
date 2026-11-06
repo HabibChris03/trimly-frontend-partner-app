@@ -332,7 +332,7 @@ export default function SubBarberProfileScreen() {
           ]}
         >
           <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.secondarytext, marginBottom: 0 }]}>{t("profile.salonAffiliation") || "SALON AFFILIATION & SALON ID"}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.secondarytext, marginBottom: 0 }]}>{user?.parent_salon_id ? (language === "fr" ? "AFFILIATION AU SALON" : "SALON AFFILIATION") : (language === "fr" ? "IDENTIFIANT DU SALON" : "SALON IDENTIFIER")}</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => router.push("/Pages/edit-profile")}
@@ -382,7 +382,7 @@ export default function SubBarberProfileScreen() {
                       { color: user?.parent_salon_id ? colors.onBrand : colors.secondarytext },
                     ]}
                   >
-                    {user?.parent_salon_id ? `Salon ID #${user.parent_salon_id}` : "Solo / Freelance"}
+                    {user?.parent_salon_id ? `Salon #${user.parent_salon_id}` : (language === "fr" ? "Barbier Solo (Sans ID Salon)" : "Solo Barber (No Salon ID)")}
                   </Text>
                 </View>
               </View>
@@ -594,7 +594,7 @@ export default function SubBarberProfileScreen() {
                 />
               </View>
               <View>
-                <Text style={[styles.menuLabel, { color: colors.primarytext }]}>{t("profile.editProfileAndSalonId") || "Edit Profile & Salon ID"}</Text>
+                <Text style={[styles.menuLabel, { color: colors.primarytext }]}>{language === "fr" ? "Modifier le profil & Identifiant du salon" : "Edit Profile & Salon Identifier"}</Text>
                 <Text style={[styles.menuSublabel, { color: colors.secondarytext }]}>{t("profile.manageAffiliationSub") || "Manage name, avatar, password & Salon affiliation"}</Text>
               </View>
             </View>
