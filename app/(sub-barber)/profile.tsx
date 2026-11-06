@@ -24,6 +24,10 @@ import { AppUpdateModal } from "@/components/ui/AppUpdateModal";
 import { UPDATE_CONFIG } from "@/constants/updateConfig";
 import { authService } from "@/services/authService";
 import { CustomModal } from "@/components/ui/CustomModal";
+import ChairOccupantsEditor, {
+  ChairSlotStatus,
+  verifyAllChairOccupants,
+} from "@/components/barber/ChairOccupantsEditor";
 import { setAuthToken, setActiveMode } from "@/services/api";
 
 export default function SubBarberProfileScreen() {
@@ -51,8 +55,15 @@ export default function SubBarberProfileScreen() {
   const [switchSalonModalVisible, setSwitchSalonModalVisible] = useState(false);
   const [newSalonRole, setNewSalonRole] = useState<"Salon Manager" | "Main Barber & Studio Owner">("Salon Manager");
   const [newSalonNameInput, setNewSalonNameInput] = useState(user?.name ? `${user.name} Salon` : "");
-  const [newSalonChairsInput, setNewSalonChairsInput] = useState("5");
-  const [newSalonCapacity, setNewSalonCapacity] = useState(5);
+  const [newSalonChairsInput, setNewSalonChairsInput] = useState("2");
+  const [newSalonCapacity, setNewSalonCapacity] = useState(2);
+  const [newSalonChairNames, setNewSalonChairNames] = useState<string[]>([
+    user?.name || "",
+    "",
+  ]);
+  const [newSalonChairStatuses, setNewSalonChairStatuses] = useState<
+    Record<number, ChairSlotStatus>
+  >({});
   const [newSalonCityInput, setNewSalonCityInput] = useState(user?.city || "");
   const [newSalonPhoneInput, setNewSalonPhoneInput] = useState(user?.phone || "");
   const [newSalonAboutInput, setNewSalonAboutInput] = useState(user?.about_us || "");
@@ -110,7 +121,21 @@ export default function SubBarberProfileScreen() {
       const parsedChairs = parseInt(newSalonChairsInput, 10);
       const targetCapacity = (!isNaN(parsedChairs) && parsedChairs >= 1)
         ? Math.min(50, parsedChairs)
-        : Math.max(1, Math.min(50, newSalonCapacity || 5));
+        : Math.max(1, Math.min(50, newSalonCapacity || 2));
+
+      const verification = await verifyAllChairOccupants(
+        targetCapacity,
+        newSalonChairNames,
+        user?.id,
+        user?.name
+      );
+      setNewSalonChairStatuses((prev) => ({ ...prev, ...verification.statuses }));
+      if (!verification.valid) {
+        showToast(verification.errorMessage || "User not found", "error");
+        setIsSwitchingToSalon(false);
+        return;
+      }
+
       const targetName =
         newSalonNameInput.trim() ||
         user?.name ||
@@ -122,6 +147,7 @@ export default function SubBarberProfileScreen() {
         city: newSalonCityInput.trim() || user?.city || undefined,
         phone: newSalonPhoneInput.trim() || user?.phone || undefined,
         about_us: newSalonAboutInput.trim() || user?.about_us || undefined,
+        chair_barber_names: verification.verifiedNames,
       });
 
       if (res?.access_token) {
@@ -1262,6 +1288,17 @@ export default function SubBarberProfileScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {/* Chair Occupants Container */}
+              <ChairOccupantsEditor
+                chairCount={Math.max(1, Math.min(50, parseInt(newSalonChairsInput, 10) || newSalonCapacity || 1))}
+                chairNames={newSalonChairNames}
+                onChangeChairNames={setNewSalonChairNames}
+                chairStatuses={newSalonChairStatuses}
+                onChangeChairStatuses={setNewSalonChairStatuses}
+                salonId={user?.id}
+                ownerName={user?.name}
+              />
             </View>
 
             {/* Salon Name Input */}

@@ -7,6 +7,10 @@ import { useToast } from "@/context/ToastContext";
 import { useTheme } from "@/context/ThemeContext";
 import { barberService } from "@/services/barberService";
 import BarberLocationPickerModal from "@/components/map/BarberLocationPickerModal";
+import ChairOccupantsEditor, {
+  ChairSlotStatus,
+  verifyAllChairOccupants,
+} from "@/components/barber/ChairOccupantsEditor";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -63,6 +67,8 @@ export default function SalonManagementScreen() {
   const [capacity, setCapacity] = useState<number>(
     Math.max(1, parseInt(String(user?.capacity || user?.working_chairs || "4"), 10) || 4)
   );
+  const [chairNames, setChairNames] = useState<string[]>([]);
+  const [chairStatuses, setChairStatuses] = useState<Record<number, ChairSlotStatus>>({});
   const [salonBio, setSalonBio] = useState(
     user?.about_us || (user as any)?.bio || ""
   );
@@ -101,9 +107,23 @@ export default function SalonManagementScreen() {
     try {
       const capData = await barberService.getSalonCapacity(salonId);
       if (capData) {
-        const chairs = Math.max(1, parseInt(String(capData.capacity || capData.working_chairs || 4), 10) || 4);
+        const chairs = Math.max(1, parseInt(String(capData.capacity || capData.working_chairs || 1), 10) || 1);
         setCapacity(chairs);
         setIsSalon(capData.is_salon);
+        if (Array.isArray(capData.chair_occupants) && capData.chair_occupants.length > 0) {
+          const names: string[] = [];
+          const statuses: Record<number, ChairSlotStatus> = {};
+          capData.chair_occupants.forEach((occ: any, idx: number) => {
+            names.push(occ.name || "");
+            statuses[idx] = {
+              status: "verified",
+              message: "Linked & Bookable",
+              barber: occ,
+            };
+          });
+          setChairNames(names);
+          setChairStatuses(statuses);
+        }
       }
     } catch {
       // Keep existing state fallback
@@ -113,7 +133,32 @@ export default function SalonManagementScreen() {
   const fetchStaff = useCallback(async () => {
     try {
       const staff = await barberService.listSalonStaff(salonId);
-      setStaffList(Array.isArray(staff) ? staff : []);
+      const list = Array.isArray(staff) ? staff : [];
+      setStaffList(list);
+      setChairNames((prev) => {
+        if (prev.some((n) => n && n.trim())) return prev;
+        return list.map((s: any) => s.name || "");
+      });
+      setChairStatuses((prev) => {
+        if (Object.keys(prev).length > 0) return prev;
+        const next: Record<number, ChairSlotStatus> = {};
+        list.forEach((s: any, idx: number) => {
+          if (s.name) {
+            next[idx] = {
+              status: "verified",
+              message: "Linked & Bookable",
+              barber: {
+                id: s.id,
+                name: s.name,
+                role: s.role,
+                staff_title: s.role,
+                is_owner: Boolean(s.is_lead && s.id === salonId),
+              },
+            };
+          }
+        });
+        return next;
+      });
     } catch {
       setStaffList([]);
     }
@@ -213,11 +258,26 @@ export default function SalonManagementScreen() {
     setIsSaving(true);
     try {
       const capNumber = Math.max(1, capacity);
+      const verification = await verifyAllChairOccupants(
+        capNumber,
+        chairNames,
+        salonId,
+        user?.name
+      );
+      setChairStatuses((prev) => ({ ...prev, ...verification.statuses }));
+      if (!verification.valid) {
+        showToast(verification.errorMessage || "User not found", "error");
+        setIsSaving(false);
+        return;
+      }
+
       await barberService.updateSalonCapacity(salonId, {
         bio: salonBio,
         is_salon: isSalon,
         capacity: capNumber,
+        chair_barber_names: verification.verifiedNames,
       });
+      await fetchStaff();
       const licenseUrl = uploadedDocUri || (user as any)?.business_license_url || (uploadedDocName ? `https://trimly237.com/docs/licenses/${uploadedDocName}` : undefined);
       await barberService.updateProfileDetails({
         about_us: salonBio,
@@ -511,6 +571,17 @@ export default function SalonManagementScreen() {
                 );
               })}
             </View>
+
+            {/* Synchronized Chair Occupants Container */}
+            <ChairOccupantsEditor
+              chairCount={capacity}
+              chairNames={chairNames}
+              onChangeChairNames={setChairNames}
+              chairStatuses={chairStatuses}
+              onChangeChairStatuses={setChairStatuses}
+              salonId={salonId}
+              ownerName={user?.name}
+            />
           </View>
 
           {/* Salon Bio / Story */}

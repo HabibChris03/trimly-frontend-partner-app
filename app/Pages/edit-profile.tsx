@@ -25,6 +25,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BarberLocationPickerModal from "@/components/map/BarberLocationPickerModal";
+import ChairOccupantsEditor, {
+  ChairSlotStatus,
+  verifyAllChairOccupants,
+} from "@/components/barber/ChairOccupantsEditor";
 
 const KNOWN_LOCATIONS = [
   "Douala, Akwa",
@@ -105,8 +109,15 @@ export default function EditProfileScreen() {
   const [switchSalonModalVisible, setSwitchSalonModalVisible] = useState(false);
   const [newSalonRole, setNewSalonRole] = useState<"Salon Manager" | "Main Barber & Studio Owner">("Salon Manager");
   const [newSalonNameInput, setNewSalonNameInput] = useState(user?.name || "");
-  const [newSalonChairsInput, setNewSalonChairsInput] = useState("5");
-  const [newSalonCapacity, setNewSalonCapacity] = useState(5);
+  const [newSalonChairsInput, setNewSalonChairsInput] = useState("2");
+  const [newSalonCapacity, setNewSalonCapacity] = useState(2);
+  const [newSalonChairNames, setNewSalonChairNames] = useState<string[]>([
+    user?.name || "",
+    "",
+  ]);
+  const [newSalonChairStatuses, setNewSalonChairStatuses] = useState<
+    Record<number, ChairSlotStatus>
+  >({});
   const [newSalonCityInput, setNewSalonCityInput] = useState(user?.city || "");
   const [newSalonPhoneInput, setNewSalonPhoneInput] = useState(user?.phone || "");
   const [newSalonAboutInput, setNewSalonAboutInput] = useState(user?.about_us || "");
@@ -251,7 +262,21 @@ export default function EditProfileScreen() {
       const parsedChairs = parseInt(newSalonChairsInput, 10);
       const targetCapacity = (!isNaN(parsedChairs) && parsedChairs >= 1)
         ? Math.min(50, parsedChairs)
-        : Math.max(1, Math.min(50, newSalonCapacity || 5));
+        : Math.max(1, Math.min(50, newSalonCapacity || 2));
+
+      const verification = await verifyAllChairOccupants(
+        targetCapacity,
+        newSalonChairNames,
+        user?.id,
+        fullName.trim() || user?.name
+      );
+      setNewSalonChairStatuses((prev) => ({ ...prev, ...verification.statuses }));
+      if (!verification.valid) {
+        showToast(verification.errorMessage || "User not found", "error");
+        setIsSwitchingToSalon(false);
+        return;
+      }
+
       const targetName =
         newSalonNameInput.trim() ||
         fullName.trim() ||
@@ -264,6 +289,7 @@ export default function EditProfileScreen() {
         city: newSalonCityInput.trim() || city.trim() || undefined,
         phone: newSalonPhoneInput.trim() || phone.trim() || undefined,
         about_us: newSalonAboutInput.trim() || user?.about_us || undefined,
+        chair_barber_names: verification.verifiedNames,
       });
 
       if (res?.access_token) {
@@ -1636,6 +1662,17 @@ export default function EditProfileScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {/* Chair Occupants Container */}
+              <ChairOccupantsEditor
+                chairCount={Math.max(1, Math.min(50, parseInt(newSalonChairsInput, 10) || newSalonCapacity || 1))}
+                chairNames={newSalonChairNames}
+                onChangeChairNames={setNewSalonChairNames}
+                chairStatuses={newSalonChairStatuses}
+                onChangeChairStatuses={setNewSalonChairStatuses}
+                salonId={user?.id}
+                ownerName={fullName.trim() || user?.name}
+              />
             </View>
 
             {/* Salon Name Input */}

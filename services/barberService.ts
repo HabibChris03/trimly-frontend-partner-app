@@ -102,6 +102,7 @@ export interface BarberCapacityUpdate {
   bio?: string | null;
   is_salon?: boolean | null;
   capacity?: number | null;
+  chair_barber_names?: string[] | null;
 }
 
 // In-memory / shared storage for barber services so newly added services cache cleanly
@@ -917,9 +918,43 @@ export const barberService = {
   /**
    * Fetch current salon/barber working chairs and capacity from database.
    */
+  async verifyChairOccupant(
+    name: string,
+    salonId?: number
+  ): Promise<{ found: boolean; message: string; barber?: any }> {
+    const trimmed = (name || "").trim();
+    if (!trimmed) {
+      return { found: false, message: "User not found" };
+    }
+    try {
+      const params: Record<string, any> = { name: trimmed };
+      if (salonId) params.salon_id = salonId;
+      const res = await apiRequest<any>("/api/v1/barbers/verify-chair-occupant", {
+        method: "GET",
+        params,
+      });
+      if (res?.found && res?.barber) {
+        return {
+          found: true,
+          message: res.message || "User verified",
+          barber: res.barber,
+        };
+      }
+      return {
+        found: false,
+        message: "User not found",
+      };
+    } catch {
+      return {
+        found: false,
+        message: "User not found",
+      };
+    }
+  },
+
   async getSalonCapacity(
     salonId: number
-  ): Promise<{ capacity: number; is_salon: boolean; working_chairs: number }> {
+  ): Promise<{ capacity: number; is_salon: boolean; working_chairs: number; chair_occupants?: any[] }> {
     try {
       const res = await apiRequest<any>(`/api/v1/barbers/${salonId}/capacity`, {
         method: "GET",
@@ -930,6 +965,7 @@ export const barberService = {
           capacity: chairs,
           is_salon: !!res.is_salon,
           working_chairs: Number(res.working_chairs) || chairs,
+          chair_occupants: Array.isArray(res.chair_occupants) ? res.chair_occupants : [],
         };
       }
     } catch {
@@ -1456,6 +1492,7 @@ export const barberService = {
           city?: string;
           phone?: string;
           about_us?: string;
+          chair_barber_names?: string[];
         }
       | string,
     maybeCapacity?: number
@@ -1470,6 +1507,7 @@ export const barberService = {
             city: payload?.city,
             phone: payload?.phone,
             about_us: payload?.about_us,
+            chair_barber_names: payload?.chair_barber_names,
           };
     return await apiRequest("/api/v1/profiles/switch-to-salon", {
       method: "POST",

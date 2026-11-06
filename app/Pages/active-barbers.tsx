@@ -170,35 +170,44 @@ export default function ActiveBarbersScreen() {
   const allBarbersAndChairs = useMemo<BarberChairCardData[]>(() => {
     const list: BarberChairCardData[] = [];
 
-    // 1. Owner / Lead Barber (Chair 1)
-    const isOwnerSuspended = suspendedChairs.includes(1);
-    const ownerBookings = todayAgenda.filter(
-      (b) => String(b.barber_id || b.barberId) === String(salonId)
+    const ownerInStaffList = staffList.some(
+      (m) => String(m.id) === String(salonId)
     );
-    const ownerRevenue = ownerBookings.reduce(
-      (sum, b) => sum + (Number(b.total_price || b.price) || 0),
-      0
-    );
+    const shouldIncludeOwnerChair =
+      !ownerInStaffList &&
+      (Boolean((user as any)?.is_lead) || staffList.length === 0);
 
-    list.push({
-      chairNumber: 1,
-      barberId: salonId,
-      barberName: user?.name ? user.name.split("(")[0].trim() : "Lead Stylist (Owner)",
-      role: "Lead Specialist & Owner",
-      phone: user?.phone || "+237 600 00 00 00",
-      email: user?.email || "owner@trimly.com",
-      status: isOwnerSuspended ? "Suspended" : "Active",
-      avatar: barberAvatar,
-      revenue: ownerRevenue,
-      cutsCount: ownerBookings.length,
-      rating: ownerRating,
-      reviewCount: ownerReviewCount,
-      isLead: true,
-    });
+    if (shouldIncludeOwnerChair) {
+      const isOwnerSuspended = suspendedChairs.includes(1);
+      const ownerBookings = todayAgenda.filter(
+        (b) => String(b.barber_id || b.barberId) === String(salonId)
+      );
+      const ownerRevenue = ownerBookings.reduce(
+        (sum, b) => sum + (Number(b.total_price || b.price) || 0),
+        0
+      );
 
-    // 2. Staff Barbers (Chair 2 ... N)
-    staffList.forEach((member, idx) => {
-      const chairNum = idx + 2;
+      list.push({
+        chairNumber: 1,
+        barberId: salonId,
+        barberName: user?.name ? user.name.split("(")[0].trim() : "Lead Stylist (Owner)",
+        role: "Lead Specialist & Owner",
+        phone: user?.phone || "+237 600 00 00 00",
+        email: user?.email || "owner@trimly.com",
+        status: isOwnerSuspended ? "Suspended" : "Active",
+        avatar: barberAvatar,
+        revenue: ownerRevenue,
+        cutsCount: ownerBookings.length,
+        rating: ownerRating,
+        reviewCount: ownerReviewCount,
+        isLead: true,
+      });
+    }
+
+    // Verified Linked Staff Barbers occupying Chairs (no unbookable dummy chairs)
+    staffList.forEach((member) => {
+      const chairNum = list.length + 1;
+      const isOwner = String(member.id) === String(salonId);
       const isChairSusp = suspendedChairs.includes(chairNum);
       const isMemberSusp = member.status === "Suspended" || isChairSusp;
       const effectiveStatus: BarberChairCardData["status"] = isMemberSusp
@@ -213,53 +222,27 @@ export default function ActiveBarbersScreen() {
         0
       );
 
-      const rev = staffReviews[member.id] || { rating: 5.0, reviewCount: 0 };
+      const rev = staffReviews[member.id] || {
+        rating: isOwner ? ownerRating : 5.0,
+        reviewCount: isOwner ? ownerReviewCount : 0,
+      };
 
       list.push({
         chairNumber: chairNum,
         barberId: member.id,
         barberName: member.name,
-        role: member.role || "Salon Stylist",
-        phone: member.phone || "+237 670 00 00 00",
+        role: member.role || (isOwner ? "Lead Specialist & Owner" : "Salon Stylist"),
+        phone: member.phone || (isOwner && user?.phone ? user.phone : "+237 670 00 00 00"),
+        email: (member as any).email || (isOwner ? (user?.email || undefined) : undefined),
         status: effectiveStatus,
-        avatar: profilePic,
+        avatar: isOwner ? barberAvatar : profilePic,
         revenue: memberRevenue,
         cutsCount: memberBookings.length,
         rating: rev.rating,
         reviewCount: rev.reviewCount,
-        isLead: false,
+        isLead: isOwner || Boolean((member as any).is_lead),
       });
     });
-
-    // 3. Open Chairs if salon capacity > current staffed chairs
-    const staffedCount = list.length;
-    if (chairsCapacity > staffedCount) {
-      for (let c = staffedCount + 1; c <= chairsCapacity; c++) {
-        const isOpenSusp = suspendedChairs.includes(c);
-        const openBookings = todayAgenda.filter(
-          (b) => (b as any).chair_number === c || (b as any).chairId === c
-        );
-        const openRev = openBookings.reduce(
-          (sum, b) => sum + (Number(b.total_price || b.price) || 0),
-          0
-        );
-
-        list.push({
-          chairNumber: c,
-          barberId: `chair_${c}`,
-          barberName: `Styling Station Chair ${c}`,
-          role: "Open Station • Unassigned",
-          status: isOpenSusp ? "Suspended" : "Active",
-          avatar: null,
-          revenue: openRev,
-          cutsCount: openBookings.length,
-          rating: 5.0,
-          reviewCount: 0,
-          isLead: false,
-          isOpenChair: true,
-        });
-      }
-    }
 
     return list;
   }, [

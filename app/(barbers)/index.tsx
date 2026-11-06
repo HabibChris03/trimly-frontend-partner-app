@@ -451,25 +451,35 @@ export default function BarberDashboardScreen() {
   const chairItems = useMemo<ChairItem[]>(() => {
     const list: ChairItem[] = [];
 
-    // Chair 1: Lead Barber / Salon Owner
-    const isLeadSuspended = suspendedChairs.includes(1);
-    list.push({
-      chairNumber: 1,
-      barberId: barberId,
-      barberName: user?.name ? user.name.split("(")[0].trim() : "Lead Barber",
-      role: "Lead Specialist",
-      status: isLeadSuspended ? "Suspended" : "Active",
-      avatar: barberAvatar,
-      revenue: myChairRevenue,
-      cutsCount: myChairBookingsCount,
-      rating: barberRating > 0 ? barberRating : 5.0,
-      reviewCount: barberReviewCount,
-      isLead: true,
-    });
+    // Include Lead Barber / Salon Owner only if they occupy a chair (or if no staff linked yet)
+    const ownerInStaffList = staffList.some(
+      (m) => String(m.id) === String(barberId)
+    );
+    const shouldIncludeOwnerChair =
+      !ownerInStaffList &&
+      (Boolean((user as any)?.is_lead) || staffList.length === 0);
 
-    // Staff Barbers: Chair 2 ... N
+    if (shouldIncludeOwnerChair) {
+      const isLeadSuspended = suspendedChairs.includes(1);
+      list.push({
+        chairNumber: 1,
+        barberId: barberId,
+        barberName: user?.name ? user.name.split("(")[0].trim() : "Lead Barber",
+        role: "Lead Specialist",
+        status: isLeadSuspended ? "Suspended" : "Active",
+        avatar: barberAvatar,
+        revenue: myChairRevenue,
+        cutsCount: myChairBookingsCount,
+        rating: barberRating > 0 ? barberRating : 5.0,
+        reviewCount: barberReviewCount,
+        isLead: true,
+      });
+    }
+
+    // Verified Linked Staff Barbers occupying Chairs (no unbookable dummy chairs)
     staffList.forEach((member, idx) => {
-      const chairNum = idx + 2;
+      const chairNum = list.length + 1;
+      const isOwner = String(member.id) === String(barberId);
       const isChairSusp = suspendedChairs.includes(chairNum);
       const isMemberSusp = member.status === "Suspended" || isChairSusp;
       const effectiveStatus: ChairItem["status"] = isMemberSusp
@@ -484,57 +494,35 @@ export default function BarberDashboardScreen() {
         0
       );
 
-      const avatar =
-        idx % 4 === 0
-          ? barberImg1
-          : idx % 4 === 1
-          ? barberImg2
-          : idx % 4 === 2
-          ? barberImg3
-          : barberImg4;
+      const avatar = isOwner
+        ? barberAvatar
+        : idx % 4 === 0
+        ? barberImg1
+        : idx % 4 === 1
+        ? barberImg2
+        : idx % 4 === 2
+        ? barberImg3
+        : barberImg4;
 
-      const revInfo = staffReviews[member.id] || { rating: 5.0, reviewCount: 0 };
+      const revInfo = staffReviews[member.id] || {
+        rating: isOwner && barberRating > 0 ? barberRating : 5.0,
+        reviewCount: isOwner ? barberReviewCount : 0,
+      };
 
       list.push({
         chairNumber: chairNum,
         barberId: member.id,
         barberName: member.name,
-        role: member.role || "Salon Barber",
+        role: member.role || (isOwner ? "Lead Specialist" : "Salon Barber"),
         status: effectiveStatus,
         avatar: avatar,
-        revenue: staffRevenue,
-        cutsCount: staffCuts.length,
+        revenue: isOwner ? myChairRevenue : staffRevenue,
+        cutsCount: isOwner ? myChairBookingsCount : staffCuts.length,
         rating: revInfo.rating,
         reviewCount: revInfo.reviewCount,
-        isLead: false,
+        isLead: isOwner || Boolean((member as any).is_lead),
       });
     });
-
-    // Open Styling Stations if capacity > current barbers
-    const currentCount = list.length;
-    if (chairsCapacity > currentCount) {
-      for (let c = currentCount + 1; c <= chairsCapacity; c++) {
-        const isOpenSusp = suspendedChairs.includes(c);
-        const openCuts = agenda.filter(
-          (a) => (a as any).chair_number === c || (a as any).chairId === c
-        );
-        const openRev = openCuts.reduce((sum, a) => sum + (a.price || 0), 0);
-        list.push({
-          chairNumber: c,
-          barberId: `chair_${c}`,
-          barberName: `Chair ${c} Station`,
-          role: "Open Styling Station",
-          status: isOpenSusp ? "Suspended" : "Active",
-          avatar: null,
-          revenue: openRev,
-          cutsCount: openCuts.length,
-          rating: 5.0,
-          reviewCount: 0,
-          isLead: false,
-          isOpenChair: true,
-        });
-      }
-    }
 
     return list;
   }, [
