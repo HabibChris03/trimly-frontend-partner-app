@@ -47,15 +47,6 @@ const KNOWN_LOCATIONS = [
   "Kribi, Plage",
 ];
 
-const PREF_STYLES = [
-  "Skin Fade",
-  "Classic Scissor",
-  "Beard Sculpt",
-  "Locs & Braids",
-  "Hair Color",
-  "Taper & Edge",
-];
-
 export default function EditProfileScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
@@ -64,9 +55,6 @@ export default function EditProfileScreen() {
   const { showToast } = useToast();
 
   const [fullName, setFullName] = useState(user?.name || "");
-  const [username, setUsername] = useState(
-    user?.email ? `@${user.email.split("@")[0]}` : ""
-  );
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [city, setCity] = useState((user as any)?.city || "Douala, Cameroon");
@@ -81,10 +69,6 @@ export default function EditProfileScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(
     user?.avatar_url || user?.logo_url || null
   );
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([
-    "Skin Fade",
-    "Beard Sculpt",
-  ]);
 
   // Shop Location Coordinates State
   const [coordinates, setCoordinates] = useState<{ latitude: number; longitude: number } | null>(
@@ -146,14 +130,6 @@ export default function EditProfileScreen() {
       .join("")
       .slice(0, 2)
       .toUpperCase() || "U";
-
-  const toggleStyle = (style: string) => {
-    if (selectedStyles.includes(style)) {
-      setSelectedStyles(selectedStyles.filter((s) => s !== style));
-    } else {
-      setSelectedStyles([...selectedStyles, style]);
-    }
-  };
 
   const checkPendingJoinRequest = useCallback(async () => {
     try {
@@ -730,32 +706,6 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* Username / Handle */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
-              Username / Handle
-            </Text>
-            <View
-              style={[
-                styles.inputWrapper,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <Ionicons name="at-outline" size={18} color={colors.secondaryText} />
-              <TextInput
-                style={[styles.input, { color: colors.primaryText }]}
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-                placeholder="@handle"
-                placeholderTextColor={colors.inputPlaceholder}
-              />
-            </View>
-          </View>
-
           {/* Email Address */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
@@ -1187,42 +1137,6 @@ export default function EditProfileScreen() {
               </View>
             </View>
           )}
-        </View>
-
-        {/* Style Specialties Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>{language === "fr" ? "SPÉCIALITÉS & STYLES" : "STYLE SPECIALTIES & FOCUS"}</Text>
-          <View style={styles.stylesWrap}>
-            {PREF_STYLES.map((style) => {
-              const isSelected = selectedStyles.includes(style);
-              return (
-                <TouchableOpacity
-                  key={style}
-                  activeOpacity={0.8}
-                  onPress={() => toggleStyle(style)}
-                  style={[
-                    styles.styleChip,
-                    {
-                      backgroundColor: isSelected ? colors.brand : colors.card,
-                      borderColor: isSelected ? colors.brand : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.styleChipText,
-                      {
-                        color: isSelected ? colors.onBrand : colors.primaryText,
-                        fontWeight: isSelected ? "800" : "500",
-                      },
-                    ]}
-                  >
-                    {style}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
 
         {/* Security & Password Section */}

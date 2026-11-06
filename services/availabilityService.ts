@@ -38,13 +38,27 @@ export const availabilityService = {
   async setWeeklySchedule(
     days: { day_of_week: number; enabled: boolean; start_time: string; end_time: string }[],
     staffId?: number,
-    resetToSalon?: boolean
-  ): Promise<{ status: string; message: string; availability: AvailabilityWindow[] }> {
-    return apiRequest<{ status: string; message: string; availability: AvailabilityWindow[] }>(
+    resetToSalon?: boolean,
+    bufferMinutes?: number,
+    blockedDates?: { id?: string; date: string; reason: string }[]
+  ): Promise<{
+    status: string;
+    message: string;
+    availability: AvailabilityWindow[];
+    buffer_minutes?: number;
+    blocked_dates?: { id: string; date: string; reason: string }[];
+  }> {
+    return apiRequest(
       "/api/v1/availability/weekly-schedule",
       {
         method: "POST",
-        body: JSON.stringify({ days, staff_id: staffId, reset_to_salon: resetToSalon }),
+        body: JSON.stringify({
+          days,
+          staff_id: staffId,
+          reset_to_salon: resetToSalon,
+          buffer_minutes: bufferMinutes,
+          blocked_dates: blockedDates,
+        }),
       }
     );
   },

@@ -140,10 +140,8 @@ export default function BarberAvailabilityScreen() {
   // Time editing modal state
   const [editingTimeSlot, setEditingTimeSlot] = useState<EditingTimeState | null>(null);
 
-  // Blocked dates state
-  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([
-    { id: "1", date: "Jan 1, 2026", reason: "New Year's Day" },
-  ]);
+  // Blocked dates state (synced with backend database)
+  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [blockModalVisible, setBlockModalVisible] = useState(false);
   const [newBlockDate, setNewBlockDate] = useState("");
   const [newBlockReason, setNewBlockReason] = useState("");
@@ -171,8 +169,10 @@ export default function BarberAvailabilityScreen() {
       let windows: any[] = [];
       let isInherited = false;
 
+      let resObj: any = null;
       if (isSalon && selectedStaffId) {
         const res: any = await availabilityService.getBarberAvailability(selectedStaffId);
+        resObj = res;
         if (Array.isArray(res)) {
           windows = res;
         } else if (res && typeof res === "object") {
@@ -181,12 +181,28 @@ export default function BarberAvailabilityScreen() {
         }
       } else {
         const res: any = await availabilityService.getMyAvailability();
+        resObj = res;
         if (Array.isArray(res)) {
           windows = res;
         } else if (res && typeof res === "object") {
           windows = res.availability || [];
         }
         isInherited = false;
+      }
+
+      if (resObj && typeof resObj === "object" && !Array.isArray(resObj)) {
+        if (typeof resObj.buffer_minutes === "number") {
+          setSelectedBuffer(`${resObj.buffer_minutes} min`);
+        }
+        if (Array.isArray(resObj.blocked_dates)) {
+          setBlockedDates(
+            resObj.blocked_dates.map((b: any, i: number) => ({
+              id: String(b.id || i + 1),
+              date: b.date || b.iso_date || "",
+              reason: b.reason || "Unavailable / Personal Time",
+            }))
+          );
+        }
       }
 
       setIsInheritedFromSalon(isInherited);
@@ -326,9 +342,14 @@ export default function BarberAvailabilityScreen() {
         end_time: slot.close.length === 5 ? `${slot.close}:00` : slot.close,
       }));
 
+      const parsedBuffer = parseInt(selectedBuffer.replace(/[^0-9]/g, ""), 10);
+      const bufferMins = isNaN(parsedBuffer) ? 15 : parsedBuffer;
       await availabilityService.setWeeklySchedule(
         daysPayload,
-        selectedStaffId || undefined
+        selectedStaffId || undefined,
+        false,
+        bufferMins,
+        blockedDates
       );
 
       const currentStaff = selectedStaffId ? staffList.find((s) => s.id === selectedStaffId) : null;

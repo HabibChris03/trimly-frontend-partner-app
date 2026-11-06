@@ -39,17 +39,6 @@ interface StaffMember {
   status: "Active" | "Off Duty" | "On Break";
 }
 
-const AMENITIES_LIST = [
-  { id: "ac", label: "Air Conditioned", icon: "snow-outline" },
-  { id: "wifi", label: "Free Wi-Fi", icon: "wifi-outline" },
-  { id: "lounge", label: "VIP Waiting Lounge", icon: "cafe-outline" },
-  { id: "parking", label: "Free Parking", icon: "car-outline" },
-  { id: "drinks", label: "Complimentary Drinks", icon: "wine-outline" },
-  { id: "pos", label: "Card & MoMo Accepted", icon: "card-outline" },
-  { id: "tv", label: "Sports & Entertainment TV", icon: "tv-outline" },
-  { id: "kids", label: "Kid Friendly Stations", icon: "happy-outline" },
-];
-
 const PRESET_CHAIRS = [2, 4, 6, 8, 12];
 
 export default function SalonManagementScreen() {
@@ -75,18 +64,9 @@ export default function SalonManagementScreen() {
   const [salonLogo, setSalonLogo] = useState<string | null>(
     user?.logo_url || null
   );
-  const [address, setAddress] = useState<string>(
-    (user as any)?.address || "Boulevard de la Liberté, Akwa"
-  );
   const [city, setCity] = useState<string>(
     (user as any)?.city || "Douala, Cameroon"
   );
-  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([
-    "ac",
-    "wifi",
-    "pos",
-    "lounge",
-  ]);
   const [uploadedDocName, setUploadedDocName] = useState<string | null>(null);
   const [uploadedDocUri, setUploadedDocUri] = useState<string | null>((user as any)?.business_license_url || null);
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
@@ -239,14 +219,6 @@ export default function SalonManagementScreen() {
       }
     } catch {
       showToast("Could not select document. Please try again.", "error");
-    }
-  };
-
-  const toggleAmenity = (id: string) => {
-    if (selectedAmenities.includes(id)) {
-      setSelectedAmenities(selectedAmenities.filter((a) => a !== id));
-    } else {
-      setSelectedAmenities([...selectedAmenities, id]);
     }
   };
 
@@ -427,7 +399,7 @@ export default function SalonManagementScreen() {
                 </Text>
               </View>
               <Text style={[styles.salonLocationText, { color: colors.secondaryText }]} numberOfLines={1}>
-                {address} • {city}
+                {city}
               </Text>
 
               <View style={styles.statusPillsStrip}>
@@ -624,23 +596,6 @@ export default function SalonManagementScreen() {
             </View>
           </View>
 
-          {/* Street Address */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
-              {t("salonManagement.streetAddressQuarter") || "Street Address & Quarter"}
-            </Text>
-            <View style={[styles.inputBox, { backgroundColor: colors.elevated, borderColor: colors.border }]}>
-              <Ionicons name="business-outline" size={17} color={colors.secondaryText} />
-              <TextInput
-                style={[styles.inputField, { color: colors.primaryText }]}
-                value={address}
-                onChangeText={setAddress}
-                placeholder="e.g. Boulevard de la Liberté, Akwa"
-                placeholderTextColor={colors.inputPlaceholder}
-              />
-            </View>
-          </View>
-
           {/* City */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.secondaryText }]}>
@@ -682,60 +637,6 @@ export default function SalonManagementScreen() {
               <Text style={[styles.editCoordText, { color: colors.brand }]}>{language === "fr" ? "Ajuster" : "Adjust"}</Text>
             </View>
           </TouchableOpacity>
-        </View>
-
-        {/* Section 3: Studio Amenities & Experience */}
-        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.cardHeaderRow}>
-            <View style={[styles.sectionIconBadge, { backgroundColor: "rgba(199, 243, 107, 0.12)" }]}>
-              <Ionicons name="sparkles" size={16} color={colors.brand} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.sectionTitle, { color: colors.primaryText }]}>
-                Studio Amenities & Perks
-              </Text>
-              <Text style={[styles.sectionSub, { color: colors.secondaryText }]}>
-                {language === "fr" ? "Mis en avant sur la fiche publique de votre salon" : "Highlighted on your public client shop card"}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.amenitiesWrap}>
-            {AMENITIES_LIST.map((item) => {
-              const isSelected = selectedAmenities.includes(item.id);
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  activeOpacity={0.8}
-                  onPress={() => toggleAmenity(item.id)}
-                  style={[
-                    styles.amenityChip,
-                    {
-                      backgroundColor: isSelected ? "rgba(199, 243, 107, 0.12)" : colors.elevated,
-                      borderColor: isSelected ? colors.brand : colors.border,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={item.icon as any}
-                    size={15}
-                    color={isSelected ? colors.brand : colors.secondaryText}
-                  />
-                  <Text
-                    style={[
-                      styles.amenityChipText,
-                      {
-                        color: isSelected ? colors.brand : colors.primaryText,
-                        fontWeight: isSelected ? "800" : "500",
-                      },
-                    ]}
-                  >
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
 
         {/* Section 4: Trade License & Verification Document */}

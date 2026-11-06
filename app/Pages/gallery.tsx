@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface GalleryItem {
   id: string;
@@ -34,6 +35,8 @@ export default function GalleryScreen() {
   const { colors, isDark } = useTheme();
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const barberId = user?.id || 4;
 
   const getCategoryLabel = (cat: string) => {
     if (cat === "All") return t("portfolioGallery.catAll");
@@ -58,27 +61,29 @@ export default function GalleryScreen() {
     async function loadPortfolio() {
       try {
         setIsLoading(true);
-        const [portfolioList] = await Promise.all([
-          barberService.getBarberPortfolio(4).catch(() => []),
-          barberService.getNearbyBarbers().catch(() => []),
+        const [portfolioList, profile] = await Promise.all([
+          barberService.getBarberPortfolio(barberId).catch(() => []),
+          barberService.getBarberProfile(barberId).catch(() => null),
         ]);
+
+        const providerName =
+          user?.name || profile?.name || "Master Stylist";
 
         const items: GalleryItem[] = [];
         if (Array.isArray(portfolioList) && portfolioList.length > 0) {
           portfolioList.forEach((p: any, idx: number) => {
-            if (p.media_url) {
+            if (p.media_url || p.uri) {
               items.push({
                 id: `p-${p.id || idx}`,
                 styleName:
                   p.hairstyle_name ||
                   p.hairstyle_or_service_name ||
-                  "Custom Haircut",
-                barberName: "Master Barber",
-                price: (Number(p.price) > 0 ? Number(p.price) : 1000),
-                likes: p.likes || 120 + idx * 15,
-                image: p.media_url,
-                category:
-                  p.category || (idx % 2 === 0 ? "Skin Fades" : "Classic"),
+                  "Custom Style",
+                barberName: providerName,
+                price: Number(p.price) > 0 ? Number(p.price) : 1000,
+                likes: typeof p.likes === "number" ? p.likes : 0,
+                image: p.media_url || p.uri,
+                category: p.category || "Haircuts & Styling",
                 tall: idx % 3 === 0,
               });
             }
@@ -93,7 +98,7 @@ export default function GalleryScreen() {
       }
     }
     loadPortfolio();
-  }, []);
+  }, [barberId, user?.name]);
 
   const filteredItems =
     selectedCategory === "All"

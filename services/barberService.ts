@@ -310,6 +310,8 @@ export const barberService = {
         "Silk Press & Natural Hair",
         "Color & Treatments",
         "Beard & Shave",
+        "Nails, Manicure & Pedicure",
+        "Makeup, Lashes & Brows",
         "Skincare & Facials",
         "Extra Services",
       ],

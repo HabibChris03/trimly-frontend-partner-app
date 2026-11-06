@@ -32,13 +32,21 @@ const CARD_WIDTH = (width - 48) / 2;
 
 const STYLE_SUGGESTIONS = [
   "Skin Fade & Beard",
-  "Sharp Taper Fade",
-  "Line Up & Clean Shave",
-  "Buzz Cut + Shave",
-  "Dreadlocks Retwist",
-  "Wave Sculpt",
-  "Afro Shape Up",
-  "Temple Fade",
+  "Sharp Taper Fade & Lineup",
+  "Drop / Burst Fade",
+  "360 Waves & Lineup",
+  "Afro Shape-Up & Sponge Curls",
+  "Dreadlocks Retwist & Barrel Twists",
+  "Cornrows & Stitch Braids",
+  "Knotless / Boho Box Braids",
+  "Fulani / Feed-In / French Curls",
+  "Lace Frontal Wig Install & Melt",
+  "Sew-In Weave & Sleek Ponytail",
+  "Silk Press & Bone Straight",
+  "Women's Pixie / Bob Cut",
+  "Blonde / Balayage Color",
+  "Bridal Updo & Glam Makeup",
+  "Acrylic Nails & Gel Manicure",
 ];
 
 const PRICE_PRESETS = [1500, 2500, 3500, 5000, 10000];

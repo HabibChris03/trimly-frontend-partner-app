@@ -44,9 +44,20 @@ export default function BarberProfileSettingsScreen() {
     }, [showTabBar])
   );
 
-  const [acceptingAppointments, setAcceptingAppointments] = useState(true);
+  const [acceptingAppointments, setAcceptingAppointments] = useState(
+    (user as any)?.staff_status !== "Off Duty" && (user as any)?.staff_status !== "Inactive"
+  );
   const [pushNotifications, setPushNotifications] = useState(true);
-  const [dutyStatus, setDutyStatus] = useState<DutyStatus>("active");
+  const [liveRating, setLiveRating] = useState<number>(
+    Number((user as any)?.rating) > 0 ? Number((user as any)?.rating) : 0
+  );
+  const [dutyStatus, setDutyStatus] = useState<DutyStatus>(
+    (user as any)?.staff_status === "On Break"
+      ? "on_break"
+      : (user as any)?.staff_status === "Off Duty"
+      ? "off_duty"
+      : "active"
+  );
   const [isUpdatingDuty, setIsUpdatingDuty] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
@@ -118,19 +129,38 @@ export default function BarberProfileSettingsScreen() {
     }
   }, []);
 
+  const fetchLiveProfileMetrics = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const p = await barberService.getBarberProfile(user.id);
+      if (p && p.rating !== undefined && Number(p.rating) > 0) {
+        setLiveRating(Number(p.rating));
+      }
+    } catch {
+      // Keep fallback
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     checkPendingJoinRequest();
-  }, [checkPendingJoinRequest]);
+    fetchLiveProfileMetrics();
+    if (typeof localStorage !== "undefined" && user?.id) {
+      const savedPush = localStorage.getItem(`@trimly_push_alerts_${user.id}`);
+      if (savedPush !== null) {
+        setPushNotifications(savedPush === "true");
+      }
+    }
+  }, [checkPendingJoinRequest, fetchLiveProfileMetrics, user?.id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (refreshUser) {
       await refreshUser().catch(() => null);
     }
-    await checkPendingJoinRequest();
+    await Promise.all([checkPendingJoinRequest(), fetchLiveProfileMetrics()]);
     setRefreshing(false);
     showToast(language === "fr" ? "Profil actualisé." : "Profile refreshed.", "info");
-  }, [refreshUser, checkPendingJoinRequest, showToast, language]);
+  }, [refreshUser, checkPendingJoinRequest, fetchLiveProfileMetrics, showToast, language]);
 
   const handleSearchSalons = async () => {
     const trimmed = salonSearchQuery.trim();
@@ -229,12 +259,17 @@ export default function BarberProfileSettingsScreen() {
     setDutyStatus(newStatus);
     setIsUpdatingDuty(true);
     try {
-      if (user?.id && (user as any)?.parent_salon_id) {
+      if (user?.id) {
+        const statusStr = newStatus === "active" ? "Active" : newStatus === "on_break" ? "On Break" : "Off Duty";
         await barberService.updateStaffStatus(
-          (user as any).parent_salon_id,
+          (user as any)?.parent_salon_id || user.id,
           user.id,
-          newStatus === "active" ? "Active" : newStatus === "on_break" ? "On Break" : "Off Duty"
+          statusStr
         );
+        setAcceptingAppointments(newStatus !== "off_duty");
+        if (updateUser) {
+          updateUser({ staff_status: statusStr } as any);
+        }
       }
       const label =
         newStatus === "active"
@@ -500,7 +535,11 @@ export default function BarberProfileSettingsScreen() {
 
                 <View style={[styles.ratingBadge, { backgroundColor: "rgba(245, 158, 11, 0.12)", borderColor: "rgba(245, 158, 11, 0.3)" }]}>
                   <Ionicons name="star" size={11} color="#F59E0B" />
-                  <Text style={styles.ratingBadgeText}>{language === "fr" ? "Note 4.9" : "4.9 Rating"}</Text>
+                  <Text style={styles.ratingBadgeText}>
+                    {liveRating > 0
+                      ? (language === "fr" ? `Note ${liveRating.toFixed(1)}` : `${liveRating.toFixed(1)} Rating`)
+                      : (language === "fr" ? "Nouveau ★" : "New ★")}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -664,8 +703,21 @@ export default function BarberProfileSettingsScreen() {
             </View>
             <Switch
               value={acceptingAppointments}
-              onValueChange={(val) => {
+              onValueChange={async (val) => {
                 setAcceptingAppointments(val);
+                const nextDuty: DutyStatus = val ? "active" : "off_duty";
+                setDutyStatus(nextDuty);
+                const statusStr = val ? "Active" : "Off Duty";
+                if (user?.id) {
+                  await barberService.updateStaffStatus(
+                    (user as any)?.parent_salon_id || user.id,
+                    user.id,
+                    statusStr
+                  ).catch(() => null);
+                  if (updateUser) {
+                    updateUser({ staff_status: statusStr } as any);
+                  }
+                }
                 showToast(language === "fr" ? (val ? "Accepte désormais les réservations" : "Réservations en pause") : (val ? "Now accepting bookings" : "Bookings paused"), "info");
               }}
               trackColor={{ false: colors.elevated, true: colors.brand }}
@@ -685,6 +737,9 @@ export default function BarberProfileSettingsScreen() {
               value={pushNotifications}
               onValueChange={(val) => {
                 setPushNotifications(val);
+                if (typeof localStorage !== "undefined" && user?.id) {
+                  localStorage.setItem(`@trimly_push_alerts_${user.id}`, String(val));
+                }
                 showToast(language === "fr" ? (val ? "Alertes de réservation activées" : "Alertes de réservation désactivées") : (val ? "Booking alerts enabled" : "Booking alerts muted"), "info");
               }}
               trackColor={{ false: colors.elevated, true: colors.brand }}
@@ -1292,7 +1347,7 @@ export default function BarberProfileSettingsScreen() {
                 }}
               >
                 <Text style={{ fontSize: 11, fontWeight: "800", color: colors.brand }}>
-                  4.9
+                  {liveRating > 0 ? liveRating.toFixed(1) : "New"}
                 </Text>
                 <Ionicons name="star" size={10} color={colors.brand} />
               </View>
