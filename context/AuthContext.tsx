@@ -42,7 +42,13 @@ function normalizeUser(data: any): UserRead | null {
     parent_salon_phone: raw.parent_salon_phone || null,
     staff_title: raw.staff_title || null,
     staff_status: raw.staff_status || "Active",
-    is_sub_barber: Boolean(raw.is_sub_barber || raw.parent_salon_id || raw.staff_title),
+    is_sub_barber: Boolean(
+      !(
+        raw.role === "salon" ||
+        raw.is_manager ||
+        (raw.has_admin_rights !== undefined ? Boolean(raw.has_admin_rights) : raw.role === "salon")
+      ) && (raw.parent_salon_id || raw.is_sub_barber)
+    ),
     is_manager: Boolean(raw.is_manager),
     is_lead: Boolean(raw.is_lead),
     has_admin_rights: raw.has_admin_rights !== undefined ? Boolean(raw.has_admin_rights) : (raw.role === "salon"),

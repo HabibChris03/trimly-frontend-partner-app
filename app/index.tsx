@@ -27,10 +27,14 @@ export default function Index() {
 
         if (token && user) {
           if (!isMounted) return;
+          const isSalonOwnerOrManager = Boolean(
+            user.role === "salon" ||
+            (user as any)?.is_manager ||
+            (user as any)?.has_admin_rights
+          );
           const isSubBarber = Boolean(
-            user.parent_salon_id ||
-            (user as any)?.is_sub_barber ||
-            (user as any)?.staff_title
+            !isSalonOwnerOrManager &&
+            (user.parent_salon_id || (user as any)?.is_sub_barber)
           );
 
           if (user.role === "client" && !isSubBarber) {

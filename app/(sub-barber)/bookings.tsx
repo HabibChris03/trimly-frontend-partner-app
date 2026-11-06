@@ -451,7 +451,7 @@ export default function SubBarberBookingsScreen() {
             <Text style={[styles.greetingText, { color: colors.secondarytext }]}>
               {user?.parent_salon_name
                 ? `Stylist - ${user.parent_salon_name}`
-                : t("subBarber.assignedSubtitle")}
+                : (language === "fr" ? "Professionnel Indépendant Solo" : "Independent Solo Provider")}
             </Text>
             <Text
               style={[styles.title, { color: colors.primarytext }]}

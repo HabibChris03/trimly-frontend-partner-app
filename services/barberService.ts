@@ -1445,15 +1445,35 @@ export const barberService = {
   },
 
   /**
-   * Upgrades an independent solo barber or hairdresser account to a full Salon Manager account.
+   * Upgrades an independent solo barber, hairdresser or sub-barber account to a full Salon Manager or Main Barber account.
    */
-  async switchToSalon(salonName?: string, capacity?: number): Promise<any> {
+  async switchToSalon(
+    payload?:
+      | {
+          salon_name?: string;
+          capacity?: number;
+          staff_title?: string;
+          city?: string;
+          phone?: string;
+          about_us?: string;
+        }
+      | string,
+    maybeCapacity?: number
+  ): Promise<any> {
+    const body =
+      typeof payload === "string"
+        ? { salon_name: payload, capacity: maybeCapacity || 5 }
+        : {
+            salon_name: payload?.salon_name,
+            capacity: payload?.capacity || 5,
+            staff_title: payload?.staff_title,
+            city: payload?.city,
+            phone: payload?.phone,
+            about_us: payload?.about_us,
+          };
     return await apiRequest("/api/v1/profiles/switch-to-salon", {
       method: "POST",
-      body: JSON.stringify({
-        salon_name: salonName,
-        capacity: capacity || 5,
-      }),
+      body: JSON.stringify(body),
     });
   },
 

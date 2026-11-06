@@ -10,7 +10,7 @@ import { useTheme } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { setAuthToken } from "@/services/api";
+import { setAuthToken, setActiveMode } from "@/services/api";
 import {
   ActivityIndicator,
   Image,
@@ -103,8 +103,13 @@ export default function EditProfileScreen() {
 
   // Switch to Salon state
   const [switchSalonModalVisible, setSwitchSalonModalVisible] = useState(false);
+  const [newSalonRole, setNewSalonRole] = useState<"Salon Manager" | "Main Barber & Studio Owner">("Salon Manager");
   const [newSalonNameInput, setNewSalonNameInput] = useState(user?.name || "");
+  const [newSalonChairsInput, setNewSalonChairsInput] = useState("5");
   const [newSalonCapacity, setNewSalonCapacity] = useState(5);
+  const [newSalonCityInput, setNewSalonCityInput] = useState(user?.city || "");
+  const [newSalonPhoneInput, setNewSalonPhoneInput] = useState(user?.phone || "");
+  const [newSalonAboutInput, setNewSalonAboutInput] = useState(user?.about_us || "");
   const [isSwitchingToSalon, setIsSwitchingToSalon] = useState(false);
   const [isLeavingSalon, setIsLeavingSalon] = useState(false);
   const [leaveSalonModalVisible, setLeaveSalonModalVisible] = useState(false);
@@ -243,20 +248,30 @@ export default function EditProfileScreen() {
   const handleSwitchToSalonConfirm = async () => {
     setIsSwitchingToSalon(true);
     try {
+      const parsedChairs = parseInt(newSalonChairsInput, 10);
+      const targetCapacity = (!isNaN(parsedChairs) && parsedChairs >= 1)
+        ? Math.min(50, parsedChairs)
+        : Math.max(1, Math.min(50, newSalonCapacity || 5));
       const targetName =
         newSalonNameInput.trim() ||
         fullName.trim() ||
         user?.name ||
         "Trimly Partner Salon";
-      const targetCapacity = Math.max(2, Math.min(50, newSalonCapacity || 5));
-      const res = await barberService.switchToSalon(targetName, targetCapacity);
+      const res = await barberService.switchToSalon({
+        salon_name: targetName,
+        capacity: targetCapacity,
+        staff_title: newSalonRole,
+        city: newSalonCityInput.trim() || city.trim() || undefined,
+        phone: newSalonPhoneInput.trim() || phone.trim() || undefined,
+        about_us: newSalonAboutInput.trim() || user?.about_us || undefined,
+      });
 
       if (res?.access_token) {
         await setAuthToken(res.access_token);
       }
 
       if (updateUser) {
-        updateUser({
+        updateUser(res?.user || {
           role: "salon",
           name: targetName,
           is_manager: true,
@@ -266,9 +281,11 @@ export default function EditProfileScreen() {
           parent_salon_name: null,
           is_sub_barber: false,
           capacity: targetCapacity,
+          staff_title: newSalonRole,
         });
       }
 
+      await setActiveMode("barber");
       setFullName(targetName);
       setSalonId(String(user?.id || res?.user?.id || ""));
       setVerifiedSalonName(null);
@@ -281,10 +298,13 @@ export default function EditProfileScreen() {
       showToast(
         res?.message ||
           (language === "fr"
-            ? "Compte converti en Salon avec succès ! Vous pouvez maintenant inviter et gérer du personnel."
-            : "Account successfully switched to Salon! You can now invite and manage staff."),
+            ? `Compte converti en Salon (${newSalonRole}) avec succès !`
+            : `Account successfully switched to Salon as ${newSalonRole}!`),
         "success"
       );
+
+      // Take user to the main dashboard of the partner app for barbers
+      router.replace("/(barbers)");
     } catch (err: any) {
       showToast(
         err?.message ||
@@ -1125,6 +1145,10 @@ export default function EditProfileScreen() {
                   activeOpacity={0.85}
                   onPress={() => {
                     setNewSalonNameInput(fullName || user?.name || "");
+                    setNewSalonChairsInput(String(newSalonCapacity || 5));
+                    setNewSalonCityInput(city || user?.city || "");
+                    setNewSalonPhoneInput(phone || user?.phone || "");
+                    setNewSalonAboutInput(user?.about_us || "");
                     setSwitchSalonModalVisible(true);
                   }}
                   style={[styles.salonActionBtn, { backgroundColor: colors.brand, marginTop: 4 }]}
@@ -1436,10 +1460,188 @@ export default function EditProfileScreen() {
               </View>
             </View>
 
+            {/* Role Selection: Manager vs Main Barber */}
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.secondaryText }}>
+                {language === "fr" ? "Choisissez votre rôle dans le salon :" : "Choose your operational salon role:"}
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {/* Salon Manager */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setNewSalonRole("Salon Manager")}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: newSalonRole === "Salon Manager" ? "rgba(199, 243, 107, 0.12)" : colors.surface,
+                    borderColor: newSalonRole === "Salon Manager" ? colors.brand : colors.border,
+                    borderWidth: 1.5,
+                    gap: 6,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Ionicons name="briefcase-outline" size={18} color={newSalonRole === "Salon Manager" ? colors.brand : colors.secondaryText} />
+                    {newSalonRole === "Salon Manager" && (
+                      <Ionicons name="checkmark-circle" size={16} color={colors.brand} />
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primaryText }}>
+                    {language === "fr" ? "Gérant du Salon" : "Salon Manager"}
+                  </Text>
+                  <Text style={{ fontSize: 10.5, color: colors.secondaryText, lineHeight: 14 }}>
+                    {language === "fr" ? "Gestion complète des opérations et de l'équipe" : "Full operations, staff and booking oversight"}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Main Barber */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setNewSalonRole("Main Barber & Studio Owner")}
+                  style={{
+                    flex: 1,
+                    padding: 12,
+                    borderRadius: 12,
+                    backgroundColor: newSalonRole === "Main Barber & Studio Owner" ? "rgba(199, 243, 107, 0.12)" : colors.surface,
+                    borderColor: newSalonRole === "Main Barber & Studio Owner" ? colors.brand : colors.border,
+                    borderWidth: 1.5,
+                    gap: 6,
+                  }}
+                >
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Ionicons name="cut-outline" size={18} color={newSalonRole === "Main Barber & Studio Owner" ? colors.brand : colors.secondaryText} />
+                    {newSalonRole === "Main Barber & Studio Owner" && (
+                      <Ionicons name="checkmark-circle" size={16} color={colors.brand} />
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primaryText }}>
+                    {language === "fr" ? "Barbier Principal" : "Main Barber"}
+                  </Text>
+                  <Text style={{ fontSize: 10.5, color: colors.secondaryText, lineHeight: 14 }}>
+                    {language === "fr" ? "Barbier en chef & gérant de l'établissement" : "Lead barber cutting hair & managing shop"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Chair Capacity Inputted by User */}
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: "700", color: colors.secondaryText }}>
+                {language === "fr" ? "Nombre de fauteuils / postes de coiffure :" : "Number of Chairs / Workstations:"}
+              </Text>
+              
+              {/* Stepper + Input */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    const current = parseInt(newSalonChairsInput, 10) || 5;
+                    const next = Math.max(1, current - 1);
+                    setNewSalonChairsInput(String(next));
+                    setNewSalonCapacity(next);
+                  }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 10,
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="remove" size={20} color={colors.primaryText} />
+                </TouchableOpacity>
+
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { flex: 1, backgroundColor: colors.surface, borderColor: colors.border, height: 44 },
+                  ]}
+                >
+                  <Ionicons name="cube-outline" size={17} color={colors.brand} />
+                  <TextInput
+                    style={[styles.input, { color: colors.primaryText, textAlign: "center", fontWeight: "800", fontSize: 15 }]}
+                    value={newSalonChairsInput}
+                    onChangeText={(val) => {
+                      const cleaned = val.replace(/[^0-9]/g, "");
+                      setNewSalonChairsInput(cleaned);
+                      const n = parseInt(cleaned, 10);
+                      if (!isNaN(n)) setNewSalonCapacity(n);
+                    }}
+                    keyboardType="number-pad"
+                    placeholder="5"
+                    placeholderTextColor={colors.inputPlaceholder}
+                    maxLength={3}
+                  />
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.secondaryText, marginRight: 8 }}>
+                    {language === "fr" ? "fauteuils" : "chairs"}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    const current = parseInt(newSalonChairsInput, 10) || 5;
+                    const next = Math.min(50, current + 1);
+                    setNewSalonChairsInput(String(next));
+                    setNewSalonCapacity(next);
+                  }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 10,
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="add" size={20} color={colors.primaryText} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Preset Chips */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {[2, 3, 5, 8, 10].map((cap) => (
+                  <TouchableOpacity
+                    key={cap}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setNewSalonChairsInput(String(cap));
+                      setNewSalonCapacity(cap);
+                    }}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 7,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: (parseInt(newSalonChairsInput, 10) === cap) ? colors.brand : colors.surface,
+                      borderColor: (parseInt(newSalonChairsInput, 10) === cap) ? colors.brand : colors.border,
+                      borderWidth: 1,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "800",
+                        color: (parseInt(newSalonChairsInput, 10) === cap) ? colors.onBrand : colors.primaryText,
+                      }}
+                    >
+                      {cap}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             {/* Salon Name Input */}
             <View style={{ gap: 6 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.secondaryText }}>
-                {language === "fr" ? "Nom officiel du salon" : "Official Salon Name"}
+                {language === "fr" ? "Nom officiel du salon :" : "Official Salon Name:"}
               </Text>
               <View
                 style={[
@@ -1458,39 +1660,73 @@ export default function EditProfileScreen() {
               </View>
             </View>
 
-            {/* Chair Capacity */}
+            {/* Salon City & Phone */}
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.secondaryText }}>
+                  {language === "fr" ? "Ville / Région :" : "City / Region:"}
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <Ionicons name="location-outline" size={16} color={colors.brand} />
+                  <TextInput
+                    style={[styles.input, { color: colors.primaryText }]}
+                    value={newSalonCityInput}
+                    onChangeText={setNewSalonCityInput}
+                    placeholder="Yaoundé"
+                    placeholderTextColor={colors.inputPlaceholder}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: colors.secondaryText }}>
+                  {language === "fr" ? "Téléphone :" : "Phone Contact:"}
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <Ionicons name="call-outline" size={16} color={colors.brand} />
+                  <TextInput
+                    style={[styles.input, { color: colors.primaryText }]}
+                    value={newSalonPhoneInput}
+                    onChangeText={setNewSalonPhoneInput}
+                    placeholder="+237 6..."
+                    placeholderTextColor={colors.inputPlaceholder}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* About Us / Description */}
             <View style={{ gap: 6 }}>
               <Text style={{ fontSize: 12, fontWeight: "700", color: colors.secondaryText }}>
-                {language === "fr" ? "Nombre initial de fauteuils / postes" : "Initial Number of Chairs / Stations"}
+                {language === "fr" ? "À propos du salon (Bio) :" : "Salon Bio / About Us:"}
               </Text>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                {[3, 5, 8, 10].map((cap) => (
-                  <TouchableOpacity
-                    key={cap}
-                    activeOpacity={0.8}
-                    onPress={() => setNewSalonCapacity(cap)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 10,
-                      borderRadius: 10,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: newSalonCapacity === cap ? colors.brand : colors.surface,
-                      borderColor: newSalonCapacity === cap ? colors.brand : colors.border,
-                      borderWidth: 1,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: "800",
-                        color: newSalonCapacity === cap ? colors.onBrand : colors.primaryText,
-                      }}
-                    >
-                      {cap} {language === "fr" ? "faut." : "chairs"}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View
+                style={[
+                  styles.inputWrapper,
+                  { backgroundColor: colors.surface, borderColor: colors.border, height: 68, alignItems: "flex-start", paddingTop: 8 },
+                ]}
+              >
+                <Ionicons name="document-text-outline" size={16} color={colors.brand} style={{ marginTop: 2 }} />
+                <TextInput
+                  style={[styles.input, { color: colors.primaryText, textAlignVertical: "top", height: "100%" }]}
+                  value={newSalonAboutInput}
+                  onChangeText={setNewSalonAboutInput}
+                  placeholder={language === "fr" ? "Description de votre salon..." : "Describe your salon vibe, team and specialties..."}
+                  placeholderTextColor={colors.inputPlaceholder}
+                  multiline
+                  numberOfLines={2}
+                />
               </View>
             </View>
 
@@ -1521,7 +1757,7 @@ export default function EditProfileScreen() {
                 disabled={isSwitchingToSalon}
                 onPress={handleSwitchToSalonConfirm}
                 style={{
-                  flex: 1.5,
+                  flex: 1.6,
                   flexDirection: "row",
                   paddingVertical: 12,
                   borderRadius: 12,
@@ -1537,7 +1773,7 @@ export default function EditProfileScreen() {
                   <>
                     <Ionicons name="checkmark-circle" size={17} color={colors.onBrand} />
                     <Text style={{ fontSize: 13, fontWeight: "800", color: colors.onBrand }}>
-                      {language === "fr" ? "Confirmer le passage" : "Confirm Switch"}
+                      {language === "fr" ? "Confirmer & Passer au Salon" : "Confirm & Switch to Salon"}
                     </Text>
                   </>
                 )}

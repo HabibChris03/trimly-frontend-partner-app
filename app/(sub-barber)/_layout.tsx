@@ -9,10 +9,14 @@ export default function SubBarberTabLayout() {
   const { user } = useAuth();
   const { language } = useLanguage();
 
+  const isSalonOwnerOrManager = Boolean(
+    user?.role === "salon" ||
+    (user as any)?.is_manager ||
+    (user as any)?.has_admin_rights
+  );
   const isSubBarber = Boolean(
-    user?.parent_salon_id ||
-      user?.is_sub_barber ||
-      (user as any)?.staff_title
+    !isSalonOwnerOrManager &&
+    (user?.parent_salon_id || user?.is_sub_barber)
   );
 
   // If user is a solo barber or salon owner, redirect to full barber dashboard

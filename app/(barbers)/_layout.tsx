@@ -9,10 +9,14 @@ export default function BarberTabLayout() {
   const colors = useColors();
   const { user } = useAuth();
 
+  const isSalonOwnerOrManager = Boolean(
+    user?.role === "salon" ||
+    (user as any)?.is_manager ||
+    (user as any)?.has_admin_rights
+  );
   const isSubBarber = Boolean(
-    user?.parent_salon_id ||
-    user?.is_sub_barber ||
-    (user as any)?.staff_title
+    !isSalonOwnerOrManager &&
+    (user?.parent_salon_id || user?.is_sub_barber)
   );
 
   if (isSubBarber) {

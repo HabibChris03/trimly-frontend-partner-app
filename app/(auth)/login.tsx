@@ -57,10 +57,14 @@ export default function LoginScreen() {
           return;
         }
 
+        const isSalonOwnerOrManager = Boolean(
+          res?.user?.role === "salon" ||
+          (res?.user as any)?.is_manager ||
+          (res?.user as any)?.has_admin_rights
+        );
         const isSubBarber = Boolean(
-          res?.user?.parent_salon_id ||
-          res?.user?.is_sub_barber ||
-          (res?.user as any)?.staff_title
+          !isSalonOwnerOrManager &&
+          (res?.user?.parent_salon_id || res?.user?.is_sub_barber)
         );
 
         showToast("Signed in successfully.", "success");
@@ -114,10 +118,14 @@ export default function LoginScreen() {
           return;
         }
 
+        const isSalonOwnerOrManager = Boolean(
+          res?.user?.role === "salon" ||
+          (res?.user as any)?.is_manager ||
+          (res?.user as any)?.has_admin_rights
+        );
         const isSubBarber = Boolean(
-          res?.user?.parent_salon_id ||
-          res?.user?.is_sub_barber ||
-          (res?.user as any)?.staff_title
+          !isSalonOwnerOrManager &&
+          (res?.user?.parent_salon_id || res?.user?.is_sub_barber)
         );
 
         if (isSubBarber) {
