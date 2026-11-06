@@ -410,7 +410,7 @@ export default function SubBarberProfileScreen() {
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Ionicons name="time-outline" size={17} color="#F59E0B" />
-                    <Text style={{ fontSize: 13, fontWeight: "700", color="#F59E0B" }}>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#F59E0B" }}>
                       {language === "fr" ? "Demande de départ en attente d'approbation" : "Leave Request Pending Manager Approval"}
                     </Text>
                   </View>
@@ -455,7 +455,7 @@ export default function SubBarberProfileScreen() {
                   }}
                 >
                   <Ionicons name="exit-outline" size={16} color="#EF4444" />
-                  <Text style={{ fontSize: 13, fontWeight: "700", color="#EF4444" }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#EF4444" }}>
                     {language === "fr" ? "Demander à quitter le salon" : "Request to Leave Salon"}
                   </Text>
                 </TouchableOpacity>
