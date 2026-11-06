@@ -1443,4 +1443,26 @@ export const barberService = {
       method: "DELETE",
     });
   },
+
+  /**
+   * Upgrades an independent solo barber or hairdresser account to a full Salon Manager account.
+   */
+  async switchToSalon(salonName?: string, capacity?: number): Promise<any> {
+    return await apiRequest("/api/v1/profiles/switch-to-salon", {
+      method: "POST",
+      body: JSON.stringify({
+        salon_name: salonName,
+        capacity: capacity || 5,
+      }),
+    });
+  },
+
+  /**
+   * Switches a salon manager account back to an independent solo barber/hairdresser account.
+   */
+  async switchToSolo(): Promise<any> {
+    return await apiRequest("/api/v1/profiles/switch-to-solo", {
+      method: "POST",
+    });
+  },
 };
