@@ -106,6 +106,10 @@ export default function EditProfileScreen() {
   const [newSalonNameInput, setNewSalonNameInput] = useState(user?.name || "");
   const [newSalonCapacity, setNewSalonCapacity] = useState(5);
   const [isSwitchingToSalon, setIsSwitchingToSalon] = useState(false);
+  const [isLeavingSalon, setIsLeavingSalon] = useState(false);
+  const [leaveSalonModalVisible, setLeaveSalonModalVisible] = useState(false);
+  const [isSwitchingToSolo, setIsSwitchingToSolo] = useState(false);
+  const [switchToSoloModalVisible, setSwitchToSoloModalVisible] = useState(false);
 
   // Join a Salon state
   const [joinSalonModalVisible, setJoinSalonModalVisible] = useState(false);
@@ -294,7 +298,86 @@ export default function EditProfileScreen() {
     }
   };
 
-  const isSalonManager = Boolean(user?.role === "salon");
+  const isSalon = Boolean(user?.role === "salon");
+  const isUnderSalon = Boolean(user?.parent_salon_id);
+  const isSolo = !isSalon && !isUnderSalon;
+  const isSalonManager = isSalon;
+
+  const handleConfirmLeaveSalon = async () => {
+    setIsLeavingSalon(true);
+    try {
+      await barberService.unlinkFromSalon();
+      if (updateUser) {
+        updateUser({
+          parent_salon_id: null,
+          parent_salon_name: null,
+          staff_status: "Active",
+          is_sub_barber: false,
+          staff_title: user?.role === "hairdresser" ? "Hairdresser" : "Solo Barber",
+        });
+      }
+      setSalonId("");
+      setVerifiedSalonName(null);
+      setLeaveSalonModalVisible(false);
+      if (refreshUser) {
+        await refreshUser().catch(() => null);
+      }
+      showToast(
+        language === "fr"
+          ? "Vous avez quitté le salon avec succès. Vous opérez désormais en tant que professionnel solo."
+          : "You have successfully left the salon. You are now operating as an independent solo provider.",
+        "success"
+      );
+    } catch (err: any) {
+      showToast(
+        err?.message ||
+          (language === "fr" ? "Erreur lors du départ du salon." : "Failed to leave salon."),
+        "error"
+      );
+    } finally {
+      setIsLeavingSalon(false);
+    }
+  };
+
+  const handleConfirmSwitchToSolo = async () => {
+    setIsSwitchingToSolo(true);
+    try {
+      const res = await barberService.switchToSolo();
+      if (res?.access_token) {
+        await setAuthToken(res.access_token);
+      }
+      if (updateUser) {
+        updateUser({
+          role: "barber",
+          is_manager: false,
+          has_admin_rights: false,
+          parent_salon_id: null,
+          parent_salon_name: null,
+          capacity: 1,
+          staff_title: "Solo Barber",
+        });
+      }
+      setSalonId("");
+      setVerifiedSalonName(null);
+      setSwitchToSoloModalVisible(false);
+      if (refreshUser) {
+        await refreshUser().catch(() => null);
+      }
+      showToast(
+        language === "fr"
+          ? "Compte converti en barbier solo avec succès."
+          : "Account converted to independent solo barber successfully.",
+        "success"
+      );
+    } catch (err: any) {
+      showToast(
+        err?.message || (language === "fr" ? "Échec de la transition." : "Failed to switch to solo."),
+        "error"
+      );
+    } finally {
+      setIsSwitchingToSolo(false);
+    }
+  };
 
   const handleCopySalonId = () => {
     const idToCopy = String(user?.id || 4);
@@ -678,12 +761,15 @@ export default function EditProfileScreen() {
                 {/* Salon Affiliation & Salon ID Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.secondaryText }]}>
-            {isSalonManager
+            {isSalon
               ? (language === "fr" ? "IDENTIFIANT DU SALON & GESTION DU PERSONNEL" : "SALON IDENTIFIER FOR STAFF REGISTRATION")
-              : (language === "fr" ? "REJOINDRE OU PASSER EN COMPTE SALON" : "JOIN OR SWITCH TO A SALON")}
+              : isUnderSalon
+                ? (language === "fr" ? "AFFILIATION AU SALON & STATUT" : "SALON AFFILIATION & STATUS")
+                : (language === "fr" ? "REJOINDRE UN SALON OU PASSER EN COMPTE SALON" : "JOIN OR SWITCH TO A SALON")}
           </Text>
 
-          {isSalonManager ? (
+          {isSalon ? (
+            /* CASE 1: SALON OWNER / STUDIO */
             <View
               style={[
                 styles.salonCard,
@@ -716,10 +802,24 @@ export default function EditProfileScreen() {
                   {language === "fr" ? `Copier l'ID du salon #${user?.id || 4}` : `Copy Salon ID #${user?.id || 4}`}
                 </Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setSwitchToSoloModalVisible(true)}
+                style={[
+                  styles.salonActionBtn,
+                  { backgroundColor: colors.elevated, borderColor: colors.border, borderWidth: 1, marginTop: 10 },
+                ]}
+              >
+                <Ionicons name="person-outline" size={16} color={colors.primaryText} />
+                <Text style={[styles.salonActionBtnText, { color: colors.primaryText }]}>
+                  {language === "fr" ? "Passer en barbier solo indépendant" : "Switch to Independent Solo Barber"}
+                </Text>
+              </TouchableOpacity>
             </View>
-          ) : (
+          ) : isUnderSalon ? (
+            /* CASE 2: PROVIDER WORKING UNDER A SALON */
             <View style={{ gap: 14 }}>
-              {/* Option 1: Switch to a Salon (as a solo barber/hairdresser you cannot have staff, but can switch to a salon) */}
               <View
                 style={[
                   styles.salonCard,
@@ -732,143 +832,101 @@ export default function EditProfileScreen() {
               >
                 <View style={styles.salonCardHeader}>
                   <View style={[styles.salonIconBox, { backgroundColor: "rgba(199, 243, 107, 0.15)" }]}>
-                    <Ionicons name="storefront" size={20} color={colors.brand} />
+                    <Ionicons name="business" size={20} color={colors.brand} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
                       <Text style={[styles.salonCardTitle, { color: colors.primaryText }]}>
-                        {language === "fr" ? "Passer en compte Salon" : "Switch to a Salon"}
+                        {user?.parent_salon_name || verifiedSalonName || `Salon #${user?.parent_salon_id}`}
                       </Text>
                       <View style={{ backgroundColor: "rgba(199, 243, 107, 0.15)", borderColor: colors.brand, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
                         <Text style={{ fontSize: 10, fontWeight: "800", color: colors.brand }}>
-                          {language === "fr" ? "RECRUTER DU PERSONNEL" : "GET & INVITE STAFF"}
+                          {language === "fr" ? "MEMBRE DU PERSONNEL" : "SALON EMPLOYEE"}
                         </Text>
                       </View>
                     </View>
                     <Text style={[styles.salonCardSubtitle, { color: colors.secondaryText, marginTop: 4 }]}>
                       {language === "fr"
-                        ? "En tant que coiffeur ou barbier solo, vous ne pouvez pas avoir de personnel. Passez votre compte en Salon si vous souhaitez inviter, recruter et gérer des collaborateurs sous votre établissement."
-                        : "As a solo barber or hairdresser, you cannot have staff. Switch your account to a Salon if you want to get or invite staff to work under your establishment."}
+                        ? `Vous travaillez actuellement sous ce salon (${user?.parent_salon_name || `Salon #${user?.parent_salon_id}`}). Lorsque vous êtes sous un salon, vous ne pouvez passer en barbier solo que si vous quittez d'abord le salon.`
+                        : `You are currently working under this salon (${user?.parent_salon_name || `Salon #${user?.parent_salon_id}`}). When you are under a salon, you can switch as a solo barber only if you have left the salon.`}
                     </Text>
                   </View>
                 </View>
 
+                {/* Primary Action: Leave Salon to become solo */}
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  onPress={() => {
-                    setNewSalonNameInput(fullName || user?.name || "");
-                    setSwitchSalonModalVisible(true);
-                  }}
-                  style={[styles.salonActionBtn, { backgroundColor: colors.brand, marginTop: 4 }]}
+                  onPress={() => setLeaveSalonModalVisible(true)}
+                  style={[
+                    styles.salonActionBtn,
+                    { backgroundColor: "rgba(239, 68, 68, 0.12)", borderColor: "rgba(239, 68, 68, 0.35)", borderWidth: 1, marginTop: 6 },
+                  ]}
                 >
-                  <Ionicons name="business" size={16} color={colors.onBrand} />
-                  <Text style={[styles.salonActionBtnText, { color: colors.onBrand }]}>
-                    {language === "fr" ? "Passer en compte Salon" : "Switch to a Salon Account"}
+                  <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+                  <Text style={[styles.salonActionBtnText, { color: "#EF4444" }]}>
+                    {language === "fr" ? "Quitter le salon pour passer en Solo" : "Leave Salon to Switch to Solo"}
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Option 2: Join an existing Salon */}
+              {/* Informational Callout */}
+              <View
+                style={{
+                  backgroundColor: colors.elevated,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  padding: 12,
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 8,
+                }}
+              >
+                <Ionicons name="information-circle-outline" size={18} color={colors.secondaryText} style={{ marginTop: 1 }} />
+                <Text style={{ fontSize: 12, color: colors.secondaryText, flex: 1, lineHeight: 17 }}>
+                  {language === "fr"
+                    ? "Pour créer votre propre salon avec du personnel, quittez d'abord votre salon actuel ci-dessus afin de redevenir solo."
+                    : "To create your own salon with staff, first leave your current salon above to return to solo status."}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            /* CASE 3: INDEPENDENT SOLO BARBER / HAIRDRESSER */
+            <View style={{ gap: 14 }}>
+              {/* Option A: Join a Salon using Salon ID */}
               <View
                 style={[
                   styles.salonCard,
-                  { backgroundColor: colors.card, borderColor: colors.border },
+                  { backgroundColor: colors.card, borderColor: "rgba(199, 243, 107, 0.35)", borderWidth: 1.5 },
                 ]}
               >
                 <View style={styles.salonCardHeader}>
-                  <View style={[styles.salonIconBox, { backgroundColor: colors.elevated }]}>
+                  <View style={[styles.salonIconBox, { backgroundColor: "rgba(199, 243, 107, 0.15)" }]}>
                     <Ionicons name="git-network-outline" size={20} color={colors.brand} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.salonCardTitle, { color: colors.primaryText }]}>
-                      {language === "fr" ? "Rejoindre un salon" : "Join a Salon"}
-                    </Text>
-                    <Text style={[styles.salonCardSubtitle, { color: colors.secondaryText }]}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                      <Text style={[styles.salonCardTitle, { color: colors.primaryText }]}>
+                        {language === "fr" ? "Rejoindre un salon via l'ID Salon" : "Join a Salon Using Salon ID"}
+                      </Text>
+                      <View style={{ backgroundColor: "rgba(199, 243, 107, 0.12)", borderColor: colors.brand, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: "800", color: colors.brand }}>
+                          {language === "fr" ? "VIA SALON ID" : "VIA SALON ID"}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.salonCardSubtitle, { color: colors.secondaryText, marginTop: 4 }]}>
                       {language === "fr"
-                        ? "Recherchez un salon par nom ou entrez l'ID fourni par votre gérant pour rattacher votre fauteuil à son salon."
-                        : "Search for a salon by name or enter the Salon ID provided by your manager to link your chair."}
+                        ? "En tant que coiffeur ou barbier solo, vous n'avez pas d'ID de salon. Vous avez l'opportunité de rejoindre un salon en utilisant son identifiant unique (Salon ID) ou en effectuant une recherche."
+                        : "As a solo barber or hairdresser, you do not have a Salon ID. You only have the opportunity to join a salon using their Salon ID or by searching."}
                     </Text>
                   </View>
                 </View>
 
-                {/* Pending Join Request Banner if active */}
-                {pendingJoinRequest ? (
-                  <View
-                    style={{
-                      backgroundColor: colors.elevated,
-                      borderColor: colors.border,
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      padding: 12,
-                      gap: 8,
-                    }}
-                  >
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Ionicons name="time" size={16} color={colors.brand} />
-                        <Text style={{ fontSize: 13, fontWeight: "700", color: colors.primaryText }}>
-                          {pendingJoinRequest.salon_name || "Partner Salon"}
-                        </Text>
-                      </View>
-                      <View style={{ backgroundColor: "rgba(199, 243, 107, 0.15)", borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.brand }}>
-                          {language === "fr" ? "En attente" : "Pending"}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text style={{ fontSize: 11.5, color: colors.secondaryText }}>
-                      {language === "fr"
-                        ? `Demande envoyée à ${pendingJoinRequest.salon_name}. En attente de validation par le gérant.`
-                        : `Request sent to ${pendingJoinRequest.salon_name}. Waiting for manager approval.`}
-                    </Text>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      disabled={isCancellingJoinRequest}
-                      onPress={handleCancelPendingJoinRequest}
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                        backgroundColor: "rgba(239, 68, 68, 0.1)",
-                        borderWidth: 1,
-                        borderColor: "rgba(239, 68, 68, 0.3)",
-                        borderRadius: 8,
-                        paddingVertical: 7,
-                      }}
-                    >
-                      {isCancellingJoinRequest ? (
-                        <ActivityIndicator size="small" color="#EF4444" />
-                      ) : (
-                        <>
-                          <Ionicons name="close-circle-outline" size={14} color="#EF4444" />
-                          <Text style={{ fontSize: 12, fontWeight: "700", color: "#EF4444" }}>
-                            {language === "fr" ? "Annuler la demande" : "Cancel Join Request"}
-                          </Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={() => setJoinSalonModalVisible(true)}
-                    style={[
-                      styles.salonActionBtn,
-                      { backgroundColor: colors.elevated, borderColor: colors.border, borderWidth: 1 },
-                    ]}
-                  >
-                    <Ionicons name="search" size={16} color={colors.brand} />
-                    <Text style={[styles.salonActionBtnText, { color: colors.primaryText }]}>
-                      {language === "fr" ? "Rechercher et rejoindre un salon" : "Search & Join a Salon"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Direct Salon ID entry */}
+                {/* Direct Salon ID Entry */}
                 <View style={{ gap: 6, marginTop: 4 }}>
                   <Text style={{ fontSize: 11.5, fontWeight: "700", color: colors.secondaryText }}>
-                    {language === "fr" ? "Ou entrez directement l'ID du salon :" : "Or enter Salon ID directly:"}
+                    {language === "fr" ? "Entrez l'ID du salon :" : "Enter Salon ID:"}
                   </Text>
                   <View style={styles.salonInputRow}>
                     <View
@@ -928,7 +986,7 @@ export default function EditProfileScreen() {
                   </View>
                 </View>
 
-                {verifiedSalonName ? (
+                {verifiedSalonName && (
                   <View
                     style={[
                       styles.verifiedSalonBox,
@@ -941,7 +999,7 @@ export default function EditProfileScreen() {
                         {verifiedSalonName}
                       </Text>
                       <Text style={[styles.verifiedSalonSub, { color: colors.secondaryText }]}>
-                        {language === "fr" ? "Rattaché à ce salon. Enregistrez avec le bouton Sauvegarder." : "Linked under this salon. Tap Save to apply."}
+                        {language === "fr" ? "Salon trouvé ! Appuyez sur Enregistrer en bas pour confirmer." : "Salon found! Tap Save Profile below to confirm."}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -951,16 +1009,73 @@ export default function EditProfileScreen() {
                       }}
                       style={styles.unlinkMiniBtn}
                     >
-                      <Text style={styles.unlinkMiniText}>{language === "fr" ? "Quitter" : "Leave"}</Text>
+                      <Text style={styles.unlinkMiniText}>{language === "fr" ? "Effacer" : "Clear"}</Text>
                     </TouchableOpacity>
                   </View>
-                ) : null}
+                )}
 
-                <Text style={[styles.salonHelperNote, { color: colors.secondaryText }]}>
-                  {language === "fr"
-                    ? "Laissez vide ou mettez 0 pour exercer en tant que coiffeur indépendant / freelance."
-                    : "Leave blank or set to 0 to operate as an independent / freelance barber."}
-                </Text>
+                {/* Or Search Salon by Name */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setJoinSalonModalVisible(true)}
+                  style={[
+                    styles.salonActionBtn,
+                    { backgroundColor: colors.elevated, borderColor: colors.border, borderWidth: 1, marginTop: 4 },
+                  ]}
+                >
+                  <Ionicons name="search" size={16} color={colors.brand} />
+                  <Text style={[styles.salonActionBtnText, { color: colors.primaryText }]}>
+                    {language === "fr" ? "Rechercher un salon par nom" : "Search Salon by Name"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Option B: Switch to a Salon (as a solo barber you cannot have staff, but can switch to a salon) */}
+              <View
+                style={[
+                  styles.salonCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View style={styles.salonCardHeader}>
+                  <View style={[styles.salonIconBox, { backgroundColor: colors.elevated }]}>
+                    <Ionicons name="storefront" size={20} color={colors.brand} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                      <Text style={[styles.salonCardTitle, { color: colors.primaryText }]}>
+                        {language === "fr" ? "Passer en compte Salon" : "Switch to a Salon"}
+                      </Text>
+                      <View style={{ backgroundColor: "rgba(199, 243, 107, 0.15)", borderColor: colors.brand, borderWidth: 1, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ fontSize: 10, fontWeight: "800", color: colors.brand }}>
+                          {language === "fr" ? "RECRUTER DU PERSONNEL" : "GET & INVITE STAFF"}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.salonCardSubtitle, { color: colors.secondaryText, marginTop: 4 }]}>
+                      {language === "fr"
+                        ? "En tant que coiffeur ou barbier solo, vous ne pouvez pas avoir de personnel. Passez votre compte en Salon si vous souhaitez inviter, recruter et gérer des collaborateurs sous votre établissement."
+                        : "As a solo barber or hairdresser, you cannot have staff. Switch your account to a Salon if you want to get or invite staff to work under your establishment."}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setNewSalonNameInput(fullName || user?.name || "");
+                    setSwitchSalonModalVisible(true);
+                  }}
+                  style={[styles.salonActionBtn, { backgroundColor: colors.brand, marginTop: 4 }]}
+                >
+                  <Ionicons name="business" size={16} color={colors.onBrand} />
+                  <Text style={[styles.salonActionBtnText, { color: colors.onBrand }]}>
+                    {language === "fr" ? "Passer en compte Salon" : "Switch to a Salon Account"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -1365,6 +1480,168 @@ export default function EditProfileScreen() {
                     <Ionicons name="checkmark-circle" size={17} color={colors.onBrand} />
                     <Text style={{ fontSize: 13, fontWeight: "800", color: colors.onBrand }}>
                       {language === "fr" ? "Confirmer le passage" : "Confirm Switch"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </CustomModal>
+
+        {/* Leave Salon Confirmation Modal */}
+        <CustomModal
+          visible={leaveSalonModalVisible}
+          onClose={() => !isLeavingSalon && setLeaveSalonModalVisible(false)}
+          title={language === "fr" ? "Quitter le salon" : "Leave Salon"}
+        >
+          <View style={{ gap: 14, paddingVertical: 4 }}>
+            <View
+              style={{
+                backgroundColor: "rgba(239, 68, 68, 0.1)",
+                borderColor: "rgba(239, 68, 68, 0.3)",
+                borderWidth: 1,
+                borderRadius: 12,
+                padding: 12,
+                gap: 8,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="warning" size={18} color="#EF4444" />
+                <Text style={{ fontSize: 13.5, fontWeight: "800", color: colors.primaryText }}>
+                  {language === "fr" ? "Passer en professionnel solo" : "Switch to Solo Provider"}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.secondaryText, lineHeight: 17 }}>
+                {language === "fr"
+                  ? `Vous serez dissocié(e) de ${user?.parent_salon_name || "votre salon actuel"} et opérerez en indépendant(e). Vos rendez-vous existants et votre portfolio restent conservés.`
+                  : `You will be disconnected from ${user?.parent_salon_name || "your current salon"} and will operate as an independent solo provider. Your existing appointments and portfolio remain safe.`}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                disabled={isLeavingSalon}
+                onPress={() => setLeaveSalonModalVisible(false)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: colors.elevated,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.secondaryText }}>
+                  {language === "fr" ? "Annuler" : "Cancel"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={isLeavingSalon}
+                onPress={handleConfirmLeaveSalon}
+                style={{
+                  flex: 1.5,
+                  flexDirection: "row",
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: "#EF4444",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {isLeavingSalon ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="log-out-outline" size={17} color="#FFFFFF" />
+                    <Text style={{ fontSize: 13, fontWeight: "800", color: "#FFFFFF" }}>
+                      {language === "fr" ? "Confirmer le départ" : "Confirm Leave"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </CustomModal>
+
+        {/* Switch to Solo Confirmation Modal (for Salon Owners) */}
+        <CustomModal
+          visible={switchToSoloModalVisible}
+          onClose={() => !isSwitchingToSolo && setSwitchToSoloModalVisible(false)}
+          title={language === "fr" ? "Passer en barbier solo" : "Switch to Solo Barber"}
+        >
+          <View style={{ gap: 14, paddingVertical: 4 }}>
+            <View
+              style={{
+                backgroundColor: "rgba(245, 158, 11, 0.1)",
+                borderColor: "rgba(245, 158, 11, 0.3)",
+                borderWidth: 1,
+                borderRadius: 12,
+                padding: 12,
+                gap: 8,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="alert-circle" size={18} color="#F59E0B" />
+                <Text style={{ fontSize: 13.5, fontWeight: "800", color: colors.primaryText }}>
+                  {language === "fr" ? "Convertir en compte Solo" : "Convert to Solo Account"}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.secondaryText, lineHeight: 17 }}>
+                {language === "fr"
+                  ? "Votre compte passera en barbier solo indépendant. Vous n'aurez plus de gestion de fauteuils ou de personnel."
+                  : "Your account will switch to an independent solo barber. You will no longer manage staff or salon chairs."}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                disabled={isSwitchingToSolo}
+                onPress={() => setSwitchToSoloModalVisible(false)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: colors.elevated,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.secondaryText }}>
+                  {language === "fr" ? "Annuler" : "Cancel"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                disabled={isSwitchingToSolo}
+                onPress={handleConfirmSwitchToSolo}
+                style={{
+                  flex: 1.5,
+                  flexDirection: "row",
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: colors.brand,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                {isSwitchingToSolo ? (
+                  <ActivityIndicator size="small" color={colors.onBrand} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={17} color={colors.onBrand} />
+                    <Text style={{ fontSize: 13, fontWeight: "800", color: colors.onBrand }}>
+                      {language === "fr" ? "Confirmer Solo" : "Confirm Solo"}
                     </Text>
                   </>
                 )}

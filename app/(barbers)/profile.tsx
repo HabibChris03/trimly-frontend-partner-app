@@ -695,7 +695,11 @@ export default function BarberProfileSettingsScreen() {
 
         {/* Section: Salon Affiliation / Salon ID Field */}
         <Text style={[styles.groupSectionHeader, { color: colors.secondaryText }]}>
-          {isSalonManager ? (language === "fr" ? "ID DU SALON & INSCRIPTION DU PERSONNEL" : "SALON ID & STAFF REGISTRATION") : (language === "fr" ? "AFFILIATION AU SALON & ID DU SALON" : "SALON AFFILIATION & SALON ID")}
+          {isSalonManager
+          ? (language === "fr" ? "ID DU SALON & INSCRIPTION DU PERSONNEL" : "SALON ID & STAFF REGISTRATION")
+          : user?.parent_salon_id
+            ? (language === "fr" ? "AFFILIATION AU SALON" : "SALON AFFILIATION")
+            : (language === "fr" ? "REJOINDRE UN SALON VIA L'ID SALON" : "JOIN A SALON VIA SALON ID")}
         </Text>
 
         {isSalonManager ? (
