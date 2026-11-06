@@ -324,78 +324,78 @@ export default function SubBarberProfileScreen() {
           </View>
         </View>
 
-        {/* Salon Affiliation & Salon ID Card */}
-        <View
-          style={[
-            styles.sectionCard,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
-          <View style={styles.sectionHeaderRow}>
-            <Text style={[styles.sectionTitle, { color: colors.secondarytext, marginBottom: 0 }]}>{user?.parent_salon_id ? (language === "fr" ? "AFFILIATION AU SALON" : "SALON AFFILIATION") : (language === "fr" ? "IDENTIFIANT DU SALON" : "SALON IDENTIFIER")}</Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => router.push("/Pages/edit-profile")}
-              style={styles.changeSalonBtn}
-            >
-              <Ionicons name="create-outline" size={13} color={colors.primary} />
-              <Text style={[styles.changeSalonText, { color: colors.primary }]}>
-                {user?.parent_salon_id ? (language === "fr" ? "Modifier l'ID" : "Change ID") : (language === "fr" ? "Définir l'ID Salon" : "Set Salon ID")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
+        {/* Salon Affiliation & Salon ID Card (Only shown when under a salon) */}
+        {Boolean(user?.parent_salon_id) && (
           <View
             style={[
-              styles.salonAffiliationBox,
-              {
-                backgroundColor: colors.background,
-                borderColor: user?.parent_salon_id ? "rgba(199, 243, 107, 0.25)" : colors.border,
-              },
+              styles.sectionCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: colors.secondarytext, marginBottom: 0 }]}>
+                {language === "fr" ? "AFFILIATION AU SALON" : "SALON AFFILIATION"}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push("/Pages/edit-profile")}
+                style={styles.changeSalonBtn}
+              >
+                <Ionicons name="create-outline" size={13} color={colors.primary} />
+                <Text style={[styles.changeSalonText, { color: colors.primary }]}>
+                  {language === "fr" ? "Modifier l'ID" : "Change ID"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <View
               style={[
-                styles.salonAffiliationIcon,
-                { backgroundColor: "rgba(199, 243, 107, 0.12)" },
+                styles.salonAffiliationBox,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: "rgba(199, 243, 107, 0.25)",
+                },
               ]}
             >
-              <Ionicons name="business" size={20} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={styles.salonIdBadgeRow}>
-                <Text style={[styles.salonAffiliationName, { color: colors.primarytext }]} numberOfLines={1}>
-                  {user?.parent_salon_name || (user?.parent_salon_id ? `Salon #${user.parent_salon_id}` : "Independent Stylist")}
-                </Text>
-                <View
-                  style={[
-                    styles.idNumberBadge,
-                    {
-                      backgroundColor: user?.parent_salon_id ? colors.primary : colors.surface,
-                      borderColor: user?.parent_salon_id ? colors.primary : colors.border,
-                    },
-                  ]}
-                >
-                  <Text
+              <View
+                style={[
+                  styles.salonAffiliationIcon,
+                  { backgroundColor: "rgba(199, 243, 107, 0.12)" },
+                ]}
+              >
+                <Ionicons name="business" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.salonIdBadgeRow}>
+                  <Text style={[styles.salonAffiliationName, { color: colors.primarytext }]} numberOfLines={1}>
+                    {user?.parent_salon_name || `Salon #${user?.parent_salon_id}`}
+                  </Text>
+                  <View
                     style={[
-                      styles.idNumberText,
-                      { color: user?.parent_salon_id ? colors.onBrand : colors.secondarytext },
+                      styles.idNumberBadge,
+                      {
+                        backgroundColor: colors.primary,
+                        borderColor: colors.primary,
+                      },
                     ]}
                   >
-                    {user?.parent_salon_id ? `Salon #${user.parent_salon_id}` : (language === "fr" ? "Barbier Solo (Sans ID Salon)" : "Solo Barber (No Salon ID)")}
-                  </Text>
+                    <Text
+                      style={[
+                        styles.idNumberText,
+                        { color: colors.onBrand },
+                      ]}
+                    >
+                      {`Salon #${user?.parent_salon_id}`}
+                    </Text>
+                  </View>
                 </View>
+                <Text style={[styles.salonAffiliationDesc, { color: colors.secondarytext }]}>
+                  Assigned to salon floor. Your bookings and chair revenue sync here.
+                </Text>
               </View>
-              <Text style={[styles.salonAffiliationDesc, { color: colors.secondarytext }]}>
-                {user?.parent_salon_id
-                  ? "Assigned to salon floor. Your bookings and chair revenue sync here."
-                  : "Not linked to a salon floor. Enter a Salon ID in Edit Profile to sync."}
-              </Text>
             </View>
-          </View>
 
-          {/* Leave Salon Request Action */}
-          {user?.parent_salon_id ? (
+            {/* Leave Salon Request Action */}
             <View style={{ marginTop: 12 }}>
               {hasPendingLeave ? (
                 <View
@@ -410,7 +410,7 @@ export default function SubBarberProfileScreen() {
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                     <Ionicons name="time-outline" size={17} color="#F59E0B" />
-                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#F59E0B" }}>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color="#F59E0B" }}>
                       {language === "fr" ? "Demande de départ en attente d'approbation" : "Leave Request Pending Manager Approval"}
                     </Text>
                   </View>
@@ -455,14 +455,14 @@ export default function SubBarberProfileScreen() {
                   }}
                 >
                   <Ionicons name="exit-outline" size={16} color="#EF4444" />
-                  <Text style={{ fontSize: 13, fontWeight: "700", color: "#EF4444" }}>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color="#EF4444" }}>
                     {language === "fr" ? "Demander à quitter le salon" : "Request to Leave Salon"}
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
-          ) : null}
-        </View>
+          </View>
+        )}
 
         {/* My Craft & Services */}
         <View
@@ -594,7 +594,7 @@ export default function SubBarberProfileScreen() {
                 />
               </View>
               <View>
-                <Text style={[styles.menuLabel, { color: colors.primarytext }]}>{language === "fr" ? "Modifier le profil & Identifiant du salon" : "Edit Profile & Salon Identifier"}</Text>
+                <Text style={[styles.menuLabel, { color: colors.primarytext }]}>{user?.parent_salon_id ? (language === "fr" ? "Modifier le profil & Salon" : "Edit Profile & Salon") : (language === "fr" ? "Modifier le profil" : "Edit Profile")}</Text>
                 <Text style={[styles.menuSublabel, { color: colors.secondarytext }]}>{t("profile.manageAffiliationSub") || "Manage name, avatar, password & Salon affiliation"}</Text>
               </View>
             </View>
