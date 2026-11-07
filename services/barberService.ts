@@ -108,10 +108,6 @@ export interface BarberCapacityUpdate {
 // In-memory / shared storage for barber services so newly added services cache cleanly
 const sharedBarberServices: Record<number, BarberServiceItem[]> = {};
 
-// Shared stores for salon invites and dynamic staff affiliations
-const salonInvites: any[] = [];
-const salonActiveStaff: any[] = [];
-const clientSalonAffiliations: Record<string, string> = {};
 
 export const barberService = {
   /**
@@ -540,35 +536,12 @@ export const barberService = {
     salonIdOrInviteId: number | string,
     optionalInviteId?: string | number
   ): Promise<boolean> {
-    let salonId = 4;
-    let inviteId: string | number;
-
-    if (optionalInviteId !== undefined) {
-      salonId = Number(salonIdOrInviteId) || 4;
-      inviteId = optionalInviteId;
-    } else {
-      inviteId = salonIdOrInviteId;
+    if (optionalInviteId === undefined) {
+      throw new Error("Salon ID is required to cancel an invitation.");
     }
-
-    try {
-      await apiRequest(`/api/v1/barbers/${salonId}/invites/${inviteId}`, {
-        method: "DELETE",
-      });
-    } catch {
-      // Fallback
-    }
-
-    const idx = salonInvites.findIndex((i) => String(i.id) === String(inviteId));
-    if (idx !== -1) {
-      salonInvites.splice(idx, 1);
-    }
-
-    // Update persistent salon storage
-    const storageKey = `@trimly_salon_invites_${salonId}`;
-    const persisted = await getStoredData<any[]>(storageKey, []);
-    const updated = persisted.filter((i) => String(i.id) !== String(inviteId));
-    await setStoredData(storageKey, updated);
-
+    await apiRequest(`/api/v1/barbers/${Number(salonIdOrInviteId)}/invites/${optionalInviteId}`, {
+      method: "DELETE",
+    });
     return true;
   },
 
@@ -584,130 +557,45 @@ export const barberService = {
     status?: "pending" | "still_to_send";
   }): Promise<any> {
     const inviteStatus = payload.status || "pending";
-    let dbInvite: any = null;
-
-    // 1. Attempt POST to dedicated /invites route
-    try {
-      const res = await apiRequest<any>(`/api/v1/barbers/${payload.salonId}/invites`, {
-        method: "POST",
-        body: JSON.stringify({
-          client_id: payload.client.id,
-          name: payload.client.name,
-          email: payload.client.email,
-          phone: payload.client.phone,
-          role: payload.role,
-          status: inviteStatus,
-        }),
-      });
-      if (res && res.invite) {
-        dbInvite = res.invite;
-      }
-    } catch {
-      // 2. Fallback to /staff route if /invites is not deployed yet and status is pending
-      if (inviteStatus === "pending") {
-        try {
-          const staffRes = await apiRequest<any>(`/api/v1/barbers/${payload.salonId}/staff`, {
-            method: "POST",
-            body: JSON.stringify({
-              name: payload.client.name,
-              email: payload.client.email,
-              phone: payload.client.phone,
-              role: payload.role,
-            }),
-          });
-          if (staffRes?.staff_member) {
-            dbInvite = {
-              id: staffRes.staff_member.id,
-              created_at: new Date().toISOString(),
-            };
-          }
-        } catch {
-          // Handled locally
-        }
-      }
+    // Saved on the backend only; throws if the server rejects it.
+    const res = await apiRequest<any>(`/api/v1/barbers/${payload.salonId}/invites`, {
+      method: "POST",
+      body: JSON.stringify({
+        client_id: payload.client.id,
+        name: payload.client.name,
+        email: payload.client.email,
+        phone: payload.client.phone,
+        role: payload.role,
+        status: inviteStatus,
+      }),
+    });
+    const inv = res?.invite;
+    if (!inv?.id) {
+      throw new Error("The server did not confirm the invitation.");
     }
-
-    const invite = {
-      id: dbInvite ? dbInvite.id : `inv_${Date.now()}`,
+    return {
+      id: inv.id,
       salonId: payload.salonId,
       salonName: payload.salonName,
-      clientId: payload.client.id,
-      clientName: payload.client.name,
-      clientEmail: payload.client.email,
-      clientPhone: payload.client.phone,
-      role: payload.role,
+      clientId: inv.client_id ?? payload.client.id,
+      clientName: inv.name || payload.client.name,
+      clientEmail: inv.email || payload.client.email,
+      clientPhone: inv.phone || payload.client.phone,
+      role: inv.role || payload.role,
       status: inviteStatus === "still_to_send" ? "Still To Send" : "Pending",
-      rawStatus: inviteStatus,
-      createdAt: dbInvite?.created_at || new Date().toISOString(),
+      rawStatus: inv.status || inviteStatus,
+      createdAt: inv.created_at,
     };
-
-    // Update memory
-    const existingIdx = salonInvites.findIndex(
-      (i) => i.clientEmail?.toLowerCase() === payload.client.email.toLowerCase() && i.salonId === payload.salonId
-    );
-    if (existingIdx >= 0) {
-      salonInvites[existingIdx] = invite;
-    } else {
-      salonInvites.push(invite);
-    }
-
-    // Persist to SecureStore / localStorage for salon
-    const storageKey = `@trimly_salon_invites_${payload.salonId}`;
-    const persisted = await getStoredData<any[]>(storageKey, []);
-    const pIdx = persisted.findIndex((i) => i.clientEmail?.toLowerCase() === payload.client.email.toLowerCase());
-    if (pIdx >= 0) {
-      persisted[pIdx] = invite;
-    } else {
-      persisted.unshift(invite);
-    }
-    await setStoredData(storageKey, persisted);
-
-    // Also persist under client's pending invites key for cross-device/offline testing
-    if (payload.client.email) {
-      const clientKey = `@trimly_client_invites_${payload.client.email.trim().toLowerCase()}`;
-      const clientPersisted = await getStoredData<any[]>(clientKey, []);
-      const cIdx = clientPersisted.findIndex((i) => i.salonId === payload.salonId);
-      if (cIdx >= 0) {
-        clientPersisted[cIdx] = invite;
-      } else {
-        clientPersisted.unshift(invite);
-      }
-      await setStoredData(clientKey, clientPersisted);
-    }
-
-    return invite;
   },
 
   /**
    * Update invitation status in the database (e.g. promoting 'still_to_send' draft to 'pending').
    */
   async updateStaffInviteStatus(salonId: number, inviteId: string | number, status: string): Promise<any> {
-    try {
-      await apiRequest(`/api/v1/barbers/${salonId}/invites/${inviteId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
-    } catch {
-      // Local fallback
-    }
-
-    const nextStatus = status === "still_to_send" ? "Still To Send" : status === "pending" ? "Pending" : "Active";
-    const item = salonInvites.find((i) => String(i.id) === String(inviteId));
-    if (item) {
-      item.status = nextStatus;
-      item.rawStatus = status;
-    }
-
-    const storageKey = `@trimly_salon_invites_${salonId}`;
-    const persisted = await getStoredData<any[]>(storageKey, []);
-    const pItem = persisted.find((i) => String(i.id) === String(inviteId));
-    if (pItem) {
-      pItem.status = nextStatus;
-      pItem.rawStatus = status;
-      await setStoredData(storageKey, persisted);
-    }
-
-    return true;
+    return apiRequest(`/api/v1/barbers/${salonId}/invites/${inviteId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   },
 
   /**
@@ -717,91 +605,19 @@ export const barberService = {
    */
   async getPendingInvitesForClient(clientEmailOrName?: string): Promise<any[]> {
     if (!clientEmailOrName) return [];
-    const query = clientEmailOrName.trim().toLowerCase();
-    const invitesMap = new Map<string, any>();
-
-    // 1. Fetch from server endpoint GET /api/v1/barbers/my-invitations
-    try {
-      const res = await apiRequest<any>("/api/v1/barbers/my-invitations", { method: "GET" });
-      if (res && Array.isArray(res.invites)) {
-        res.invites.forEach((inv: any) => {
-          invitesMap.set(`srv_${inv.id}`, {
-            id: inv.id,
-            salonId: inv.salon_id,
-            salonName: inv.salon_name || `Salon #${inv.salon_id}`,
-            salonLogo: inv.salon_logo || null,
-            salonCity: inv.salon_city || null,
-            role: inv.role || "Barber",
-            status: "Pending",
-            rawStatus: "pending",
-            createdAt: inv.created_at || new Date().toISOString(),
-          });
-        });
-      }
-    } catch {
-      // Server endpoint not reachable or older build
-    }
-
-    // 2. Query in-app notifications feed for any staff_invite items
-    try {
-      const notifs = await apiRequest<any>("/api/v1/notifications/", { method: "GET" });
-      const list = Array.isArray(notifs?.notifications) ? notifs.notifications : Array.isArray(notifs) ? notifs : [];
-      list
-        .filter((n: any) => n.type === "staff_invite" && !n.is_read && !n.read)
-        .forEach((n: any) => {
-          let sId = 4;
-          if (n.action_route && n.action_route.includes("/accept-salon-invite/")) {
-            const parts = n.action_route.split("/accept-salon-invite/");
-            if (parts[1]) sId = parseInt(parts[1], 10) || 4;
-          }
-          let sName = "Salon";
-          if (n.title && n.title.includes("from ")) {
-            sName = n.title.split("from ")[1] || "Salon";
-          }
-          const key = `notif_${sId}`;
-          if (!invitesMap.has(key)) {
-            invitesMap.set(key, {
-              id: `notif_inv_${n.id || sId}`,
-              salonId: sId,
-              salonName: sName,
-              role: "Barber",
-              status: "Pending",
-              rawStatus: "pending",
-              createdAt: n.created_at || new Date().toISOString(),
-            });
-          }
-        });
-    } catch {
-      // Notifications query failed
-    }
-
-    // 3. Query persistent storage for cached client invites
-    const clientKey = `@trimly_client_invites_${query}`;
-    const persisted = await getStoredData<any[]>(clientKey, []);
-    persisted
-      .filter((inv) => inv.status === "Pending" || inv.status === "pending" || inv.rawStatus === "pending")
-      .forEach((inv) => {
-        const key = `pers_${inv.salonId}_${inv.id}`;
-        if (!invitesMap.has(key)) {
-          invitesMap.set(key, inv);
-        }
-      });
-
-    // 4. Also check in-memory salonInvites
-    salonInvites
-      .filter(
-        (inv) =>
-          (inv.status === "Pending" || inv.status === "pending" || inv.rawStatus === "pending") &&
-          (inv.clientEmail?.toLowerCase() === query || inv.clientName?.toLowerCase() === query)
-      )
-      .forEach((inv) => {
-        const key = `mem_${inv.salonId}_${inv.id}`;
-        if (!invitesMap.has(key)) {
-          invitesMap.set(key, inv);
-        }
-      });
-
-    return Array.from(invitesMap.values());
+    const res = await apiRequest<any>("/api/v1/barbers/my-invitations", { method: "GET" });
+    const list = Array.isArray(res?.invites) ? res.invites : [];
+    return list.map((inv: any) => ({
+      id: inv.id,
+      salonId: inv.salon_id,
+      salonName: inv.salon_name || `Salon #${inv.salon_id}`,
+      salonLogo: inv.salon_logo || null,
+      salonCity: inv.salon_city || null,
+      role: inv.role || "Barber",
+      status: "Pending",
+      rawStatus: "pending",
+      createdAt: inv.created_at,
+    }));
   },
 
   /**
@@ -812,81 +628,24 @@ export const barberService = {
     accept: boolean,
     optionalSalonId?: number
   ): Promise<{ success: boolean; salonName?: string }> {
-    let invite = salonInvites.find((i) => String(i.id) === String(inviteId));
-    let targetSalonId = optionalSalonId || (invite ? invite.salonId : 4);
-
-    if (accept) {
-      try {
-        await apiRequest(`/api/v1/barbers/accept-salon-invite/${targetSalonId}`, {
-          method: "POST",
-        });
-      } catch {
-        // Handled locally
-      }
-    } else {
-      try {
-        await apiRequest(`/api/v1/barbers/decline-salon-invite/${targetSalonId}`, {
-          method: "POST",
-        });
-      } catch {
-        // Handled locally
-      }
+    if (!optionalSalonId) {
+      throw new Error("Salon ID is required to respond to an invitation.");
     }
-
-    if (invite) {
-      invite.status = accept ? "Active" : "Declined";
-      invite.rawStatus = accept ? "active" : "declined";
-    }
-
-    // Remove or update from persisted client invites
-    if (invite?.clientEmail) {
-      const clientKey = `@trimly_client_invites_${invite.clientEmail.trim().toLowerCase()}`;
-      const clientPersisted = await getStoredData<any[]>(clientKey, []);
-      const updated = clientPersisted.filter((i) => String(i.id) !== String(inviteId) && i.salonId !== targetSalonId);
-      await setStoredData(clientKey, updated);
-    }
-
-    // Update salon persistent invites
-    const storageKey = `@trimly_salon_invites_${targetSalonId}`;
-    const persisted = await getStoredData<any[]>(storageKey, []);
-    const pItem = persisted.find((i) => String(i.id) === String(inviteId));
-    if (pItem) {
-      pItem.status = accept ? "Active" : "Declined";
-      pItem.rawStatus = accept ? "active" : "declined";
-      await setStoredData(storageKey, persisted);
-    }
-
-    const salonName = invite?.salonName || `Salon #${targetSalonId}`;
-
-    if (accept && invite) {
-      salonActiveStaff.push({
-        id: invite.clientId,
-        name: invite.clientName,
-        email: invite.clientEmail,
-        phone: invite.clientPhone,
-        role: invite.role || "Barber",
-        salonId: targetSalonId,
-        salonName,
-        status: "Active",
-      });
-
-      if (invite.clientEmail) {
-        clientSalonAffiliations[invite.clientEmail.toLowerCase()] = salonName;
-      }
-      if (invite.clientName) {
-        clientSalonAffiliations[invite.clientName.toLowerCase()] = salonName;
-      }
-    }
-
-    return { success: true, salonName };
+    const res = await apiRequest<any>(
+      accept
+        ? `/api/v1/barbers/accept-salon-invite/${optionalSalonId}`
+        : `/api/v1/barbers/decline-salon-invite/${optionalSalonId}`,
+      { method: "POST" }
+    );
+    return { success: true, salonName: res?.salon_name };
   },
 
   /**
    * Check if a client belongs to a salon (for "{Salon Name} Barber" badge).
    */
-  getClientSalonAffiliation(clientEmailOrName?: string): string | null {
-    if (!clientEmailOrName) return null;
-    return clientSalonAffiliations[clientEmailOrName.toLowerCase()] || null;
+  getClientSalonAffiliation(_clientEmailOrName?: string): string | null {
+    // Deprecated: salon affiliation now comes from the user's real parent_salon_name.
+    return null;
   },
 
   /**
@@ -903,18 +662,9 @@ export const barberService = {
    * Remove a barber from salon staff roster.
    */
   async removeSalonStaff(salonId: number, staffId: number): Promise<any> {
-    try {
-      await apiRequest(`/api/v1/barbers/${salonId}/staff/${staffId}`, {
-        method: "DELETE",
-      });
-    } catch {
-      // Handled in store
-    }
-    const idx = salonActiveStaff.findIndex((s) => s.id === staffId && s.salonId === salonId);
-    if (idx !== -1) {
-      salonActiveStaff.splice(idx, 1);
-    }
-    return { status: "success" };
+    return apiRequest(`/api/v1/barbers/${salonId}/staff/${staffId}`, {
+      method: "DELETE",
+    });
   },
 
   /**
@@ -1036,21 +786,12 @@ export const barberService = {
   },
 
   async listSalonStaff(salonId: number): Promise<any[]> {
-    try {
-      const res = await apiRequest(`/api/v1/barbers/${salonId}/staff`, {
-        method: "GET",
-      });
-      if (Array.isArray(res) && res.length > 0) {
-        return res;
-      }
-      if (Array.isArray(res?.staff) && res.staff.length > 0) {
-        return res.staff;
-      }
-    } catch {
-      // Fall back to active staff store
-    }
-
-    return salonActiveStaff.filter((s) => s.salonId === salonId);
+    // Real backend data only — an empty roster is a valid answer, never padded with local data.
+    const res = await apiRequest<any>(`/api/v1/barbers/${salonId}/staff`, {
+      method: "GET",
+    });
+    if (Array.isArray(res)) return res;
+    return Array.isArray(res?.staff) ? res.staff : [];
   },
 
   /**
@@ -1058,97 +799,29 @@ export const barberService = {
    * Pre-populates immediately from persistent storage so drafts and pending invites never disappear.
    */
   async listSalonInvites(salonId: number, status?: string): Promise<any[]> {
-    const storageKey = `@trimly_salon_invites_${salonId}`;
-    const persisted = await getStoredData<any[]>(storageKey, []);
-
-    // Seed in-memory cache with persisted invites so nothing is lost
-    persisted.forEach((p) => {
-      const idx = salonInvites.findIndex((i) => String(i.id) === String(p.id));
-      if (idx >= 0) salonInvites[idx] = p;
-      else salonInvites.push(p);
-    });
-
-    try {
-      const url = status
-        ? `/api/v1/barbers/${salonId}/invites?status=${status}`
-        : `/api/v1/barbers/${salonId}/invites`;
-      const res = await apiRequest<any>(url, { method: "GET" });
-      if (res && Array.isArray(res.invites)) {
-        const mapped = res.invites.map((inv: any) => ({
-          id: inv.id,
-          salonId: inv.salon_id,
-          salonName: `Salon #${inv.salon_id}`,
-          clientId: inv.client_id,
-          clientName: inv.name || inv.email,
-          clientEmail: inv.email,
-          clientPhone: inv.phone,
-          role: inv.role || "Barber",
-          status:
-            inv.status === "still_to_send"
-              ? "Still To Send"
-              : inv.status === "active"
-              ? "Active"
-              : "Pending",
-          rawStatus: inv.status,
-          createdAt: inv.created_at || new Date().toISOString(),
-        }));
-
-        // Preserve local drafts (still_to_send) that might not be on server
-        const localDrafts = persisted.filter(
-          (p) =>
-            (p.rawStatus === "still_to_send" || p.status === "Still To Send") &&
-            !mapped.some((m: any) => String(m.id) === String(p.id))
-        );
-        const combined = [...mapped, ...localDrafts];
-
-        // Save back to persistent storage
-        await setStoredData(storageKey, combined);
-
-        combined.forEach((item: any) => {
-          const idx = salonInvites.findIndex((i) => String(i.id) === String(item.id));
-          if (idx >= 0) salonInvites[idx] = item;
-          else salonInvites.push(item);
-        });
-
-        return status
-          ? combined.filter((i) => i.rawStatus === status || i.status.toLowerCase() === status.toLowerCase())
-          : combined;
-      }
-    } catch {
-      // If server /invites 404s (e.g. before VPS redeploy), fallback to /staff merged with persistent
-      try {
-        const staffRes = await apiRequest<any>(`/api/v1/barbers/${salonId}/staff`, { method: "GET" });
-        const staffList = Array.isArray(staffRes?.staff) ? staffRes.staff : Array.isArray(staffRes) ? staffRes : [];
-        if (staffList.length > 0) {
-          staffList.forEach((s: any) => {
-            if (!persisted.some((p) => p.clientEmail?.toLowerCase() === s.email?.toLowerCase())) {
-              persisted.push({
-                id: s.id,
-                salonId,
-                salonName: `Salon #${salonId}`,
-                clientId: s.id,
-                clientName: s.name || s.email,
-                clientEmail: s.email,
-                clientPhone: s.phone,
-                role: s.role || "Barber",
-                status: s.status === "Active" ? "Active" : "Pending",
-                rawStatus: s.status === "Active" ? "active" : "pending",
-                createdAt: new Date().toISOString(),
-              });
-            }
-          });
-        }
-      } catch {
-        // Fall through
-      }
-    }
-
-    // Return persisted invites for this salon
-    const results = salonInvites.filter((inv) => inv.salonId === salonId);
-    if (status) {
-      return results.filter((i) => i.rawStatus === status || i.status.toLowerCase() === status.toLowerCase());
-    }
-    return results;
+    const url = status
+      ? `/api/v1/barbers/${salonId}/invites?status=${status}`
+      : `/api/v1/barbers/${salonId}/invites`;
+    const res = await apiRequest<any>(url, { method: "GET" });
+    const list = Array.isArray(res?.invites) ? res.invites : [];
+    return list.map((inv: any) => ({
+      id: inv.id,
+      salonId: inv.salon_id,
+      salonName: `Salon #${inv.salon_id}`,
+      clientId: inv.client_id,
+      clientName: inv.name || inv.email,
+      clientEmail: inv.email,
+      clientPhone: inv.phone,
+      role: inv.role || "Barber",
+      status:
+        inv.status === "still_to_send"
+          ? "Still To Send"
+          : inv.status === "active"
+          ? "Active"
+          : "Pending",
+      rawStatus: inv.status,
+      createdAt: inv.created_at,
+    }));
   },
 
   /**
@@ -1159,20 +832,11 @@ export const barberService = {
     staffId: number,
     status: "Active" | "Off Duty" | "On Break" | "Suspended" | string
   ): Promise<any> {
-    try {
-      await apiRequest(`/api/v1/barbers/${salonId}/staff/${staffId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
-    } catch {
-      // Local fallback
-    }
-
-    const staff = salonActiveStaff.find((s) => s.id === staffId && s.salonId === salonId);
-    if (staff) {
-      staff.status = status;
-    }
-    return { status: "success" };
+    // Throws on failure so the UI never shows a status the server did not save.
+    return apiRequest(`/api/v1/barbers/${salonId}/staff/${staffId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   },
 
   /**

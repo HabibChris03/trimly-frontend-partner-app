@@ -26,6 +26,7 @@ import { UPDATE_CONFIG } from "@/constants/updateConfig";
 import { useTheme } from "@/context/ThemeContext";
 import { barberService } from "@/services/barberService";
 import { authService } from "@/services/authService";
+import { useSalonFloor } from "@/hooks/useSalonFloor";
 import { openWhatsApp, SUPPORT_WHATSAPP_NUMBER } from "@/utils/whatsapp";
 
 type DutyStatus = "active" | "on_break" | "off_duty";
@@ -152,15 +153,24 @@ export default function BarberProfileSettingsScreen() {
     }
   }, [checkPendingJoinRequest, fetchLiveProfileMetrics, user?.id]);
 
+  const isSalonManager = Boolean(user?.role === "salon");
+
+  // Same live data source as the Home dashboard "Active Barbers" tile
+  const salonFloor = useSalonFloor({ enabled: isSalonManager });
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (refreshUser) {
       await refreshUser().catch(() => null);
     }
-    await Promise.all([checkPendingJoinRequest(), fetchLiveProfileMetrics()]);
+    await Promise.all([
+      checkPendingJoinRequest(),
+      fetchLiveProfileMetrics(),
+      salonFloor.refresh(),
+    ]);
     setRefreshing(false);
     showToast(language === "fr" ? "Profil actualisé." : "Profile refreshed.", "info");
-  }, [refreshUser, checkPendingJoinRequest, fetchLiveProfileMetrics, showToast, language]);
+  }, [refreshUser, checkPendingJoinRequest, fetchLiveProfileMetrics, salonFloor, showToast, language]);
 
   const handleSearchSalons = async () => {
     const trimmed = salonSearchQuery.trim();
@@ -417,9 +427,7 @@ export default function BarberProfileSettingsScreen() {
     }
   };
 
-  const isSalonManager = Boolean(user?.role === "salon");
-
-  const salonAffiliation = barberService.getClientSalonAffiliation(user?.email || user?.name || "");
+  const salonAffiliation = user?.parent_salon_id ? user?.parent_salon_name || null : null;
   const displayName =
     user?.name?.trim() ||
     (user?.email ? user.email.split("@")[0] : "") ||
@@ -810,7 +818,9 @@ export default function BarberProfileSettingsScreen() {
                 style={[styles.salonSubActionBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
               >
                 <Ionicons name="people-outline" size={15} color={colors.brand} />
-                <Text style={[styles.salonSubActionText, { color: colors.primaryText }]}>{t("profile.manageStaff") || "Manage Staff"}</Text>
+                <Text style={[styles.salonSubActionText, { color: colors.primaryText }]}>
+                  {t("profile.manageStaff") || "Manage Staff"} ({salonFloor.chairs.length})
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -820,7 +830,9 @@ export default function BarberProfileSettingsScreen() {
               >
                 <Ionicons name="cut-outline" size={15} color={colors.brand} />
               <Text style={[styles.salonSubActionText, { color: colors.primaryText }]}>
-                {language === "fr" ? "Fauteuils Actifs" : "Active Chairs"}
+                {language === "fr"
+                  ? `Fauteuils Actifs (${salonFloor.activeCount}/${salonFloor.chairs.length})`
+                  : `Active Chairs (${salonFloor.activeCount}/${salonFloor.chairs.length})`}
               </Text>
               </TouchableOpacity>
             </View>
@@ -1284,7 +1296,28 @@ export default function BarberProfileSettingsScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.menuItemTitle, { color: colors.primaryText }]}>{language === "fr" ? "Équipe & Fauteuils des Coiffeurs" : "Staff & Stylist Chairs"}</Text>
-                  <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>{language === "fr" ? "Inviter des coiffeurs, gérer les fauteuils et plannings" : "Invite barbers, manage chair capacity & schedules"}</Text>
+                  <Text style={[styles.menuItemSub, { color: colors.secondaryText }]}>
+                    {salonFloor.isLoading
+                      ? (language === "fr" ? "Chargement des fauteuils…" : "Loading chairs…")
+                      : language === "fr"
+                      ? `${salonFloor.activeCount} sur ${salonFloor.chairs.length} actifs • ${salonFloor.chairsCount} fauteuils`
+                      : `${salonFloor.activeCount} of ${salonFloor.chairs.length} active • ${salonFloor.chairsCount} chairs`}
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 999,
+                    backgroundColor: "rgba(199, 243, 107, 0.14)",
+                    borderWidth: 1,
+                    borderColor: "rgba(199, 243, 107, 0.35)",
+                    marginRight: 6,
+                  }}
+                >
+                  <Text style={{ fontSize: 10, fontWeight: "800", color: colors.brand }}>
+                    {salonFloor.activeCount}/{salonFloor.chairs.length}
+                  </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
               </TouchableOpacity>

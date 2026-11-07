@@ -317,26 +317,28 @@ export default function BarberDashboardScreen() {
       const staffRes = await barberService
         .listSalonStaff(barberId)
         .catch(() => null);
-      if (Array.isArray(staffRes) && staffRes.length > 0) {
+      if (Array.isArray(staffRes)) {
         setStaffList(staffRes);
 
         // Fetch review stats for each registered staff barber concurrently
         const staffRevMap: Record<number, { rating: number; reviewCount: number }> = {};
-        await Promise.all(
-          staffRes.map(async (member: any) => {
-            try {
-              const r = await reviewService.getBarberReviews(member.id);
-              if (r) {
-                staffRevMap[member.id] = {
-                  rating: r.average_rating || 5.0,
-                  reviewCount: r.total_reviews || 0,
-                };
+        if (staffRes.length > 0) {
+          await Promise.all(
+            staffRes.map(async (member: any) => {
+              try {
+                const r = await reviewService.getBarberReviews(member.id);
+                if (r) {
+                  staffRevMap[member.id] = {
+                    rating: r.average_rating || 5.0,
+                    reviewCount: r.total_reviews || 0,
+                  };
+                }
+              } catch {
+                staffRevMap[member.id] = { rating: 5.0, reviewCount: 0 };
               }
-            } catch {
-              staffRevMap[member.id] = { rating: 5.0, reviewCount: 0 };
-            }
-          })
-        );
+            })
+          );
+        }
         setStaffReviews(staffRevMap);
       }
 
@@ -460,7 +462,10 @@ export default function BarberDashboardScreen() {
       (Boolean((user as any)?.is_lead) || staffList.length === 0);
 
     if (shouldIncludeOwnerChair) {
-      const isLeadSuspended = suspendedChairs.includes(1);
+      const isLeadSuspended =
+        suspendedChairs.includes(1) ||
+        (user as any)?.staff_status === "Suspended" ||
+        (user as any)?.account_status === "suspended";
       list.push({
         chairNumber: 1,
         barberId: barberId,
@@ -478,7 +483,7 @@ export default function BarberDashboardScreen() {
 
     // Verified Linked Staff Barbers occupying Chairs (no unbookable dummy chairs)
     staffList.forEach((member, idx) => {
-      const chairNum = list.length + 1;
+      const chairNum = (member as any).chair_number || list.length + 1;
       const isOwner = String(member.id) === String(barberId);
       const isChairSusp = suspendedChairs.includes(chairNum);
       const isMemberSusp = member.status === "Suspended" || isChairSusp;
@@ -494,7 +499,10 @@ export default function BarberDashboardScreen() {
         0
       );
 
-      const avatar = isOwner
+      const memberAvatarUri = (member as any).avatar_url || (member as any).logo_url;
+      const avatar = memberAvatarUri
+        ? { uri: memberAvatarUri }
+        : isOwner
         ? barberAvatar
         : idx % 4 === 0
         ? barberImg1

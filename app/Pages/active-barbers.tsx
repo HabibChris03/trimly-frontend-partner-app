@@ -11,7 +11,7 @@ import { barberService } from "@/services/barberService";
 import { bookingService } from "@/services/bookingService";
 import { reviewService } from "@/services/reviewService";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -159,6 +159,12 @@ export default function ActiveBarbersScreen() {
     load();
   }, [fetchActiveBarbersData]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchActiveBarbersData();
+    }, [fetchActiveBarbersData])
+  );
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchActiveBarbersData();
@@ -235,7 +241,12 @@ export default function ActiveBarbersScreen() {
         phone: member.phone || (isOwner && user?.phone ? user.phone : "+237 670 00 00 00"),
         email: (member as any).email || (isOwner ? (user?.email || undefined) : undefined),
         status: effectiveStatus,
-        avatar: isOwner ? barberAvatar : profilePic,
+        avatar:
+          (member as any).avatar_url || (member as any).logo_url
+            ? { uri: (member as any).avatar_url || (member as any).logo_url }
+            : isOwner
+            ? barberAvatar
+            : profilePic,
         revenue: memberRevenue,
         cutsCount: memberBookings.length,
         rating: rev.rating,
@@ -303,7 +314,7 @@ export default function ActiveBarbersScreen() {
           onPress: async () => {
             setActionLoadingId(barber.barberId);
             try {
-              if (barber.isLead || barber.isOpenChair) {
+              if (barber.isOpenChair) {
                 setSuspendedChairs((prev) =>
                   isCurrentlySuspended
                     ? prev.filter((c) => c !== barber.chairNumber)
@@ -314,6 +325,11 @@ export default function ActiveBarbersScreen() {
                   salonId,
                   Number(barber.barberId),
                   nextStatus
+                );
+                setSuspendedChairs((prev) =>
+                  isCurrentlySuspended
+                    ? prev.filter((c) => c !== barber.chairNumber)
+                    : [...prev, barber.chairNumber]
                 );
                 setStaffList((prev) =>
                   prev.map((s) =>

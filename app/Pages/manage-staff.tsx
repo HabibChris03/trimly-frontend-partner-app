@@ -9,7 +9,7 @@ import { useToast } from "@/context/ToastContext";
 import { useTheme } from "@/context/ThemeContext";
 import { barberService } from "@/services/barberService";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -29,9 +29,14 @@ import { useThemeImages } from "@/hooks/useThemeImages";
 
 interface StaffMember {
   id: number;
+  chair_number?: number;
   name: string;
+  email?: string;
   role: string;
   phone?: string;
+  avatar_url?: string;
+  logo_url?: string;
+  is_lead?: boolean;
   status: "Active" | "Off Duty" | "On Break" | "Suspended";
   experience?: string;
   avatarIndex?: number;
@@ -102,16 +107,25 @@ export default function ManageStaffScreen() {
 
   const fetchStaffAndClients = useCallback(async () => {
     try {
-      const [apiStaff, requests, leaveReqs] = await Promise.all([
+      const [apiStaff, requests, leaveReqs, invitesRes] = await Promise.all([
         barberService.listSalonStaff(salonId).catch(() => []),
         barberService.getSalonJoinRequests(salonId).catch(() => []),
         barberService.getSalonLeaveRequests(salonId).catch(() => []),
+        barberService.listSalonInvites(salonId).catch(() => ({ invites: [] })),
       ]);
 
       const baseStaff = Array.isArray(apiStaff) ? apiStaff : [];
       setStaffList(baseStaff);
       setJoinRequests(Array.isArray(requests) ? requests : []);
       setLeaveRequests(Array.isArray(leaveReqs) ? leaveReqs : []);
+
+      const allInvites = Array.isArray((invitesRes as any)?.invites)
+        ? (invitesRes as any).invites
+        : [];
+      setPendingInvites(allInvites.filter((i: any) => i.rawStatus === "pending"));
+      setStillToSendInvites(
+        allInvites.filter((i: any) => i.rawStatus === "still_to_send")
+      );
     } catch {
       showToast(
         language === "fr"
@@ -151,6 +165,12 @@ export default function ManageStaffScreen() {
     }
     load();
   }, [fetchStaffAndClients]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchStaffAndClients();
+    }, [fetchStaffAndClients])
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -520,6 +540,25 @@ export default function ManageStaffScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <TouchableOpacity
             activeOpacity={0.85}
+            onPress={() => router.push("/Pages/active-barbers" as any)}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              paddingHorizontal: 10,
+              paddingVertical: 7,
+              borderRadius: 999,
+              backgroundColor: colors.primary,
+            }}
+          >
+            <Ionicons name="cut" size={14} color={colors.onBrand} />
+            <Text style={{ fontSize: 11.5, fontWeight: "800", color: colors.onBrand }}>
+              {language === "fr" ? "Fauteuils" : "Live Chairs"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.85}
             onPress={() => setTutorialVisible(true)}
             style={[
               styles.headerCircleBtn,
@@ -735,9 +774,15 @@ export default function ManageStaffScreen() {
               </View>
             ) : (
               <View style={{ gap: 12 }}>
-                {filteredStaff.map((member) => {
+                {filteredStaff.map((member, idx) => {
                   const statusColor = getStatusColor(member.status);
                   const isSuspended = member.status === "Suspended";
+                  const chairNum = member.chair_number || idx + 1;
+                  const isLead = Boolean(member.is_lead) || String(member.id) === String(salonId);
+                  const memberAvatar =
+                    member.avatar_url || member.logo_url
+                      ? { uri: member.avatar_url || member.logo_url }
+                      : profilePic;
 
                   return (
                     <View
@@ -746,13 +791,17 @@ export default function ManageStaffScreen() {
                         styles.staffCard,
                         {
                           backgroundColor: colors.surface,
-                          borderColor: isSuspended ? "rgba(239, 68, 68, 0.4)" : colors.border,
+                          borderColor: isSuspended
+                            ? "rgba(239, 68, 68, 0.4)"
+                            : isLead
+                            ? "rgba(199, 243, 107, 0.35)"
+                            : colors.border,
                         },
                       ]}
                     >
                       {/* Avatar with Status Dot */}
                       <View style={styles.staffAvatarWrap}>
-                        <Image source={profilePic} style={styles.staffAvatarImg} />
+                        <Image source={memberAvatar} style={styles.staffAvatarImg} />
                         <View
                           style={[
                             styles.avatarStatusDot,
@@ -763,6 +812,26 @@ export default function ManageStaffScreen() {
 
                       {/* Info */}
                       <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                              paddingHorizontal: 7,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                              backgroundColor: isLead ? "rgba(199, 243, 107, 0.14)" : "rgba(255,255,255,0.06)",
+                              borderWidth: 1,
+                              borderColor: isLead ? "rgba(199, 243, 107, 0.35)" : colors.border,
+                            }}
+                          >
+                            <Ionicons name="cut" size={10} color={isLead ? colors.primary : colors.secondarytext} />
+                            <Text style={{ fontSize: 9.5, fontWeight: "800", color: isLead ? colors.primary : colors.secondarytext }}>
+                              CHAIR 0{chairNum}{isLead ? " • LEAD" : ""}
+                            </Text>
+                          </View>
+                        </View>
                         <View style={styles.nameStatusRow}>
                           <Text
                             style={[styles.staffNameText, { color: colors.primarytext }]}
